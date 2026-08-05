@@ -30,7 +30,7 @@ spec:
             - containerPort: 20000
               name: http
             - containerPort: 1270
-              name: ؙsope
+              name: sope
             - containerPort: 1419
               name: caldav
             - containerPort: 1808

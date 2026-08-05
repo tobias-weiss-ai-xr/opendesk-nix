@@ -72,7 +72,7 @@ data:
     dovecot:2.3.21-nixos
     collabora:24.4.0-nixos
     opencloud:4.0.3-nixos
-    grommunio:1.0.0-nffixos
+    grommunio:1.0.0-nixos
     stalwart:1.0.0-nixos
     intercom:latest-nixos
     intercom-service:latest-nixos
