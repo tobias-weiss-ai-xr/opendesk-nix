@@ -1,0 +1,13 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: opendesk
+  labels:
+    name: opendesk
+    platform: opendesk-edu
+    environment: production
+    version: "1.0.0"
+    maintained-by: nix
+    spec: openspec
+---

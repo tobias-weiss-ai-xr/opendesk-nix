@@ -1,0 +1,89 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: traefik
+  namespace: opendesk
+  labels:
+    app: traefik
+    component: router
+    tier: networking
+    platform: opendesk
+    version: "2.11.0-nixos"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: traefik
+  template:
+    metadata:
+      labels:
+        app: traefik
+    spec:
+      serviceAccountName: opendesk-service-account
+      containers:
+        - name: traefik
+          image: registry.opencode.de/umr/opendesk-edu/opendesk-nix/traefik:2.11.0-nixos
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+              name: web
+            - containerPort: 8080
+              name: websecure
+            - containerPort: 9000
+              name: traefik
+          args:
+            - "--api.insecure=true"
+            - "--api.dashboard=true"
+            - "--accesslog=true"
+            - "--accesslog.format=json"
+            - "--entrypoints.web.address=:80"
+            - "--entrypoints.websecure.address=:8080"
+            - "--providers.kubernetescrd"
+            - "--certificatesresolvers.letsencrypt.acme.email=admin@opendesk.hrz.uni-marburg.de"
+            - "--certificatesresolvers.letsencrypt.acme.storage=/certs/acme.json"
+            - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+          volumeMounts:
+            - name: certs
+              mountPath: /certs
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: 9000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: 9000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: certs
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: traefik
+  namespace: opendesk
+  labels:
+    app: traefik
+spec:
+  selector:
+    app: traefik
+  ports:
+    - port: 80
+      targetPort: 80
+      name: web
+    - port: 8080
+      targetPort: 8080
+      name: websecure
+    - port: 9000
+      targetPort: 9000
+      name: traefik
+  type: LoadBalancer
+---

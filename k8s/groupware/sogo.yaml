@@ -1,0 +1,165 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: sogo
+  namespace: opendesk
+  labels:
+    app: sogo
+    component: groupware
+    tier: backend
+    platform: opendesk
+    version: "5.12.9-nixos"
+spec:
+  serviceName: sogo
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sogo
+  template:
+    metadata:
+      labels:
+        app: sogo
+    spec:
+      serviceAccountName: opendesk-service-account
+      containers:
+        - name: sogo
+          image: registry.opencode.de/umr/opendesk-edu/opendesk-nix/sogo:5.12.9-nixos
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 20000
+              name: http
+            - containerPort: 1270
+              name: ؙsope
+            - containerPort: 1419
+              name: caldav
+            - containerPort: 1808
+              name: carddav
+          env:
+            - name: SOGO_DB_HOST
+              value: "postgresql.opendesk.svc.cluster.local"
+            - name: SOGO_DB_NAME
+              value: "sogo"
+            - name: SOGO_DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: sogo-secrets
+                  key: db-username
+            - name: SOGO_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: sogo-secrets
+                  key: db-password
+            - name: SOGO_MAIL_HOST
+              value: "dovecot.opendesk.svc.cluster.local"
+            - name: SOGO_SIEVE_HOST
+              value: "dovecot.opendesk.svc.cluster.local"
+            - name: SOGoTimeZone
+              value: "Europe/Berlin"
+            - name: SOGoLanguage
+              value: "German"
+            - name: SOGoMailingMechanism
+              value: "smtp"
+            - name: SOGoSMTPServer
+              value: "stalwart.opendesk.svc.cluster.local"
+          volumeMounts:
+            - name: sogo-data
+              mountPath: /var/lib/sogo
+            - name: sogo-config
+              mountPath: /etc/sogo
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+          livenessProbe:
+            httpGet:
+              path: /SOGo
+              port: 20000
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /SOGo
+              port: 20000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 1
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "1"
+      volumes:
+        - name: sogo-data
+          persistentVolumeClaim:
+            claimName: sogo-pvc
+        - name: sogo-config
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sogo
+  namespace: opendesk
+  labels:
+    app: sogo
+spec:
+  selector:
+    app: sogo
+  ports:
+    - port: 20000
+      targetPort: 20000
+      name: http
+    - port: 1270
+      targetPort: 1270
+      name: sope
+    - port: 1419
+      targetPort: 1419
+      name: caldav
+    - port: 1808
+      targetPort: 1808
+      name: carddav
+  type: ClusterIP
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sogo-pvc
+  namespace: opendesk
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sogo-ingress
+  namespace: opendesk
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - sogo.opendesk.hrz.uni-marburg.de
+      secretName: sogo-tls
+  rules:
+    - host: sogo.opendesk.hrz.uni-marburg.de
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: sogo
+                port:
+                  number: 20000
+---

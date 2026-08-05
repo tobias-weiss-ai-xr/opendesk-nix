@@ -1,0 +1,147 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: moodle
+  namespace: opendesk
+  labels:
+    app: moodle
+    component: lms
+    tier: backend
+    platform: opendesk
+    version: "4.4.0-nixos"
+spec:
+  serviceName: moodle
+  replicas: 1
+  selector:
+    matchLabels:
+      app: moodle
+  template:
+    metadata:
+      labels:
+        app: moodle
+    spec:
+      serviceAccountName: opendesk-service-account
+      containers:
+        - name: moodle
+          image: registry.opencode.de/umr/opendesk-edu/opendesk-nix/moodle:4.4.0-nixos
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+              name: http
+          env:
+            - name: MOODLE_DB_TYPE
+              value: "pgsql"
+            - name: MOODLE_DB_HOST
+              value: "postgresql.opendesk.svc.cluster.local"
+            - name: MOODLE_DB_NAME
+              value: "moodle"
+            - name: MOODLE_DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: moodle-secrets
+                  key: db-username
+            - name: MOODLE_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: moodle-secrets
+                  key: db-password
+            - name: MOODLE_WWWROOT
+              value: "https://moodle.opendesk.hrz.uni-marburg.de"
+            - name: MOODLE_SITE_NAME
+              value: "OpenDesk Moodle"
+            - name: MOODLE_ADMIN_EMAIL
+              value: "admin@opendesk.hrz.uni-marburg.de"
+          volumeMounts:
+            - name: moodle-data
+              mountPath: /var/moodledata
+            - name: moodle-config
+              mountPath: /var/www/html/config.php
+              subPath: config.php
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+          livenessProbe:
+            httpGet:
+              path: /login/index.php
+              port: 80
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /login/index.php
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 1
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "1Gi"
+              cpu: "1"
+      volumes:
+        - name: moodle-data
+          persistentVolumeClaim:
+            claimName: moodle-pvc
+        - name: moodle-config
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: moodle
+  namespace: opendesk
+  labels:
+    app: moodle
+spec:
+  selector:
+    app: moodle
+  ports:
+    - port: 80
+      targetPort: 80
+      name: http
+  type: ClusterIP
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: moodle-pvc
+  namespace: opendesk
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: moodle-ingress
+  namespace: opendesk
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - moodle.opendesk.hrz.uni-marburg.de
+      secretName: moodle-tls
+  rules:
+    - host: moodle.opendesk.hrz.uni-marburg.de
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: moodle
+                port:
+                  number: 80
+---
