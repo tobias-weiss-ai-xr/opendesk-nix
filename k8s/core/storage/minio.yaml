@@ -22,6 +22,8 @@ spec:
         app: minio
     spec:
       serviceAccountName: opendesk-service-account
+      securityContext:
+        fsGroup: 1000
       containers:
         - name: minio
           image: registry.opencode.de/umr/opendesk-edu/opendesk-nix/minio:2024-01-31-nixos
@@ -53,7 +55,6 @@ spec:
           securityContext:
             runAsUser: 1000
             runAsGroup: 1000
-            fsGroup: 1000
           livenessProbe:
             httpGet:
               path: /minio/health/live

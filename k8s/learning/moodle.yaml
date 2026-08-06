@@ -22,6 +22,8 @@ spec:
         app: moodle
     spec:
       serviceAccountName: opendesk-service-account
+      securityContext:
+        fsGroup: 1000
       containers:
         - name: moodle
           image: registry.opencode.de/umr/opendesk-edu/opendesk-nix/moodle:4.4.0-nixos
@@ -61,7 +63,6 @@ spec:
           securityContext:
             runAsUser: 1000
             runAsGroup: 1000
-            fsGroup: 1000
           livenessProbe:
             httpGet:
               path: /login/index.php

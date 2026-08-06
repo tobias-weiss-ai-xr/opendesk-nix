@@ -6,7 +6,7 @@ metadata:
   namespace: opendesk
   labels:
     app: redis
-    component: cache
+    component: database
     tier: backend
     platform: opendesk
     version: "7.2.4-nixos"
@@ -22,6 +22,8 @@ spec:
         app: redis
     spec:
       serviceAccountName: opendesk-service-account
+      securityContext:
+        fsGroup: 1000
       containers:
         - name: redis
           image: registry.opencode.de/umr/opendesk-edu/opendesk-nix/redis:7.2.4-nixos
@@ -36,7 +38,6 @@ spec:
           securityContext:
             runAsUser: 1000
             runAsGroup: 1000
-            fsGroup: 1000
           livenessProbe:
             exec:
               command: ["redis-cli", "ping"]
@@ -49,6 +50,13 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 10
             timeoutSeconds: 1
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
       volumes:
         - name: redis-data
           persistentVolumeClaim:

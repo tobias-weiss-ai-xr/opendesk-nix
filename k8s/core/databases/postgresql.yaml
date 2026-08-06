@@ -22,6 +22,8 @@ spec:
         app: postgresql
     spec:
       serviceAccountName: opendesk-service-account
+      securityContext:
+        fsGroup: 1000
       containers:
         - name: postgresql
           image: registry.opencode.de/umr/opendesk-edu/opendesk-nix/postgresql:16.3-nixos
@@ -30,43 +32,53 @@ spec:
             - containerPort: 5432
               name: postgres
           env:
-            - name: POSTGRES_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: postgresql-secrets
-                  key: password
             - name: POSTGRES_USER
               valueFrom:
                 secretKeyRef:
                   name: postgresql-secrets
                   key: username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql-secrets
+                  key: password
             - name: POSTGRES_DB
-              value: "opendesk"
+              value: "postgres"
             - name: PGDATA
-              value: "/var/lib/postgresql/data"
+              value: "/var/lib/postgresql/data/pgdata"
           volumeMounts:
             - name: postgresql-data
-              mountPath: /var/lib/postgresql
+              mountPath: /var/lib/postgresql/data
+            - name: postgresql-config
+              mountPath: /etc/postgresql
           securityContext:
             runAsUser: 1000
             runAsGroup: 1000
-            fsGroup: 1000
           livenessProbe:
             exec:
-              command: ["pg_isready", "-U", $(POSTGRES_USER)]
-            initialDelaySeconds: 30
-            periodSeconds: 10
+              command: ["pg_isready", "-U", "postgres"]
+            initialDelaySeconds: 60
+            periodSeconds: 30
             timeoutSeconds: 5
           readinessProbe:
             exec:
-              command: ["pg_isready", "-U", $(POSTGRES_USER)]
-            initialDelaySeconds: 5
+              command: ["pg_isready", "-U", "postgres"]
+            initialDelaySeconds: 10
             periodSeconds: 10
             timeoutSeconds: 1
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
       volumes:
         - name: postgresql-data
           persistentVolumeClaim:
             claimName: postgresql-pvc
+        - name: postgresql-config
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

@@ -59,6 +59,12 @@
         # DevGuard Pattern: Enhanced security scanning
         security-scanning = import ./lib/security-scanning.nix { inherit pkgs lib; };
         
+        # DevGuard Pattern: Kubernetes Operators
+        operators = import ./lib/operators.nix { inherit pkgs lib; };
+        
+        # DevGuard Pattern: Unified DevGuard integration
+        integrated-devguard = import ./lib/integrated-devguard.nix { inherit pkgs lib; };
+        
         tests = import ./lib/tests.nix { inherit pkgs lib; };
         
         # NixOS-specific libraries
@@ -205,6 +211,37 @@
               echo "  sign-image <image> - Sign an image with cosign"
               echo "  verify-image <image> - Verify image signature"
               echo "  attest-image <image> - Create attestations for an image"
+            '';
+          };
+          
+          # DevGuard Pattern: Operators development shell
+          operators = pkgs.mkShell {
+            name = "operators";
+            buildInputs = [
+              pkgs.kubectl
+              pkgs.helm
+              pkgs.kustomize
+              pkgs.docker
+              pkgs.cosign
+              pkgs.jq
+              pkgs.yq-go
+              pkgs.git
+            ];
+            shellHook = ''
+              echo "Operators Development Shell"
+              echo "============================"
+              echo ""
+              echo "Available Operators:"
+              ${builtins.concatStringsSep "\n" (map (op: ''
+                echo "  - ${op.name}: ${op.description}"
+              '') operators.allOperators)}
+              echo ""
+              echo "Tools: kubectl, helm, kustomize, docker, cosign, jq, yq, git"
+              echo ""
+              echo "Commands:"
+              echo "  deploy-all - Deploy all operators"
+              echo "  deploy-operator <name> - Deploy a specific operator"
+              echo "  operator-status - Show status of all operators"
             '';
           };
            
