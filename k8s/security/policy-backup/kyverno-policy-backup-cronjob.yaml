@@ -1,0 +1,359 @@
+# Kyverno Policy Backup CronJob
+# Automated daily backup of all Kyverno policies with SOPS encryption
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kyverno-backup
+  labels:
+    app.kubernetes.io/name: kyverno-backup
+    app.kubernetes.io/component: backup
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kyverno-backup
+  namespace: kyverno-backup
+  labels:
+    app.kubernetes.io/name: kyverno-backup
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kyverno-backup
+  namespace: kyverno-backup
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "create", "update", "patch"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "create", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kyverno-backup
+  namespace: kyverno-backup
+subjects:
+  - kind: ServiceAccount
+    name: kyverno-backup
+    namespace: kyverno-backup
+roleRef:
+  kind: Role
+  name: kyverno-backup
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kyverno-backup-cluster
+rules:
+  # Read all Kyverno policies
+  - apiGroups: ["kyverno.io"]
+    resources: ["clusterpolicies", "policies"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["kyverno.io"]
+    resources: ["policystatus"]
+    verbs: ["get"]
+  # Read policy reports for compliance data
+  - apiGroups: ["reports.kyverno.com"]
+    resources: ["policyreports", "clusterpolicyreports"]
+    verbs: ["get", "list", "watch"]
+  # Read all Kubernetes resources for backup
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kyverno-backup-cluster
+roleRef:
+  kind: ClusterRole
+  name: kyverno-backup-cluster
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+  - kind: ServiceAccount
+    name: kyverno-backup
+    namespace: kyverno-backup
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kyverno-backup-pvc
+  namespace: kyverno-backup
+  labels:
+    app.kubernetes.io/name: kyverno-backup
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: standard
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: kyverno-backup-config
+  namespace: kyverno-backup
+type: Opaque
+stringData:
+  # SOPS encryption key (PGP or Age)
+  # Generate with: age-key-generator
+  SOPS_AGE_KEY: "age1234567890abcdefghijklmnopqrstuvwxyz"
+  # S3/GCS bucket configuration
+  BACKUP_BUCKET: "opendesk-backup"
+  BACKUP_PREFIX: "kyverno/"
+  # Retention policy (days)
+  RETENTION_DAYS: "90"
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: kyverno-policy-backup
+  namespace: kyverno-backup
+  labels:
+    app.kubernetes.io/name: kyverno-policy-backup
+  annotations:
+    description: "Daily backup of all Kyverno policies with SOPS encryption"
+spec:
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 30  # Keep 30 days of successful backups
+  failedJobsHistoryLimit: 7       # Keep 7 days of failed backups
+  jobTemplate:
+    spec:
+      backoffLimit: 3
+      activeDeadlineSeconds: 1800  # 30 minute timeout
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: kyverno-policy-backup
+        spec:
+          serviceAccountName: kyverno-backup
+          restartPolicy: OnFailure
+          containers:
+            - name: backup
+              image: opendesk-edu/backup-tools:latest
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/sh
+                - -c
+              args:
+                - |
+                  set -e
+                  
+                  TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+                  BACKUP_DIR="/backup"
+                  ENCRYPTED_DIR="/encrypted"
+                  
+                  echo "=== Kyverno Policy Backup ==="
+                  echo "Timestamp: ${TIMESTAMP}"
+                  
+                  # Create directories
+                  mkdir -p ${BACKUP_DIR}
+                  mkdir -p ${ENCRYPTED_DIR}
+                  
+                  # Export all ClusterPolicies
+                  echo "Exporting ClusterPolicies..."
+                  kubectl get clusterpolicies -o yaml > ${BACKUP_DIR}/clusterpolicies-${TIMESTAMP}.yaml
+                  
+                  # Export all Policies
+                  echo "Exporting Policies..."
+                  kubectl get policies --all-namespaces -o yaml > ${BACKUP_DIR}/policies-${TIMESTAMP}.yaml
+                  
+                  # Export PolicyReports
+                  echo "Exporting PolicyReports..."
+                  kubectl get policyreports --all-namespaces -o yaml > ${BACKUP_DIR}/policyreports-${TIMESTAMP}.yaml
+                  
+                  # Export ClusterPolicyReports
+                  echo "Exporting ClusterPolicyReports..."
+                  kubectl get clusterpolicyreports -o yaml > ${BACKUP_DIR}/clusterpolicyreports-${TIMESTAMP}.yaml
+                  
+                  # Create combined backup
+                  echo "Creating combined backup..."
+                  cat ${BACKUP_DIR}/*-${TIMESTAMP}.yaml > ${BACKUP_DIR}/kyverno-full-backup-${TIMESTAMP}.yaml
+                  
+                  # Encrypt with SOPS
+                  echo "Encrypting backup with SOPS..."
+                  sops --encrypt \
+                    --age "${SOPS_AGE_KEY}" \
+                    ${BACKUP_DIR}/kyverno-full-backup-${TIMESTAMP}.yaml \
+                    > ${ENCRYPTED_DIR}/kyverno-full-backup-${TIMESTAMP}.yaml.enc
+                  
+                  # Clean up unencrypted files
+                  echo "Cleaning up unencrypted files..."
+                  rm ${BACKUP_DIR}/*-${TIMESTAMP}.yaml
+                  
+                  # Upload to S3/GCS
+                  echo "Uploading to cloud storage..."
+                  aws s3 cp ${ENCRYPTED_DIR}/kyverno-full-backup-${TIMESTAMP}.yaml.enc \
+                    s3://${BACKUP_BUCKET}/${BACKUP_PREFIX} || \
+                  gcloud storage cp ${ENCRYPTED_DIR}/kyverno-full-backup-${TIMESTAMP}.yaml.enc \
+                    gs://${BACKUP_BUCKET}/${BACKUP_PREFIX} || \
+                  echo "Warning: Cloud storage upload failed"
+                  
+                  # Create checksum
+                  echo "Creating checksum..."
+                  sha256sum ${ENCRYPTED_DIR}/kyverno-full-backup-${TIMESTAMP}.yaml.enc > \
+                    ${ENCRYPTED_DIR}/kyverno-full-backup-${TIMESTAMP}.yaml.enc.sha256
+                  
+                  # Upload checksum
+                  aws s3 cp ${ENCRYPTED_DIR}/kyverno-full-backup-${TIMESTAMP}.yaml.enc.sha256 \
+                    s3://${BACKUP_BUCKET}/${BACKUP_PREFIX} || \
+                  gcloud storage cp ${ENCRYPTED_DIR}/kyverno-full-backup-${TIMESTAMP}.yaml.enc.sha256 \
+                    gs://${BACKUP_BUCKET}/${BACKUP_PREFIX} || \
+                  echo "Warning: Checksum upload failed"
+                  
+                  # Cleanup local encrypted files
+                  rm ${ENCRYPTED_DIR}/kyverno-full-backup-${TIMESTAMP}.yaml.enc
+                  rm ${ENCRYPTED_DIR}/kyverno-full-backup-${TIMESTAMP}.yaml.enc.sha256
+                  
+                  # Cleanup old backups (older than RETENTION_DAYS)
+                  echo "Cleaning up old backups..."
+                  find ${BACKUP_DIR} -name "*.yaml" -mtime +${RETENTION_DAYS} -delete || true
+                  find ${ENCRYPTED_DIR} -name "*.enc" -mtime +${RETENTION_DAYS} -delete || true
+                  
+                  echo "=== Backup Complete ==="
+                  echo "Backup file: kyverno-full-backup-${TIMESTAMP}.yaml.enc"
+                  echo "Location: s3://${BACKUP_BUCKET}/${BACKUP_PREFIX}"
+              envFrom:
+                - secretRef:
+                    name: kyverno-backup-config
+              env:
+                - name: AWS_REGION
+                  value: "eu-central-1"
+                - name: BACKUP_BUCKET
+                  valueFrom:
+                    secretKeyRef:
+                      name: kyverno-backup-config
+                      key: BACKUP_BUCKET
+              volumeMounts:
+                - name: backup-volume
+                  mountPath: /backup
+                - name: encrypted-volume
+                  mountPath: /encrypted
+              resources:
+                requests:
+                  memory: "256Mi"
+                  cpu: "100m"
+                limits:
+                  memory: "512Mi"
+                  cpu: "500m"
+          volumes:
+            - name: backup-volume
+              persistentVolumeClaim:
+                claimName: kyverno-backup-pvc
+            - name: encrypted-volume
+              emptyDir: {}
+
+---
+# Prometheus Alert for failed backups
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: kyverno-backup-alerts
+  namespace: kyverno-backup
+  labels:
+    app.kubernetes.io/name: kyverno-backup
+spec:
+  groups:
+    - name: kyverno-backup
+      rules:
+        - alert: KyvernoBackupFailed
+          expr: |
+            increase(kube_job_status_failed{namespace="kyverno-backup", job_name="kyverno-policy-backup"}[1h]) > 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Kyverno backup job failed"
+            description: "Kyverno policy backup job {{ $labels.job_name }} has failed in namespace {{ $labels.namespace }}."
+        
+        - alert: KyvernoBackupNotRun
+          expr: |
+            time() - kube_job_created{namespace="kyverno-backup", job_name="kyverno-policy-backup"} > 86400
+          for: 6h
+          labels:
+            severity: critical
+          annotations:
+            summary: "Kyverno backup has not run in 24 hours"
+            description: "Kyverno policy backup job has not created a new job in the last 24 hours."
+
+---
+# Restore Job Template (manual trigger)
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kyverno-policy-restore-template
+  namespace: kyverno-backup
+  labels:
+    app.kubernetes.io/name: kyverno-policy-restore
+  annotations:
+    description: "Template for manual restore - modify and apply to restore"
+spec:
+  template:
+    spec:
+      serviceAccountName: kyverno-backup
+      restartPolicy: Never
+      containers:
+        - name: restore
+          image: opendesk-edu/backup-tools:latest
+          command:
+            - /bin/sh
+            - -c
+          args:
+            - |
+              set -e
+              
+              BACKUP_FILE="kyverno-full-backup-20260807-020000.yaml.enc"
+              BACKUP_BUCKET="opendesk-backup"
+              BACKUP_PREFIX="kyverno/"
+              
+              echo "=== Kyverno Policy Restore ==="
+              echo "Backup file: ${BACKUP_FILE}"
+              
+              # Download from S3/GCS
+              echo "Downloading backup..."
+              aws s3 cp s3://${BACKUP_BUCKET}/${BACKUP_PREFIX}${BACKUP_FILE} /backup/${BACKUP_FILE} || \
+              gcloud storage cp gs://${BACKUP_BUCKET}/${BACKUP_PREFIX}${BACKUP_FILE} /backup/${BACKUP_FILE}
+              
+              # Verify checksum
+              echo "Verifying checksum..."
+              aws s3 cp s3://${BACKUP_BUCKET}/${BACKUP_PREFIX}${BACKUP_FILE}.sha256 /backup/${BACKUP_FILE}.sha256 || \
+              gcloud storage cp gs://${BACKUP_BUCKET}/${BACKUP_PREFIX}${BACKUP_FILE}.sha256 /backup/${BACKUP_FILE}.sha256
+              
+              cd /backup
+              sha256sum -c ${BACKUP_FILE}.sha256
+              
+              # Decrypt with SOPS
+              echo "Decrypting backup..."
+              sops --decrypt ${BACKUP_FILE} > /backup/restored.yaml
+              
+              # Apply policies
+              echo "Applying policies..."
+              kubectl apply -f /backup/restored.yaml
+              
+              echo "=== Restore Complete ==="
+          envFrom:
+            - secretRef:
+                name: kyverno-backup-config
+          env:
+            - name: AWS_REGION
+              value: "eu-central-1"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
