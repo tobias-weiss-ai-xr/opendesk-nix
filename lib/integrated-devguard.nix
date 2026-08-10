@@ -753,7 +753,7 @@ pages:
       
       ${if checkRegistries then ''
       echo "[1/3] Checking registries..."
-      REGISTRIES=("ghcr.io" "registry.gitlab.com" "172.17.209.143:5000")
+      REGISTRIES=("ghcr.io" "registry.gitlab.com" "${ZOT_REGISTRY_FALLBACK:-registry.example.com:5000}")  # Replace with your registry
       for reg in "${REGISTRIES[@]}"; do
         if curl -k -I "$reg" >/dev/null 2>&1; then
           echo "  ✅ $reg is accessible"

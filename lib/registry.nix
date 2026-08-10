@@ -100,7 +100,7 @@ let
         name = name;
         url = if name == "ghcr" then "ghcr.io"
           else if name == "gitlab" then "registry.gitlab.com"
-          else if name == "zot" then "172.17.209.143:5000"
+          else if name == "zot" then builtins.getEnv "ZOT_REGISTRY_FALLBACK" or "registry.example.com:5000"  # Replace with your registry
           else if name == "docker-hub" then "docker.io"
           else if name == "quay" then "quay.io"
           else if name == "harbor" then "harbor.opendesk.local"

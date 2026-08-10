@@ -17,7 +17,7 @@ let
   config = {
     registries = {
       target = "ghcr.io";
-      fallback = "172.17.209.143:5000";
+      fallback = builtins.getEnv "REGISTRY_FALLBACK" or "registry.example.com:5000";  # Replace with your registry
     };
     signing = {
       enabled = true;
