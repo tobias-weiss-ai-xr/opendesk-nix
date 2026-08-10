@@ -596,7 +596,7 @@ Integrate **DevGuard's comprehensive security scanning, compliance, and attestat
 - `tamasfe.even-better-toml`: TOML support
 
 **Settings**:
-- `nixpkgs.channel`: "nixos-23.11"
+- `nixpkgs.channel`: "nixos-24.11"
 - `yaml.schemas`: Kubernetes and Kustomize schemas
 - `files.autoSave`: "onFocusChange"
 - `editor.formatOnSave`: true

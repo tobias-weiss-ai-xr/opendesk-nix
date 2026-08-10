@@ -65,7 +65,7 @@ let
   updateConfig = {
     nixpkgs = {
       # Use stable channel
-      channel = "nixos-23.11";
+      channel = "nixos-24.11";
       
       # Automatic update checking
       config = {

@@ -229,25 +229,25 @@ deploy-all: deploy-dev-agent deploy-zot deploy-sogo5 deploy-sogo6 ## Deploy all 
 
 deploy-dev-agent: ## Deploy Dev Agent Operator
 	@echo "Deploying Dev Agent Operator to namespace: ${KUBE_NAMESPACE}"
-	${KUBECTL} apply --context=${KUBE_CONTEXT} -n ${KUBE_NAMESPACE} -k k8s/dev-agent
+	${KUBECTL} apply --context=${KUBE_CONTEXT} -n ${KUBE_NAMESPACE} -k platform/kubernetes/dev-agent
 	@echo "Waiting for Dev Agent Operator to be ready..."
 	${KUBECTL} wait --context=${KUBE_CONTEXT} -n ${KUBE_NAMESPACE} --for=condition=available --timeout=300s deployment/dev-agent-operator
 
 deploy-zot: ## Deploy Zot Registry
 	@echo "Deploying Zot Registry to namespace: zot-registry"
-	${KUBECTL} apply --context=${KUBE_CONTEXT} -n zot-registry -k k8s/zot-registry
+	${KUBECTL} apply --context=${KUBE_CONTEXT} -n zot-registry -k platform/kubernetes/zot-registry
 	@echo "Waiting for Zot Registry to be ready..."
 	${KUBECTL} wait --context=${KUBE_CONTEXT} -n zot-registry --for=condition=available --timeout=300s deployment/zot-registry
 
 deploy-sogo5: ## Deploy SOGo 5
 	@echo "Deploying SOGo 5 to namespace: sogo"
-	${KUBECTL} apply --context=${KUBE_CONTEXT} -n sogo -k k8s/sogo5
+	${KUBECTL} apply --context=${KUBE_CONTEXT} -n sogo -k platform/kubernetes/sogo5
 	@echo "Waiting for SOGo 5 to be ready..."
 	${KUBECTL} wait --context=${KUBE_CONTEXT} -n sogo --for=condition=available --timeout=300s deployment/sogo5
 
 deploy-sogo6: ## Deploy SOGo 6
 	@echo "Deploying SOGo 6 to namespace: sogo6"
-	${KUBECTL} apply --context=${KUBE_CONTEXT} -n sogo6 -k k8s/sogo6
+	${KUBECTL} apply --context=${KUBE_CONTEXT} -n sogo6 -k platform/kubernetes/sogo6
 	@echo "Waiting for SOGo 6 to be ready..."
 	${KUBECTL} wait --context=${KUBE_CONTEXT} -n sogo6 --for=condition=available --timeout=300s deployment/sogo6
 
@@ -259,19 +259,19 @@ undeploy-all: undeploy-sogo6 undeploy-sogo5 undeploy-zot undeploy-dev-agent ## R
 
 undeploy-dev-agent: ## Remove Dev Agent Operator deployment
 	@echo "Removing Dev Agent Operator from namespace: ${KUBE_NAMESPACE}"
-	${KUBECTL} delete --context=${KUBE_CONTEXT} -n ${KUBE_NAMESPACE} -k k8s/dev-agent --ignore-not-found=true
+	${KUBECTL} delete --context=${KUBE_CONTEXT} -n ${KUBE_NAMESPACE} -k platform/kubernetes/dev-agent --ignore-not-found=true
 
 undeploy-zot: ## Remove Zot Registry deployment
 	@echo "Removing Zot Registry from namespace: zot-registry"
-	${KUBECTL} delete --context=${KUBE_CONTEXT} -n zot-registry -k k8s/zot-registry --ignore-not-found=true
+	${KUBECTL} delete --context=${KUBE_CONTEXT} -n zot-registry -k platform/kubernetes/zot-registry --ignore-not-found=true
 
 undeploy-sogo5: ## Remove SOGo 5 deployment
 	@echo "Removing SOGo 5 from namespace: sogo"
-	${KUBECTL} delete --context=${KUBE_CONTEXT} -n sogo -k k8s/sogo5 --ignore-not-found=true
+	${KUBECTL} delete --context=${KUBE_CONTEXT} -n sogo -k platform/kubernetes/sogo5 --ignore-not-found=true
 
 undeploy-sogo6: ## Remove SOGo 6 deployment
 	@echo "Removing SOGo 6 from namespace: sogo6"
-	${KUBECTL} delete --context=${KUBE_CONTEXT} -n sogo6 -k k8s/sogo6 --ignore-not-found=true
+	${KUBECTL} delete --context=${KUBE_CONTEXT} -n sogo6 -k platform/kubernetes/sogo6 --ignore-not-found=true
 
 # ==============================================================================
 # TEST TARGETS
@@ -444,10 +444,10 @@ clean-images: ## Remove built Docker images
 
 clean-k8s: ## Remove Kubernetes deployments
 	@echo "Removing Kubernetes deployments..."
-	@${KUBECTL} delete --context=${KUBE_CONTEXT} -n ${KUBE_NAMESPACE} -k k8s/dev-agent --ignore-not-found=true 2>/dev/null || true
-	@${KUBECTL} delete --context=${KUBE_CONTEXT} -n zot-registry -k k8s/zot-registry --ignore-not-found=true 2>/dev/null || true
-	@${KUBECTL} delete --context=${KUBE_CONTEXT} -n sogo -k k8s/sogo5 --ignore-not-found=true 2>/dev/null || true
-	@${KUBECTL} delete --context=${KUBE_CONTEXT} -n sogo6 -k k8s/sogo6 --ignore-not-found=true 2>/dev/null || true
+	@${KUBECTL} delete --context=${KUBE_CONTEXT} -n ${KUBE_NAMESPACE} -k platform/kubernetes/dev-agent --ignore-not-found=true 2>/dev/null || true
+	@${KUBECTL} delete --context=${KUBE_CONTEXT} -n zot-registry -k platform/kubernetes/zot-registry --ignore-not-found=true 2>/dev/null || true
+	@${KUBECTL} delete --context=${KUBE_CONTEXT} -n sogo -k platform/kubernetes/sogo5 --ignore-not-found=true 2>/dev/null || true
+	@${KUBECTL} delete --context=${KUBE_CONTEXT} -n sogo6 -k platform/kubernetes/sogo6 --ignore-not-found=true 2>/dev/null || true
 	@echo "Kubernetes deployments removed"
 
 clean-build: ## Remove build artifacts

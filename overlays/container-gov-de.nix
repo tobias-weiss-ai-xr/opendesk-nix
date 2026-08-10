@@ -76,7 +76,7 @@ let
   updateConfig = {
     nixpkgs = {
       # Use stable channels
-      channel = "nixos-23.11";
+      channel = "nixos-24.11";
       
       # Automatic update checking
       updateScript = ./scripts/container-gov-de-update.sh;

@@ -6,7 +6,7 @@
   description = "openDesk NixOS infrastructure with DevGuard security patterns";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-23.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
     
     # Flake utilities
     flake-utils.url = "github:numtide/flake-utils";
@@ -30,50 +30,50 @@
           };
         };
         lib = pkgs.lib;
-        docks = import ./lib/docks.nix { inherit pkgs; };
+        docks = import ./platform/nix/docks.nix { inherit pkgs; };
         
         # ======================================================================
         # DEVGUARD PATTERN: Import all libraries
         # ======================================================================
-        types = import ./lib/types.nix { inherit pkgs lib; };
-        security = import ./lib/security.nix { inherit pkgs lib; };
-        sbom = import ./lib/sbom.nix { inherit pkgs lib; };
+        types = import ./platform/nix/types.nix { inherit pkgs lib; };
+        security = import ./platform/nix/security.nix { inherit pkgs lib; };
+        sbom = import ./platform/nix/sbom.nix { inherit pkgs lib; };
         
         # DevGuard Pattern: Multi-registry support with signing
-        registry = import ./lib/registry.nix { inherit pkgs lib; };
+        registry = import ./platform/nix/registry.nix { inherit pkgs lib; };
         
         # DevGuard Pattern: Compliance and attestation framework
-        compliance = import ./lib/compliance.nix { inherit pkgs lib; };
+        compliance = import ./platform/nix/compliance.nix { inherit pkgs lib; };
         
-        k8s = import ./lib/k8s.nix { inherit pkgs lib types; };
-        build = import ./lib/build.nix { inherit pkgs lib docks; };
+        k8s = import ./platform/nix/k8s.nix { inherit pkgs lib types; };
+        build = import ./platform/nix/build.nix { inherit pkgs lib docks; };
         
         # SCS K3s cluster deployment manifests
-        scsDeploy = import ./k8s/scs/default.nix { inherit pkgs lib k8s; };
+        scsDeploy = import ./platform/kubernetes/scs/default.nix { inherit pkgs lib k8s; };
         
         # DevGuard Pattern: Enhanced signing with Cosign
-        cosign-lib = import ./lib/cosign.nix { inherit pkgs lib; };
+        cosign-lib = import ./platform/nix/cosign.nix { inherit pkgs lib; };
         
-        cicd = import ./lib/cicd.nix { inherit pkgs lib; };
+        cicd = import ./platform/nix/cicd.nix { inherit pkgs lib; };
         
         # DevGuard Pattern: Enhanced development environments
-        dev = import ./lib/dev.nix { inherit pkgs lib; };
+        dev = import ./platform/nix/dev.nix { inherit pkgs lib; };
         
         # DevGuard Pattern: Enhanced security scanning
-        security-scanning = import ./lib/security-scanning.nix { inherit pkgs lib; };
+        security-scanning = import ./platform/nix/security-scanning.nix { inherit pkgs lib; };
         
         # DevGuard Pattern: Kubernetes Operators
-        operators = import ./lib/operators.nix { inherit pkgs lib; };
+        operators = import ./platform/nix/operators.nix { inherit pkgs lib; };
         
         # DevGuard Pattern: Unified DevGuard integration
-        integrated-devguard = import ./lib/integrated-devguard.nix { inherit pkgs lib; };
+        integrated-devguard = import ./platform/nix/integrated-devguard.nix { inherit pkgs lib; };
         
-        tests = import ./lib/tests.nix { inherit pkgs lib; };
+        tests = import ./platform/nix/tests.nix { inherit pkgs lib; };
         
         # NixOS-specific libraries
-        nixos-containers = import ./lib/nixos/containers.nix { inherit pkgs lib docks; };
-        nixos-security = import ./lib/nixos/security.nix { inherit pkgs lib; };
-        nixos-services = import ./lib/nixos/services.nix { 
+        nixos-containers = import ./platform/nix/nixos/containers.nix { inherit pkgs lib docks; };
+        nixos-security = import ./platform/nix/nixos/security.nix { inherit pkgs lib; };
+        nixos-services = import ./platform/nix/nixos/services.nix { 
           inherit pkgs docks lib;
         };
         
@@ -309,7 +309,7 @@
         
         nixosModules = {
           # Security modules
-          security-hardening = import ./lib/nixos/security.nix { inherit pkgs lib; };
+          security-hardening = import ./platform/nix/nixos/security.nix { inherit pkgs lib; };
           
           # DevGuard Pattern: Compliance module
           compliance-module = pkgs.writeText "compliance-module.nix" ''
@@ -328,10 +328,10 @@
           '';
            
           # Container modules
-          containers = import ./lib/nixos/containers.nix { inherit pkgs lib docks; };
+          containers = import ./platform/nix/nixos/containers.nix { inherit pkgs lib docks; };
           
           # Service catalog
-          service-catalog = import ./lib/nixos/services.nix { inherit pkgs lib docks; };
+          service-catalog = import ./platform/nix/nixos/services.nix { inherit pkgs lib docks; };
         };
         
         # ======================================================================
@@ -343,9 +343,9 @@
             grype-pkg trivy-pkg syft-pkg semgrep-pkg gosec-pkg;
           
           # Scan utilities
-          scan-all = pkgs.callPackage (import ./lib/security-scanning.nix { inherit pkgs lib; }).scanAll { };
-          scan-container = pkgs.callPackage (import ./lib/security-scanning.nix { inherit pkgs lib; }).scanContainer { };
-          generate-sbom = pkgs.callPackage (import ./lib/security-scanning.nix { inherit pkgs lib; }).generateSBOM { };
+          scan-all = pkgs.callPackage (import ./platform/nix/security-scanning.nix { inherit pkgs lib; }).scanAll { };
+          scan-container = pkgs.callPackage (import ./platform/nix/security-scanning.nix { inherit pkgs lib; }).scanContainer { };
+          generate-sbom = pkgs.callPackage (import ./platform/nix/security-scanning.nix { inherit pkgs lib; }).generateSBOM { };
           
           # Policy definitions
           policies = {
