@@ -318,10 +318,10 @@ metadata:
 data:
   sogod.conf: |
     {
-      SOGoProfileURL = "postgresql://sogo:sogo@postgresql.opendesk.svc/sogo";
+      SOGoProfileURL = "postgresql://sogo:${DB_PASSWORD}@postgresql.opendesk.svc/sogo";
       OCSEMailDomains = "opendesk.org";
-      OCSFolderInfoURL = "postgresql://sogo:sogo@postgresql.opendesk.svc/sogo";
-      OCSSessionsFolderURL = "postgresql://sogo:sogo@postgresql.opencode.svc/sogo";
+      OCSFolderInfoURL = "postgresql://sogo:${DB_PASSWORD}@postgresql.opendesk.svc/sogo";
+      OCSSessionsFolderURL = "postgresql://sogo:${DB_PASSWORD}@postgresql.opencode.svc/sogo";
     }
 ```
 

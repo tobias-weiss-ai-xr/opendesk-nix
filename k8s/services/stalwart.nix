@@ -1,63 +1,191 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
+#
+# Stalwart — Mail Server (SMTP/IMAP/JMAP)
+# Image: docker.io/stalwartlabs/stalwart:latest
 
-{ 
-  lib,
-  security ? import ../../lib/security.nix { },
-  registry ? import ../../lib/registry.nix { },
-  types ? import ../../lib/types.nix { },
-  sbom ? import ../../lib/sbom.nix { },
-  pkgs ? import <nixpkgs> { }
-  env ? import ../environments/hrz/default.nix { lib = lib; },
-}:
+{ lib, env ? import ../environments/scs/default.nix { inherit lib; }, ... }:
 
 let
+  name = "stalwart";
+  image = "docker.io/stalwartlabs/stalwart";
+  tag = "latest";
+  port = 8080;
 
-  # OCI Labels (OpenSpec Compliance - FR-IMAGE-007)
-  ociLabels = lib.mkOCILabels {
-    name = name;
-    version = tag;
-    description = "stalwart service for openDesk";
-    serviceType = "web";
-    component = "backend";
+  labels = lib.mkLabels { inherit name; } // {
+    "app.kubernetes.io/component" = "mail";
+    "app.kubernetes.io/managed-by" = "nix";
   };
 
-  name = "stalwart";
-  image = "ghcr.io/opendesk-edu/stalwart";
-  tag = "latest";
-  # Probe configuration
+  resources = {
+    requests = { cpu = "200m"; memory = "512Mi"; };
+    limits = { cpu = "1"; memory = "1Gi"; };
+  };
+
+  securityContext = {
+    allowPrivilegeEscalation = false;
+    runAsNonRoot = false;
+    readOnlyRootFilesystem = false;
+    capabilities = { drop = [ ]; };
+    seccompProfile = { type = "RuntimeDefault"; };
+  };
+
+  podSecurityContext = {
+    runAsNonRoot = false;
+    fsGroup = 0;
+    fsGroupChangePolicy = "OnRootMismatch";
+  };
+
   livenessProbe = lib.mkProbe {
     type = "tcp";
-    port = 8080;
+    inherit port;
     initialDelaySeconds = 30;
     periodSeconds = 10;
-    timeoutSeconds = 5;
+    failureThreshold = 5;
   };
+
   readinessProbe = lib.mkProbe {
     type = "tcp";
-    port = 8080;
+    inherit port;
     initialDelaySeconds = 5;
     periodSeconds = 5;
-    timeoutSeconds = 3;
+    failureThreshold = 3;
   };
 
-  # Resource configuration
-  resources = {
-    requests = { cpu = "100m"; memory = "256Mi"; };
-    limits = { cpu = "500m"; memory = "512Mi"; };
-  };
+  stalwartConfig = ''
+    [server]
+    hostname = "${env.hosts.stalwart}"
+    listen_addr = "0.0.0.0:${toString port}"
+    protocol = "http"
 
+    [server.listener.smtp]
+    bind = "[::]:25"
+    protocol = "smtp"
 
-in
+    [server.listener.submission]
+    bind = "[::]:587"
+    protocol = "submission"
 
-[ (lib.deployment { 
-    inherit name image tag; 
-    port = 8080; 
-    securityContext = lib.securityContext;
+    [server.listener.submissions]
+    bind = "[::]:465"
+    protocol = "submissions"
+    tls.implicit = true
+
+    [server.listener.imap]
+    bind = "[::]:143"
+    protocol = "imap"
+
+    [server.listener.imaptls]
+    bind = "[::]:993"
+    protocol = "imap"
+    tls.implicit = true
+
+    [storage]
+    type = "sqlite"
+    path = "/data/stalwart"
+
+    [storage.data]
+    type = "sqlite"
+    path = "/data/stalwart/data.db"
+
+    [storage.blob]
+    type = "sqlite"
+    path = "/data/stalwart/blob.db"
+
+    [storage.fts]
+    type = "sqlite"
+    path = "/data/stalwart/fts.db"
+
+    [storage.lookup]
+    type = "sqlite"
+    path = "/data/stalwart/lookup.db"
+
+    [authentication.fallback]
+    type = "password"
+    [authentication.fallback.password]
+    secret = "stalwart-admin-change-me"
+
+    [tracer]
+    level = "info"
+    prefix = "stalwart"
+  '';
+
+  containerEnv = [
+    { name = "STALWART_PORT"; value = toString port; }
+    { name = "STALWART_HOSTNAME"; value = env.hosts.stalwart; }
+    { name = "STALWART_CONFIG"; value = "/etc/stalwart/config.toml"; }
+  ];
+
+in [
+  (lib.deployment {
+    inherit name image tag port resources labels;
+    command = [ "stalwart" ];
+    cmdArgs = [ "-c" "/etc/stalwart/config.toml" ];
+    env = containerEnv;
+    securityContext = securityContext;
+    podSecurityContext = podSecurityContext;
+    liveness = livenessProbe;
+    readiness = readinessProbe;
+    namespace = env.namespaceEdu;
+    replicas = env.replicas.default;
+
+    ports = [
+      { containerPort = 8080; name = "http"; protocol = "TCP"; }
+      { containerPort = 25; name = "smtp"; protocol = "TCP"; }
+      { containerPort = 587; name = "submission"; protocol = "TCP"; }
+      { containerPort = 465; name = "submissions"; protocol = "TCP"; }
+      { containerPort = 143; name = "imap"; protocol = "TCP"; }
+      { containerPort = 993; name = "imaptls"; protocol = "TCP"; }
+    ];
+
+    volumeMounts = [
+      { name = "config"; mountPath = "/etc/stalwart/config.toml"; subPath = "config.toml"; readOnly = true; }
+      { name = "data"; mountPath = "/data"; }
+    ];
+
+    volumes = [
+      { name = "config"; configMap = { name = "${name}-config"; items = [{ key = "config.toml"; path = "config.toml"; }]; }; }
+      { name = "data"; persistentVolumeClaim = { claimName = "${name}-data"; }; }
+    ];
   })
-  (lib.service { inherit name; port = 8080; })
-] ++ (lib.ingressWithCert { 
-  inherit name; 
-  host = "mail.opendesk.hrz.uni-marburg.de"; 
-  port = 8080; 
-})
+
+  (lib.service {
+    inherit name port labels;
+    namespace = env.namespaceEdu;
+    ports = [
+      { port = 8080; targetPort = 8080; protocol = "TCP"; name = "http"; }
+      { port = 25; targetPort = 25; protocol = "TCP"; name = "smtp"; }
+      { port = 587; targetPort = 587; protocol = "TCP"; name = "submission"; }
+      { port = 465; targetPort = 465; protocol = "TCP"; name = "submissions"; }
+      { port = 143; targetPort = 143; protocol = "TCP"; name = "imap"; }
+      { port = 993; targetPort = 993; protocol = "TCP"; name = "imaptls"; }
+    ];
+  })
+
+  (lib.ingressWithCert {
+    inherit name;
+    host = env.hosts.stalwart;
+    port = port;
+    className = env.ingress.className;
+    tlsSecretName = env.tls.secretName;
+    namespace = env.namespaceEdu;
+  })
+
+  (lib.configMap {
+    name = "${name}-config";
+    namespace = env.namespaceEdu;
+    labels = labels;
+    data = {
+      "config.toml" = stalwartConfig;
+    };
+  })
+
+  (lib.pvc {
+    name = "${name}-data";
+    size = "10Gi";
+    storageClass = env.storage.rwo;
+    accessModes = [ "ReadWriteOnce" ];
+    namespace = env.namespaceEdu;
+    labels = labels;
+  })
+]

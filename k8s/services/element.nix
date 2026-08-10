@@ -1,57 +1,124 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
+#
+# Element Web — Matrix web client
+# Image: docker.io/vectorim/element-web:latest
 
-{ 
-  lib,
-  security ? import ../../lib/security.nix { },
-  registry ? import ../../lib/registry.nix { },
-  types ? import ../../lib/types.nix { },
-  sbom ? import ../../lib/sbom.nix { },
-  pkgs ? import <nixpkgs> { }
-  env ? import ../environments/hrz/default.nix { lib = lib; },
-}:
+{ lib, env ? import ../environments/scs/default.nix { inherit lib; }, ... }:
 
 let
+  name = "element";
+  image = "docker.io/vectorim/element-web";
+  tag = "latest";
+  port = 80;
 
-  # OCI Labels (OpenSpec Compliance - FR-IMAGE-007)
-  ociLabels = lib.mkOCILabels {
-    name = name;
-    version = tag;
-    description = "element service for openDesk";
-    serviceType = "web";
-    component = "backend";
-  };
- name = "element"; image = "ghcr.io/opendesk-edu/element"; tag = "latest";
-
-  # Security configuration
-  containerSecurity = security.mkContainerSecurityContext { profile = "web"; };
-  podSecurity = security.mkPodSecurityContext { user = 1000; group = 1000; fsGroup = 1000; };
-
-  # Probe configuration
-  livenessProbe = lib.mkProbe {
-    type = "tcp";
-    port = 80;
-    initialDelaySeconds = 30;
-    periodSeconds = 10;
-    timeoutSeconds = 5;
-  };
-  readinessProbe = lib.mkProbe {
-    type = "tcp";
-    port = 80;
-    initialDelaySeconds = 5;
-    periodSeconds = 5;
-    timeoutSeconds = 3;
+  labels = lib.mkLabels { inherit name; } // {
+    "app.kubernetes.io/component" = "messaging";
+    "app.kubernetes.io/managed-by" = "nix";
   };
 
-  # Resource configuration
   resources = {
-    requests = { cpu = "100m"; memory = "256Mi"; };
+    requests = { cpu = "100m"; memory = "128Mi"; };
     limits = { cpu = "500m"; memory = "512Mi"; };
   };
 
+  securityContext = {
+    allowPrivilegeEscalation = false;
+    runAsNonRoot = true;
+    runAsUser = 1000;
+    runAsGroup = 1000;
+    readOnlyRootFilesystem = false;
+    capabilities = { drop = [ "ALL" ]; };
+    seccompProfile = { type = "RuntimeDefault"; };
+  };
 
-in
+  podSecurityContext = {
+    runAsNonRoot = true;
+    runAsUser = 1000;
+    fsGroup = 1000;
+    fsGroupChangePolicy = "OnRootMismatch";
+  };
 
-[ (lib.deployment { inherit name image tag; port = 80; })
-  (lib.service { inherit name; port = 80; })
-] ++ (lib.ingressWithCert { inherit name; host = "element.opendesk.hrz.uni-marburg.de"; port = 80; })
+  livenessProbe = lib.mkProbe {
+    type = "http";
+    inherit port;
+    path = "/";
+    initialDelaySeconds = 10;
+    periodSeconds = 10;
+    failureThreshold = 3;
+  };
+
+  readinessProbe = lib.mkProbe {
+    type = "http";
+    inherit port;
+    path = "/";
+    initialDelaySeconds = 5;
+    periodSeconds = 5;
+    failureThreshold = 3;
+  };
+
+  elementConfig = ''
+    {
+      "default_server_config": {
+        "m.homeserver": {
+          "base_url": "https://${env.hosts.matrix}",
+          "server_name": "${env.hosts.matrix}"
+        }
+      },
+      "brand": "openDesk Edu Chat",
+      "disable_guests": false,
+      "disable_3pid_login": false,
+      "default_country_code": "DE",
+      "show_labs_settings": true,
+      "integrations_ui_url": "",
+      "integrations_rest_url": "",
+      "integrations_widgets_urls": []
+    }
+  '';
+
+in [
+  (lib.deployment {
+    inherit name image tag port resources labels;
+    securityContext = securityContext;
+    podSecurityContext = podSecurityContext;
+    liveness = livenessProbe;
+    readiness = readinessProbe;
+    namespace = env.namespace;
+    replicas = env.replicas.default;
+
+    volumeMounts = [
+      { name = "config"; mountPath = "/app/config.json"; subPath = "config.json"; readOnly = true; }
+    ];
+
+    volumes = [
+      { name = "config"; configMap = { name = "${name}-config"; items = [{ key = "config.json"; path = "config.json"; }]; }; }
+    ];
+
+    annotations = {
+      "checksum/config" = "element-config-v1";
+    };
+  })
+
+  (lib.service {
+    inherit name port labels;
+    namespace = env.namespace;
+  })
+
+  (lib.ingressWithCert {
+    inherit name;
+    host = env.hosts.element;
+    port = port;
+    className = env.ingress.className;
+    tlsSecretName = env.tls.secretName;
+    namespace = env.namespace;
+  })
+
+  (lib.configMap {
+    name = "${name}-config";
+    namespace = env.namespace;
+    labels = labels;
+    data = {
+      "config.json" = elementConfig;
+    };
+  })
+]

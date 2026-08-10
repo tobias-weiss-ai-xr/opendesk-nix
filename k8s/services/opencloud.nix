@@ -1,58 +1,273 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
+#
+# OpenCloud — File storage & collaboration (OpenCloud/oCIS)
+# Uses embedded storage (NATS, filesystem) — no external database needed.
+# Config is generated via `opencloud init` and mounted as a Secret.
+# Image: docker.io/opencloudeu/opencloud:latest
 
-{ 
-  lib,
-  security ? import ../../lib/security.nix { },
-  registry ? import ../../lib/registry.nix { },
-  types ? import ../../lib/types.nix { },
-  sbom ? import ../../lib/sbom.nix { },
-  pkgs ? import <nixpkgs> { }
-  env ? import ../environments/hrz/default.nix { lib = lib; },
-}:
+{ lib, env ? import ../environments/scs/default.nix { inherit lib; }, ... }:
 
 let
+  name = "opendesk-opencloud";
+  image = "docker.io/opencloudeu/opencloud";
+  tag = "latest";
+  port = 8080;
 
-  # OCI Labels (OpenSpec Compliance - FR-IMAGE-007)
-  ociLabels = lib.mkOCILabels {
-    name = name;
-    version = tag;
-    description = "opencloud service for openDesk";
-    serviceType = "web";
-    component = "backend";
-  };
- name = "opendesk-opencloud"; image = "ghcr.io/opendesk-edu/opencloud"; tag = "4.0.3";
-  port = 80;
-
-  # Security configuration
-  containerSecurity = security.mkContainerSecurityContext { profile = "collaboration"; };
-  podSecurity = security.mkPodSecurityContext { user = 1000; group = 1000; fsGroup = 1000; };
-
-  # Probe configuration
-  livenessProbe = lib.mkProbe {
-    type = "tcp";
-    port = 80;
-    initialDelaySeconds = 30;
-    periodSeconds = 10;
-    timeoutSeconds = 5;
-  };
-  readinessProbe = lib.mkProbe {
-    type = "tcp";
-    port = 80;
-    initialDelaySeconds = 5;
-    periodSeconds = 5;
-    timeoutSeconds = 3;
+  labels = lib.mkLabels { inherit name; } // {
+    "app.kubernetes.io/component" = "collaboration";
+    "app.kubernetes.io/managed-by" = "nix";
   };
 
-  # Resource configuration
   resources = {
-    requests = { cpu = "100m"; memory = "256Mi"; };
-    limits = { cpu = "500m"; memory = "512Mi"; };
+    requests = { cpu = "500m"; memory = "1Gi"; };
+    limits = { cpu = "2"; memory = "2Gi"; };
   };
 
+  securityContext = {
+    allowPrivilegeEscalation = false;
+    runAsNonRoot = true;
+    runAsUser = 1000;
+    readOnlyRootFilesystem = false;
+    capabilities = { drop = [ "ALL" ]; };
+    seccompProfile = { type = "RuntimeDefault"; };
+  };
 
-in
+  podSecurityContext = {
+    runAsNonRoot = true;
+    runAsUser = 1000;
+    fsGroup = 1000;
+    fsGroupChangePolicy = "OnRootMismatch";
+  };
 
-[ (lib.deployment { inherit name image tag port; })
-  (lib.service { inherit name port; })
-] ++ (lib.ingressWithCert { inherit name; host = "opencloud.opendesk.hrz.uni-marburg.de"; inherit port; })
+  livenessProbe = lib.mkProbe {
+    type = "http";
+    inherit port;
+    path = "/healthz";
+    initialDelaySeconds = 60;
+    periodSeconds = 15;
+    failureThreshold = 5;
+  };
+
+  readinessProbe = lib.mkProbe {
+    type = "http";
+    inherit port;
+    path = "/healthz";
+    initialDelaySeconds = 15;
+    periodSeconds = 5;
+    failureThreshold = 3;
+  };
+
+  # OpenCloud config — generated via `opencloud init --insecure yes`
+  # Contains all required secrets (jwt, transfer, machine_auth, system_user, etc.)
+  opencloudConfig = ''
+    token_manager:
+      jwt_secret: CIU$waQwS+2%.@xDqY!Dbq!Ry.C!dXjX
+    machine_auth_api_key: 1=W3EAf5#v4oG4Gjn2SL%btSFZ.9R3nV
+    system_user_api_key: mGn9+jkGijzA*r6ePdBQgHu7Q5ZuEItU
+    transfer_secret: 6pG*e-z#oszAI=c@az=G$hAD-6LVwMOs
+    url_signing_secret: B*wR*fbqz6ZWipcjcTZEfHKhRxG-U&8p
+    system_user_id: 1ff0f5e2-b069-4c6d-aee7-11a73460e236
+    admin_user_id: ecae464e-8b00-4479-93d8-8bb1f3987997
+    graph:
+      application:
+        id: e9520ad4-62f1-4306-b500-8520594f0834
+      events:
+        tls_insecure: true
+      spaces:
+        insecure: true
+      identity:
+        ldap:
+          bind_password: H@S^M57vsVro6ElM+d!YH8rRW&F6*8Sn
+      service_account:
+        service_account_id: 140f97b5-a094-4656-a5b4-59765eb00593
+        service_account_secret: ibMpTTl6iynMxnn0P%sS*-^u*QOD20Db
+    idp:
+      ldap:
+        bind_password: KYZhAv2ytqjZkHP*+ND2CLk96G-p%=s.
+    idm:
+      service_user_passwords:
+        admin_password: admin
+        idm_password: H@S^M57vsVro6ElM+d!YH8rRW&F6*8Sn
+        reva_password: '*%HWwspN1rGKgJjP1oDs6nHxhaS43Zru'
+        idp_password: KYZhAv2ytqjZkHP*+ND2CLk96G-p%=s.
+    collaboration:
+      wopi:
+        secret: =u*@HT7agxou9mZ9a.XhUtI^3sfrt3A*
+      app:
+        insecure: true
+    proxy:
+      oidc:
+        insecure: true
+      insecure_backends: true
+      service_account:
+        service_account_id: 140f97b5-a094-4656-a5b4-59765eb00593
+        service_account_secret: ibMpTTl6iynMxnn0P%sS*-^u*QOD20Db
+    frontend:
+      app_handler:
+        insecure: true
+      archiver:
+        insecure: true
+      service_account:
+        service_account_id: 140f97b5-a094-4656-a5b4-59765eb00593
+        service_account_secret: ibMpTTl6iynMxnn0P%sS*-^u*QOD20Db
+      ocdav:
+        insecure: true
+    auth_basic:
+      auth_providers:
+        ldap:
+          bind_password: '*%HWwspN1rGKgJjP1oDs6nHxhaS43Zru'
+    auth_bearer:
+      auth_providers:
+        oidc:
+          insecure: true
+    users:
+      drivers:
+        ldap:
+          bind_password: '*%HWwspN1rGKgJjP1oDs6nHxhaS43Zru'
+    groups:
+      drivers:
+        ldap:
+          bind_password: '*%HWwspN1rGKgJjP1oDs6nHxhaS43Zru'
+    ocm:
+      service_account:
+        service_account_id: 140f97b5-a094-4656-a5b4-59765eb00593
+        service_account_secret: ibMpTTl6iynMxnn0P%sS*-^u*QOD20Db
+    thumbnails:
+      thumbnail:
+        transfer_secret: 71C&8-4ny&q4Xfk+fx.gOafD2B&NTGGc
+        webdav_allow_insecure: true
+        cs3_allow_insecure: true
+    search:
+      events:
+        tls_insecure: true
+      service_account:
+        service_account_id: 140f97b5-a094-4656-a5b4-59765eb00593
+        service_account_secret: ibMpTTl6iynMxnn0P%sS*-^u*QOD20Db
+    audit:
+      events:
+        tls_insecure: true
+    settings:
+      service_account_ids:
+      - 140f97b5-a094-4656-a5b4-59765eb00593
+    sharing:
+      events:
+        tls_insecure: true
+      service_account:
+        service_account_id: 140f97b5-a094-4656-a5b4-59765eb00593
+        service_account_secret: ibMpTTl6iynMxnn0P%sS*-^u*QOD20Db
+    storage_users:
+      events:
+        tls_insecure: true
+      mount_id: cc6a315d-5262-488e-a9f0-1cca1463a8bc
+      service_account:
+        service_account_id: 140f97b5-a094-4656-a5b4-59765eb00593
+        service_account_secret: ibMpTTl6iynMxnn0P%sS*-^u*QOD20Db
+    notifications:
+      notifications:
+        events:
+          tls_insecure: true
+      service_account:
+        service_account_id: 140f97b5-a094-4656-a5b4-59765eb00593
+        service_account_secret: ibMpTTl6iynMxnn0P%sS*-^u*QOD20Db
+    nats:
+      nats:
+        tls_skip_verify_client_cert: true
+    gateway:
+      storage_registry:
+        storage_users_mount_id: cc6a315d-5262-488e-a9f0-1cca1463a8bc
+    userlog:
+      service_account:
+        service_account_id: 140f97b5-a094-4656-a5b4-59765eb00593
+        service_account_secret: ibMpTTl6iynMxnn0P%sS*-^u*QOD20Db
+    auth_service:
+      service_account:
+        service_account_id: 140f97b5-a094-4656-a5b4-59765eb00593
+        service_account_secret: ibMpTTl6iynMxnn0P%sS*-^u*QOD20Db
+    clientlog:
+      service_account:
+        service_account_id: 140f97b5-a094-4656-a5b4-59765eb00593
+        service_account_secret: ibMpTTl6iynMxnn0P%sS*-^u*QOD20Db
+    activitylog:
+      service_account:
+        service_account_id: 140f97b5-a094-4656-a5b4-59765eb00593
+        service_account_secret: ibMpTTl6iynMxnn0P%sS*-^u*QOD20Db
+  '';
+
+  containerEnv = [
+    { name = "OC_URL"; value = "https://${env.hosts.opencloud}"; }
+    { name = "OC_INSECURE"; value = "false"; }
+    { name = "OIDC_ISSUER"; value = "https://${env.hosts.keycloak}/realms/${env.keycloak.realm}"; }
+    { name = "OIDC_CLIENT_ID"; value = "opendesk-opencloud"; }
+    { name = "OIDC_CLIENT_SECRET"; value = "opencloud-secret-change-me"; }
+    { name = "OC_LOG_LEVEL"; value = "info"; }
+  ];
+
+in [
+  (lib.deployment {
+    inherit name image tag port resources labels;
+    env = containerEnv;
+    securityContext = securityContext;
+    podSecurityContext = podSecurityContext;
+    liveness = livenessProbe;
+    readiness = readinessProbe;
+    namespace = env.namespaceEdu;
+    replicas = env.replicas.default;
+
+    volumeMounts = [
+      { name = "data"; mountPath = "/var/lib/opencloud"; }
+      { name = "config"; mountPath = "/etc/opencloud"; readOnly = true; }
+    ];
+
+    volumes = [
+      { name = "data"; persistentVolumeClaim = { claimName = "${name}-data"; }; }
+      { name = "config"; secret = { secretName = "${name}-config"; }; }
+    ];
+  })
+
+  (lib.service {
+    inherit name port labels;
+    namespace = env.namespaceEdu;
+  })
+
+  (lib.ingressWithCert {
+    inherit name;
+    host = env.hosts.opencloud;
+    port = port;
+    className = env.ingress.className;
+    tlsSecretName = env.tls.secretName;
+    annotations = env.ingress.annotations // {
+      "haproxy-ingress.github.io/proxy-body-size" = "100M";
+      "haproxy-ingress.github.io/timeout-server" = "600s";
+      "haproxy-ingress.github.io/timeout-client" = "600s";
+    };
+    namespace = env.namespaceEdu;
+  })
+
+  (lib.pvc {
+    name = "${name}-data";
+    size = "50Gi";
+    storageClass = env.storage.rwx;
+    accessModes = [ "ReadWriteMany" ];
+    namespace = env.namespaceEdu;
+    labels = labels;
+  })
+
+  (lib.secret {
+    name = "${name}-config";
+    namespace = env.namespaceEdu;
+    labels = labels;
+    stringData = {
+      "opencloud.yaml" = opencloudConfig;
+    };
+  })
+
+  (lib.secret {
+    name = "${name}-db";
+    namespace = env.namespaceEdu;
+    labels = labels;
+    stringData = {
+      "oidc-client-secret" = "opencloud-secret-change-me";
+    };
+  })
+]

@@ -48,6 +48,9 @@
         k8s = import ./lib/k8s.nix { inherit pkgs lib types; };
         build = import ./lib/build.nix { inherit pkgs lib docks; };
         
+        # SCS K3s cluster deployment manifests
+        scsDeploy = import ./k8s/scs/default.nix { inherit pkgs lib k8s; };
+        
         # DevGuard Pattern: Enhanced signing with Cosign
         cosign-lib = import ./lib/cosign.nix { inherit pkgs lib; };
         
@@ -137,6 +140,24 @@
               image = "registry.gitlab.opencode.de/umr/nginx-opendesk:1.25.3-nixos";
               replicas = 2;
             }));
+          
+          # ======================================================================
+          # SCS K3s Cluster Deployment — Nix-generated manifests
+          # ======================================================================
+          # Build all SCS manifests as a single derivable directory
+          scs-manifests = scsDeploy.manifestDir;
+          
+          # Build individual service manifests (for selective deployment)
+          scs-galera = pkgs.writeText "galera.yaml" (builtins.concatStringsSep "\n---\n" (map (m: builtins.toJSON m) scsDeploy.galera));
+          scs-keycloak = pkgs.writeText "keycloak.yaml" (builtins.concatStringsSep "\n---\n" (map (m: builtins.toJSON m) scsDeploy.keycloak));
+          scs-synapse = pkgs.writeText "synapse.yaml" (builtins.concatStringsSep "\n---\n" (map (m: builtins.toJSON m) scsDeploy.synapse));
+          scs-element = pkgs.writeText "element.yaml" (builtins.concatStringsSep "\n---\n" (map (m: builtins.toJSON m) scsDeploy.element));
+          scs-sogo = pkgs.writeText "sogo.yaml" (builtins.concatStringsSep "\n---\n" (map (m: builtins.toJSON m) scsDeploy.sogo));
+          scs-stalwart = pkgs.writeText "stalwart.yaml" (builtins.concatStringsSep "\n---\n" (map (m: builtins.toJSON m) scsDeploy.stalwart));
+          scs-opencloud = pkgs.writeText "opencloud.yaml" (builtins.concatStringsSep "\n---\n" (map (m: builtins.toJSON m) scsDeploy.opencloud));
+          
+          # Combined manifest for all SCS services
+          scs-all = pkgs.writeText "scs-all.yaml" scsDeploy.allYaml;
         };
         
         # Overlays (commented out temporarily - needs proper overlay syntax)

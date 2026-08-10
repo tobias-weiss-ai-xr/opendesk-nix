@@ -1,56 +1,157 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
+#
+# SOGo — Groupware (Mail, Calendar, Contacts)
+# Uses shared Galera cluster for database
+# Image: docker.io/weissto/sogo:bookworm-5.12.9
 
-{ 
-  lib,
-  security ? import ../../lib/security.nix { },
-  registry ? import ../../lib/registry.nix { },
-  types ? import ../../lib/types.nix { },
-  sbom ? import ../../lib/sbom.nix { },
-  pkgs ? import <nixpkgs> { }
-  env ? import ../environments/hrz/default.nix { lib = lib; },
-}:
+{ lib, env ? import ../environments/scs/default.nix { inherit lib; }, ... }:
 
 let
+  name = "sogo";
+  image = "docker.io/weissto/sogo";
+  tag = "bookworm-5.12.9";
+  port = 20000;
 
-  # OCI Labels (OpenSpec Compliance - FR-IMAGE-007)
-  ociLabels = lib.mkOCILabels {
-    name = name;
-    version = tag;
-    description = "sogo service for openDesk";
-    serviceType = "web";
-    component = "backend";
-  };
- name = "sogo"; image = "ghcr.io/opendesk-edu/sogo"; tag = "latest";
-
-  # Security configuration
-  containerSecurity = security.mkContainerSecurityContext { profile = "web"; };
-  podSecurity = security.mkPodSecurityContext { user = 1000; group = 1000; fsGroup = 1000; };
-
-  # Probe configuration
-  livenessProbe = lib.mkProbe {
-    type = "tcp";
-    port = 80;
-    initialDelaySeconds = 30;
-    periodSeconds = 10;
-    timeoutSeconds = 5;
-  };
-  readinessProbe = lib.mkProbe {
-    type = "tcp";
-    port = 80;
-    initialDelaySeconds = 5;
-    periodSeconds = 5;
-    timeoutSeconds = 3;
+  labels = lib.mkLabels { inherit name; } // {
+    "app.kubernetes.io/component" = "groupware";
+    "app.kubernetes.io/managed-by" = "nix";
   };
 
-  # Resource configuration
+  db = env.database;
+
   resources = {
-    requests = { cpu = "100m"; memory = "256Mi"; };
-    limits = { cpu = "500m"; memory = "512Mi"; };
+    requests = { cpu = "250m"; memory = "512Mi"; };
+    limits = { cpu = "1"; memory = "2Gi"; };
   };
 
+  securityContext = {
+    allowPrivilegeEscalation = false;
+    runAsNonRoot = false;
+    readOnlyRootFilesystem = false;
+    capabilities = { drop = [ ]; };
+    seccompProfile = { type = "RuntimeDefault"; };
+  };
 
-in
- [ (lib.deployment { inherit name image tag; port = 80; })
-     (lib.service { inherit name; port = 80; })
-   ] ++ (lib.ingressWithCert { inherit name; host = "sogo.opendesk.hrz.uni-marburg.de"; port = 80; })
+  podSecurityContext = {
+    runAsNonRoot = false;
+    fsGroup = 0;
+    fsGroupChangePolicy = "OnRootMismatch";
+  };
+
+  livenessProbe = lib.mkProbe {
+    type = "http";
+    inherit port;
+    path = "/SOGo/";
+    initialDelaySeconds = 60;
+    periodSeconds = 15;
+    failureThreshold = 5;
+  };
+
+  readinessProbe = lib.mkProbe {
+    type = "http";
+    inherit port;
+    path = "/SOGo/";
+    initialDelaySeconds = 15;
+    periodSeconds = 5;
+    failureThreshold = 3;
+  };
+
+  sogoConfig = ''
+    {
+      WOPort = "0.0.0.0:${toString port}";
+      WOListenQueueSize = 5;
+      SxVMemLimit = 400;
+      SOGoMemcachedHost = "memcached.opendesk.svc.cluster.local:11211";
+      SOGoProfileURL = "mysql://${db.sogo.user}:${db.sogo.password}@${db.host}:${toString db.port}/${db.sogo.name}/sogo_user_profile";
+      OCSAclURL = "mysql://${db.sogo.user}:${db.sogo.password}@${db.host}:${toString db.port}/${db.sogo.name}/sogo_acl";
+      OCSFolderInfoURL = "mysql://${db.sogo.user}:${db.sogo.password}@${db.host}:${toString db.port}/${db.sogo.name}/sogo_folder_profile";
+      OCSSessionsFolderURL = "mysql://${db.sogo.user}:${db.sogo.password}@${db.host}:${toString db.port}/${db.sogo.name}/sogo_sessions_folder";
+      SOGoIMAPServer = "imaps://stalwart-stalwart.opendesk-edu.svc.cluster.local:993";
+      SOGoSMTPServer = "smtp://stalwart-stalwart.opendesk-edu.svc.cluster.local:587";
+      SOGoSieveServer = "sieve://stalwart-stalwart.opendesk-edu.svc.cluster.local:4190";
+      SOGoMailDomain = "${env.ingress.domain}";
+      SOGoLanguage = "English";
+      SOGoTimeZone = "Europe/Berlin";
+      SOGoFirstDayOfWeek = 1;
+      SOGoFirstWeekOfYear = 1;
+      SOGoSieveScriptsEnabled = YES;
+      SOGoSieveFolderEncoding = "UTF-8";
+      SOGoAppointmentSendEMailNotifications = NO;
+      SOGoEnableEMailAlarms = YES;
+      SOGoBusyFollowersEnabled = NO;
+      SOGoUIAdditionalJSFiles = ();
+      WOWorkersCount = 5;
+      WOLogFile = "/var/log/sogo/sogo.log";
+      SOGoDebugMessagesEnabled = NO;
+      SOGoDefaultCalendar = "personal";
+      SOGoDefaultLanguage = "English";
+    }
+  '';
+
+  containerEnv = [
+    { name = "DB_HOST"; value = db.host; }
+    { name = "DB_PORT"; value = toString db.port; }
+    { name = "DB_NAME"; value = db.sogo.name; }
+    { name = "DB_USER"; value = db.sogo.user; }
+    { name = "DB_PASSWORD"; value = db.sogo.password; }
+  ];
+
+in [
+  (lib.deployment {
+    inherit name image tag port resources labels;
+    env = containerEnv;
+    securityContext = securityContext;
+    podSecurityContext = podSecurityContext;
+    liveness = livenessProbe;
+    readiness = readinessProbe;
+    namespace = env.namespaceEdu;
+    replicas = env.replicas.default;
+
+    volumeMounts = [
+      { name = "config"; mountPath = "/etc/sogo/sogo.conf"; subPath = "sogo.conf"; readOnly = true; }
+      { name = "data"; mountPath = "/var/spool/sogo"; }
+    ];
+
+    volumes = [
+      { name = "config"; configMap = { name = "${name}-config"; items = [{ key = "sogo.conf"; path = "sogo.conf"; }]; }; }
+      { name = "data"; persistentVolumeClaim = { claimName = "${name}-data"; }; }
+    ];
+  })
+
+  (lib.service {
+    inherit name port labels;
+    namespace = env.namespaceEdu;
+  })
+
+  (lib.ingressWithCert {
+    inherit name;
+    host = env.hosts.sogo;
+    port = port;
+    className = env.ingress.className;
+    tlsSecretName = env.tls.secretName;
+    annotations = env.ingress.annotations // {
+      "haproxy-ingress.github.io/proxy-body-size" = "50M";
+      "haproxy-ingress.github.io/timeout-server" = "300s";
+    };
+    namespace = env.namespaceEdu;
+  })
+
+  (lib.configMap {
+    name = "${name}-config";
+    namespace = env.namespaceEdu;
+    labels = labels;
+    data = {
+      "sogo.conf" = sogoConfig;
+    };
+  })
+
+  (lib.pvc {
+    name = "${name}-data";
+    size = "5Gi";
+    storageClass = env.storage.rwo;
+    accessModes = [ "ReadWriteOnce" ];
+    namespace = env.namespaceEdu;
+    labels = labels;
+  })
+]

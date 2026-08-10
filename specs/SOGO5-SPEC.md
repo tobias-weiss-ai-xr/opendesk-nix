@@ -254,7 +254,7 @@ The entrypoint script automatically maps environment variables to sogo.conf:
 
 ```bash
 # Database
-SOGO_USER_SOURCES="postgresql://sogo:sogo@postgres-sogo/sogo" 
+SOGO_USER_SOURCES="postgresql://sogo:${DB_PASSWORD}@postgres-sogo/sogo" 
   -> userSources = { id = directory; ... }
 
 # Servers
