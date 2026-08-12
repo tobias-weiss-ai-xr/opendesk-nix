@@ -10,13 +10,17 @@
     
     # Flake utilities
     flake-utils.url = "github:numtide/flake-utils";
+    
+    # Code quality tools (best practices from ~/git/nix-best-practices)
+    treefmt-nix.url = "github:numtide/treefmt-nix";
   };
 
   outputs = { 
     self,
     nixpkgs,
     flake-utils,
-    ...
+    treefmt-nix,
+    ... 
   } @inputs:
     flake-utils.lib.eachDefaultSystem (system:
       let
@@ -80,7 +84,26 @@
         # Load service catalog
         service-catalog = nixos-services.services;
         all-containers = nixos-services.allContainers;
+        
+        # Code quality (best practices from ~/git/nix-best-practices)
+        treefmtEval = inputs.treefmt-nix.lib.evalModule pkgs ./treefmt.nix;
       in rec {
+        # ======================================================================
+        # FORMATTER - Automated code formatting (best practices)
+        # ======================================================================
+        formatter = treefmtEval.config.build.wrapper;
+        
+        # ======================================================================
+        # CHECKS - CI validation gates (best practices)
+        # ======================================================================
+        checks = {
+          # Formatting check
+          formatting = treefmtEval.config.build.check self;
+          
+          # Basic integration test
+          integration = pkgs.testers.runNixOSTest ./tests/integration.nix;
+        };
+        
         # ======================================================================
         # PACKAGES - NixOS Container Images
         # ======================================================================
