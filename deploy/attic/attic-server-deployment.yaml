@@ -1,0 +1,200 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
+#
+# Attic Binary Cache Server Deployment
+# For SCS K3s Cluster
+#
+# Prerequisites:
+# - Ceph RGW bucket configured
+# - Signing keys generated
+# - SCS network access configured
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: attic-server
+  labels:
+    app: attic-server
+    environment: scs
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: attic-ceph-credentials
+  namespace: attic-server
+type: Opaque
+stringData:
+  # Replace with actual Ceph RGW credentials
+  CEPH_ACCESS_KEY: "CHANGE-ME-TO-CEPH-ACCESS-KEY"
+  CEPH_SECRET_KEY: "CHANGE-ME-TO-CEPH-SECRET-KEY"
+  CEPH_ENDPOINT: "https://rgw.scs.opendesk.hrz.uni-marburg.de"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: attic-config
+  namespace: attic-server
+data:
+  ATTIC_CACHE: "s3"
+  ATTIC_S3_ENDPOINT: "https://rgw.scs.opendesk.hrz.uni-marburg.de"
+  ATTIC_S3_BUCKET: "opendesk-nix-cache"
+  ATTIC_S3_REGION: "us-east-1"
+  ATTIC_LISTEN: "0.0.0.0:8080"
+  ATTIC_METRICS_LISTEN: "0.0.0.0:9090"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: attic-server
+  namespace: attic-server
+  labels:
+    app: attic-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: attic-server
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: attic-server
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+      - name: attic
+        image: ghcr.io/attic-rs/attic-server:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+          name: http
+        - containerPort: 9090
+          name: metrics
+        envFrom:
+        - configMapRef:
+            name: attic-config
+        - secretRef:
+            name: attic-ceph-credentials
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts:
+        - name: attic-data
+          mountPath: /var/lib/attic
+        - name: attic-keys
+          mountPath: /etc/attic/keys
+          readOnly: true
+      volumes:
+      - name: attic-data
+        persistentVolumeClaim:
+          claimName: attic-data-pvc
+      - name: attic-keys
+        secret:
+          secretName: attic-signing-keys
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: attic-data-pvc
+  namespace: attic-server
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi
+  storageClassName: ceph-rbd
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: attic-server
+  namespace: attic-server
+  labels:
+    app: attic-server
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: 8080
+    name: http
+  - port: 9090
+    targetPort: 9090
+    name: metrics
+  selector:
+    app: attic-server
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: attic-server
+  namespace: attic-server
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  tls:
+  - hosts:
+    - attic.scs.opendesk-edu.org
+    secretName: attic-tls
+  rules:
+  - host: attic.scs.opendesk-edu.org
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: attic-server
+            port:
+              number: 8080
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: attic-server
+  namespace: attic-server
+  labels:
+    app: attic-server
+spec:
+  selector:
+    matchLabels:
+      app: attic-server
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics
+  namespaceSelector:
+    matchNames:
+    - attic-server
