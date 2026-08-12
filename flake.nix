@@ -87,6 +87,11 @@
         
         # Code quality (best practices from ~/git/nix-best-practices)
         treefmtEval = inputs.treefmt-nix.lib.evalModule pkgs ./treefmt.nix;
+        
+        # Binary cache modules (Phase 2 implementation)
+        atticServer = import ./modules/attic-server.nix;
+        binaryCacheClient = import ./modules/binary-cache-client.nix;
+        postBuildHook = import ./modules/post-build-hook.nix;
       in rec {
         # ======================================================================
         # FORMATTER - Automated code formatting (best practices)
@@ -102,6 +107,9 @@
           
           # Basic integration test
           integration = pkgs.testers.runNixOSTest ./tests/integration.nix;
+          
+          # Phase 2: Binary cache tests
+          attic-server = pkgs.testers.runNixOSTest ./tests/attic-server.nix;
         };
         
         # ======================================================================
@@ -333,6 +341,11 @@
         nixosModules = {
           # Security modules
           security-hardening = import ./platform/nix/nixos/security.nix { inherit pkgs lib; };
+          
+          # Phase 2: Binary cache modules
+          attic-server = atticServer;
+          binary-cache-client = binaryCacheClient;
+          post-build-hook = postBuildHook;
           
           # DevGuard Pattern: Compliance module
           compliance-module = pkgs.writeText "compliance-module.nix" ''
