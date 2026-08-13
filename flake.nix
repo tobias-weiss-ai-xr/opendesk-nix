@@ -33,7 +33,7 @@
             ];
           };
         };
-        lib = pkgs.lib;
+        inherit (pkgs) lib;
         docks = import ./platform/nix/docks.nix { inherit pkgs; };
         
         # ======================================================================
@@ -82,8 +82,8 @@
         };
         
         # Load service catalog
-        service-catalog = nixos-services.services;
-        all-containers = nixos-services.allContainers;
+        inherit (nixos-services) services allContainers;
+        service-catalog = services;
         
         # Code quality (best practices from ~/git/nix-best-practices)
         treefmtEval = inputs.treefmt-nix.lib.evalModule pkgs ./treefmt.nix;
@@ -202,16 +202,20 @@
         
         devShells = {
           # Default shell with common tools
-          default = dev.shells.defaultShell;
+          inherit (dev.shells) defaultShell;
+          default = defaultShell;
           
           # DevGuard Pattern: Security shell for vulnerability scanning and signing
-          security = dev.shells.securityShell;
+          inherit (dev.shells) securityShell;
+          security = securityShell;
           
           # DevGuard Pattern: Kubernetes shell with all K8s tools
-          k8s = dev.shells.k8sShell;
+          inherit (dev.shells) k8sShell;
+          k8s = k8sShell;
           
           # DevGuard Pattern: Full shell with all tools
-          full = dev.shells.fullShell;
+          inherit (dev.shells) fullShell;
+          full = fullShell;
           
           # DevGuard Pattern: Compliance shell
           compliance = pkgs.mkShell {

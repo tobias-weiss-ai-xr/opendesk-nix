@@ -17,7 +17,7 @@
     formatter = {
       # Nix formatting (required)
       nixfmt = {
-        command = pkgs.lib.getExe pkgs.nixfmt-classic;
+        command = pkgs.lib.getExe pkgs.nixfmt;
         includes = [ "*.nix" ];
       };
 

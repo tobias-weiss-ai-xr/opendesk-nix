@@ -1,0 +1,42 @@
+# Evaluates and builds all flake outputs (packages, devShells, checks)
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
+
+name: Nix-Flake-Check
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - '**.nix'
+      - 'flake.lock'
+      - '.github/workflows/nix-flake-check.yaml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - '**.nix'
+      - 'flake.lock'
+      - '.github/workflows/nix-flake-check.yaml'
+
+permissions: {}
+
+jobs:
+  flake-check:
+    name: nix flake check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+    - name: Check out code
+      uses: actions/checkout@main
+      with:
+        submodules: recursive
+        persist-credentials: false
+    - uses: cachix/install-nix-action@master
+      with:
+        extra_nix_config: |
+          substituters = https://cache.nixos.org https://nix.garage.l3montree.cloud
+          trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= nix.garage.l3montree.cloud:MGlzfPQKA91/zxw91CN+GP7NpjAAwmKvWXlDYgeeI8k=
+    - name: Run nix flake check
+      run: nix flake check -L

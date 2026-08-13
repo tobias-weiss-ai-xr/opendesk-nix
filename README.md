@@ -401,6 +401,39 @@ jobs:
 
 ---
 
+## 🏗️ Development Workflow
+
+### **Code Formatting (DevGuard PR #2843 Patterns)**
+
+This project incorporates formatting improvements from [DevGuard PR #2843](https://github.com/l3montree-dev/devguard/pull/2843):
+
+- **treefmt**: Meta-formatter running nixfmt, statix, and deadnix
+- **nixfmt**: Automated Nix code formatting
+- **statix**: Nix code linter with auto-fix
+- **deadnix**: Dead code detector with removal
+
+**Usage:**
+```bash
+# Format all Nix files
+nix fmt
+
+# Or use treefmt directly
+nix run .#formatter
+
+# Run formatting check
+nix flake check
+
+# Check without flake evaluation
+nix run .#formatter -- --stdin-check
+```
+
+### **CI/CD Integration**
+
+- GitHub Actions workflow `.github/workflows/nix-flake-check.yaml` runs `nix flake check` on push/PR
+- Validates all flake outputs (packages, devShells, checks)
+
+---
+
 ## 🤝 Contributing
 
 1. Fork the repository
@@ -408,6 +441,10 @@ jobs:
 3. Commit your changes (`git commit -m 'Add amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
+
+**Before committing:**
+- Run `nix fmt` to format your code
+- Run `nix flake check` to validate
 
 ---
 
