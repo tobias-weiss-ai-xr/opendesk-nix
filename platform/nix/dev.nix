@@ -227,7 +227,7 @@ let
       
       # Environment setup
       export GRYPE_DB_AUTO_UPDATE=true
-      export TRIVY_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/trivy"
+      export TRIVY_CACHE_DIR="/root/.cache/trivy"
       export COSIGN_EXPERIMENTAL=1
       export IN_TOTO_EXPERIMENTAL=1
       
@@ -451,7 +451,7 @@ let
       autoconf
       automake
       gcc
-      g++
+      "g++"
       clang
       llvm
       rustc
@@ -718,14 +718,16 @@ let
   # =============================================================================
   
   # List all available shells
-  listShells = : 
-    builtins.attrNames (builtins.removeAttrs (self) (name: type: 
-      name != "shells" && 
-      name != "openShell" && 
-      name != "listShells" &&
-      !(builtins.isFunction type) &&
-      !(builtins.isAttrs type)
-    ));
+  listShells = :
+    builtins.attrNames (
+      builtins.removeAttrs (self) (name: type:
+        name != "shells" && 
+        name != "openShell" && 
+        name != "listShells" &&
+        !(builtins.isFunction type) &&
+        !(builtins.isAttrs type)
+      )
+    );
 
   # Open a specific shell by name
   openShell = name:
