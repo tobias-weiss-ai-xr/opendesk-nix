@@ -18,13 +18,34 @@ let
   env = import ../environments/scs/default.nix { inherit lib; };
 
   # Import all service definitions (k8sLib provides both lib.* and k8s.* functions)
-  galera = import ../services/galera.nix { lib = k8sLib; inherit env; };
-  keycloak = import ../services/keycloak.nix { lib = k8sLib; inherit env; };
-  synapse = import ../services/synapse.nix { lib = k8sLib; inherit env; };
-  element = import ../services/element.nix { lib = k8sLib; inherit env; };
-  sogo = import ../services/sogo.nix { lib = k8sLib; inherit env; };
-  stalwart = import ../services/stalwart.nix { lib = k8sLib; inherit env; };
-  opencloud = import ../services/opencloud.nix { lib = k8sLib; inherit env; };
+  galera = import ../services/galera.nix {
+    lib = k8sLib;
+    inherit env;
+  };
+  keycloak = import ../services/keycloak.nix {
+    lib = k8sLib;
+    inherit env;
+  };
+  synapse = import ../services/synapse.nix {
+    lib = k8sLib;
+    inherit env;
+  };
+  element = import ../services/element.nix {
+    lib = k8sLib;
+    inherit env;
+  };
+  sogo = import ../services/sogo.nix {
+    lib = k8sLib;
+    inherit env;
+  };
+  stalwart = import ../services/stalwart.nix {
+    lib = k8sLib;
+    inherit env;
+  };
+  opencloud = import ../services/opencloud.nix {
+    lib = k8sLib;
+    inherit env;
+  };
 
   # Namespace definitions
   opendeskNamespace = k8s.namespace {
@@ -50,30 +71,19 @@ let
     opendeskEduNamespace
   ]
   # Galera cluster (universal SQL database)
-  ++ galera
-  # Core services (opendesk namespace)
-  ++ keycloak
-  ++ synapse
-  ++ element
-  # Edu services (opendesk-edu namespace)
-  ++ sogo
-  ++ stalwart
-  ++ opencloud;
+    ++ galera
+    # Core services (opendesk namespace)
+    ++ keycloak ++ synapse ++ element
+    # Edu services (opendesk-edu namespace)
+    ++ sogo ++ stalwart ++ opencloud;
 
   # Convert manifests to YAML
-  manifestToYaml = manifest:
-    pkgs.runCommand "manifest-${manifest.metadata.name or "unknown"}.yaml" { } ''
-      cat > $out << 'EOF'
-      ${builtins.toJSON manifest}
-      EOF
-    '';
 
   # Build a single YAML file with all manifests
-  allYaml = pkgs.writeText "scs-manifests.yaml" (
-    builtins.concatStringsSep "\n---\n" (
-      map (m: builtins.toJSON m) allManifests
-    )
-  );
+  allYaml = pkgs.writeText "scs-manifests.yaml" (builtins.concatStringsSep ''
+
+    ---
+  '' (map (m: builtins.toJSON m) allManifests));
 
   # Build a directory with individual YAML files
   manifestDir = pkgs.runCommand "scs-manifests" { } ''

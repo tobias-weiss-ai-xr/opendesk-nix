@@ -41,7 +41,7 @@ let
 
   # Generate table header separator
   tableHeaderSeparator = count:
-    lib.concatStringsSep "" (lib.genList (i: "---|") count) + "\n";
+    lib.concatStringsSep "" (lib.genList (_i: "---|") count) + "\n";
 
   # ============================================================================
   # Function Documentation
@@ -129,7 +129,7 @@ let
     functions = [
       {
         name = "mkDeployment";
-        func = { name, image, ports, resources, replicas ? 1 }: {};
+        func = { replicas ? 1 }: {};
         description = ''
           Create a Kubernetes Deployment resource.
 
@@ -152,7 +152,7 @@ let
       }
       {
         name = "mkService";
-        func = { name, ports, type ? "ClusterIP" }: {};
+        func = { type ? "ClusterIP" }: {};
         description = ''
           Create a Kubernetes Service resource.
 
@@ -171,7 +171,7 @@ let
       }
       {
         name = "mkConfigMap";
-        func = { name, data }: {};
+        func = { data }: {};
         description = ''
           Create a Kubernetes ConfigMap resource.
 
@@ -183,7 +183,7 @@ let
               name = "app-config";
               data = {
                 "config.yaml" = ''
-                  key: value
+                  _key: value
                 '';
               };
             }
@@ -192,7 +192,7 @@ let
       }
       {
         name = "mkSecret";
-        func = { name, data, type ? "Opaque" }: {};
+        func = { type ? "Opaque" }: {};
         description = ''
           Create a Kubernetes Secret resource.
 
@@ -213,7 +213,7 @@ let
       }
       {
         name = "mkNamespace";
-        func = { name, labels ? {} }: {};
+        func = { labels ? {} }: {};
         description = ''
           Create a Kubernetes Namespace resource.
 
@@ -232,7 +232,7 @@ let
       }
       {
         name = "mkRBAC";
-        func = { name, namespace, rules }: {};
+        func = { rules }: {};
         description = ''
           Create Kubernetes RBAC resources (Role, RoleBinding, ServiceAccount).
 
@@ -288,7 +288,7 @@ let
     functions = [
       {
         name = "mkSecurityContext";
-        func = { runAsNonRoot ? true, readOnlyRootFilesystem ? true }: {};
+        func = { readOnlyRootFilesystem ? true }: {};
         description = ''
           Create a secure container security context.
 
@@ -306,7 +306,7 @@ let
       }
       {
         name = "mkNetworkPolicy";
-        func = { name, namespace, ingress ? [], egress ? [] }: {};
+        func = { egress ? [] }: {};
         description = ''
           Create a Kubernetes NetworkPolicy.
 
@@ -323,7 +323,7 @@ let
       }
       {
         name = "mkKyvernoPolicy";
-        func = { name, rules, validationFailureAction ? "enforce" }: {};
+        func = { validationFailureAction ? "enforce" }: {};
         description = ''
           Create a Kyverno ClusterPolicy.
 
@@ -376,7 +376,7 @@ let
     functions = [
       {
         name = "compliance-operator";
-        func = { crd, deployment, rbac, checkpoints }: {};
+        func = { checkpoints }: {};
         description = ''
           Compliance Operator for ZKI-IT-Grundschutz automation.
 
@@ -395,7 +395,7 @@ let
       }
       {
         name = "image-builder-operator";
-        func = { crd, deployment, rbac }: {};
+        func = { rbac }: {};
         description = ''
           Image Builder Operator for automated Nix builds.
 

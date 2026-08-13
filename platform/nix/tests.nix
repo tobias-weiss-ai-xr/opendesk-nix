@@ -1,16 +1,17 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
 
-{ pkgs, lib, ... }:
+{ pkgs, ... }:
 
 let
   # Dummy test - returns a derivation that checks nothing
-  dummyTest = name: pkgs.stdenv.mkDerivation {
-    name = "${name}-test";
-    inherit (pkgs) bash;
-    builder = "${pkgs.bash}/bin/bash";
-    args = [ "-c" "echo 'Test ${name}: PASSED' > \$out" ];
-  };
+  dummyTest = name:
+    pkgs.stdenv.mkDerivation {
+      name = "${name}-test";
+      inherit (pkgs) bash;
+      builder = "${pkgs.bash}/bin/bash";
+      args = [ "-c" "echo 'Test ${name}: PASSED' > $out" ];
+    };
 
 in {
   # Build tests
@@ -21,7 +22,7 @@ in {
   BUILD-005 = dummyTest "BUILD-005";
   BUILD-006 = dummyTest "BUILD-006";
   BUILD-007 = dummyTest "BUILD-007";
-  
+
   # CI/CD tests
   CICD-001 = dummyTest "CICD-001";
   CICD-002 = dummyTest "CICD-002";
@@ -29,18 +30,18 @@ in {
   CICD-004 = dummyTest "CICD-004";
   CICD-005 = dummyTest "CICD-005";
   CICD-006 = dummyTest "CICD-006";
-  
+
   # Deployment tests
   DEPLOY-001 = dummyTest "DEPLOY-001";
   DEPLOY-002 = dummyTest "DEPLOY-002";
   DEPLOY-003 = dummyTest "DEPLOY-003";
-  
+
   # Development tests
   DEV-001 = dummyTest "DEV-001";
   DEV-002 = dummyTest "DEV-002";
   DEV-003 = dummyTest "DEV-003";
   DEV-004 = dummyTest "DEV-004";
-  
+
   # Image tests
   IMAGE-001 = dummyTest "IMAGE-001";
   IMAGE-002 = dummyTest "IMAGE-002";
@@ -51,7 +52,7 @@ in {
   IMAGE-007 = dummyTest "IMAGE-007";
   IMAGE-008 = dummyTest "IMAGE-008";
   IMAGE-009 = dummyTest "IMAGE-009";
-  
+
   # Kubernetes tests
   K8S-001 = dummyTest "K8S-001";
   K8S-002 = dummyTest "K8S-002";
@@ -63,13 +64,13 @@ in {
   K8S-008 = dummyTest "K8S-008";
   K8S-009 = dummyTest "K8S-009";
   K8S-010 = dummyTest "K8S-010";
-  
+
   # Security tests
   SEC-001 = dummyTest "SEC-001";
   SEC-002 = dummyTest "SEC-002";
   SEC-003 = dummyTest "SEC-003";
   SEC-004 = dummyTest "SEC-004";
-  
+
   # Full compliance check
   fullCompliance = dummyTest "full-compliance";
 }

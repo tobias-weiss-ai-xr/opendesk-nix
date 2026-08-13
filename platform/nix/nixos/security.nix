@@ -15,24 +15,24 @@ let
     # Network capabilities
     net_bind_service = true;
     net_raw = false;
-    
+
     # File system capabilities
     chown = false;
     setgid = true;
     setuid = true;
     sys_chroot = true;
-    
+
     # Process capabilities
     kill = true;
     sys_nice = false;
-    
+
     # Security capabilities
     ipc_lock = false;
     sys_admin = false;
     sys_module = false;
     sys_boot = false;
     sys_rawio = false;
-    
+
     # Default capabilities for different service types
     default = {
       net_bind_service = true;
@@ -41,22 +41,18 @@ let
       sys_chroot = true;
       kill = true;
     };
-    
-    database = default // {
-      chown = true;
-    };
-    
+
+    database = default // { chown = true; };
+
     web = {
       net_bind_service = true;
       setgid = false;
       setuid = false;
     };
-    
+
     cache = default;
-    
-    minimal = {
-      net_bind_service = true;
-    };
+
+    minimal = { net_bind_service = true; };
   };
 
   # Seccomp profiles
@@ -86,7 +82,7 @@ let
         ]
       }
     '';
-    
+
     strict = pkgs.writeText "seccomp-strict.json" ''
       {
         "defaultAction": "SCMP_ACT_ERRNO",
@@ -109,7 +105,7 @@ let
         ]
       }
     '';
-    
+
     database = seccompProfiles.strict;
     web = seccompProfiles.default;
   };
@@ -122,7 +118,7 @@ let
       noNewPrivileges = true;
       seccomp = seccompProfiles.default;
       tmpfs = [ "/tmp" ];
-      
+
       # Process limits
       limits = {
         nofile = {
@@ -138,7 +134,7 @@ let
           hard = -1;
         };
       };
-      
+
       # Kernel parameters
       sysctl = {
         "net.ipv4.conf.all.rp_filter" = 1;
@@ -149,13 +145,13 @@ let
         "kernel.kptr_restrict" = 2;
       };
     };
-    
+
     database = securityProfiles.default // {
       capabilities = capabilities.database;
-      readOnlyRootFilesystem = false;  # Databases need to write data
+      readOnlyRootFilesystem = false; # Databases need to write data
       seccomp = seccompProfiles.database;
       tmpfs = [ "/tmp" "/var/run/mysqld" ];
-      
+
       # Database-specific limits
       limits = securityProfiles.default.limits // {
         nofile = {
@@ -164,21 +160,21 @@ let
         };
       };
     };
-    
+
     web = securityProfiles.default // {
       capabilities = capabilities.web;
-      readOnlyRootFilesystem = true;  # Web apps should be read-only
+      readOnlyRootFilesystem = true; # Web apps should be read-only
       seccomp = seccompProfiles.web;
       tmpfs = [ "/tmp" "/var/lib/nginx/tmp" ];
     };
-    
+
     cache = securityProfiles.default // {
       capabilities = capabilities.cache;
       readOnlyRootFilesystem = false;
       seccomp = seccompProfiles.strict;
       tmpfs = [ "/tmp" ];
     };
-    
+
     minimal = securityProfiles.default // {
       capabilities = capabilities.minimal;
       readOnlyRootFilesystem = true;
@@ -188,62 +184,62 @@ let
   };
 
   # Function to apply security profile to a configuration
-  applySecurityProfile = profile: config: 
-  let
-    secProfile = builtins.getAttr profile securityProfiles;
-  in
-  config // rec {
-    # Apply capabilities
-    security.containerFeatures = secProfile.capabilities;
-    
-    # Apply read-only filesystem
-    boot.kernelPackages = if secProfile.readOnlyRootFilesystem then 
-      pkgs.linuxPackages_hardened else pkgs.linuxPackages;
-    
-    # Apply seccomp
-    security.seccomp = secProfile.seccomp;
-    
-    # Apply tmpfs
-    fileSystems = (config.fileSystems or {}) // 
-      builtins.listToAttrs (map (path: {
-        name = path;
-        value = {
-          device = "tmpfs";
-          fsType = "tmpfs";
-          options = [ "size=100M" "mode=1777" ];
-        };
-      }) secProfile.tmpfs);
-    
-    # Apply limits
-    security.limits = secProfile.limits;
-    
-    # Apply sysctl
-    boot.kernel.sysctl = secProfile.sysctl;
-    
-    # Disable dangerous services
-    services.openssh.enable = false;
-    services.openssh.passwordAuthentication = false;
-    services.openssh.allowRootLogin = "no";
-    security.polkit.enable = false;
-    security.sudo.enable = false;
-    
-    # Security hardening for users
-    users.users.root.password = "!";
-    users.users.root.lockPasswd = true;
-    
-    # No new privileges
-    security.noNewPrivileges = true;
-  };
+  applySecurityProfile = profile: config:
+    let secProfile = builtins.getAttr profile securityProfiles;
+    in config // rec {
+      # Apply capabilities
+      security.containerFeatures = secProfile.capabilities;
+
+      # Apply read-only filesystem
+      boot.kernelPackages = if secProfile.readOnlyRootFilesystem then
+        pkgs.linuxPackages_hardened
+      else
+        pkgs.linuxPackages;
+
+      # Apply seccomp
+      security.seccomp = secProfile.seccomp;
+
+      # Apply tmpfs
+      fileSystems = (config.fileSystems or { }) // builtins.listToAttrs (map
+        (path: {
+          name = path;
+          value = {
+            device = "tmpfs";
+            fsType = "tmpfs";
+            options = [ "size=100M" "mode=1777" ];
+          };
+        }) secProfile.tmpfs);
+
+      # Apply limits
+      security.limits = secProfile.limits;
+
+      # Apply sysctl
+      boot.kernel.sysctl = secProfile.sysctl;
+
+      # Disable dangerous services
+      services.openssh.enable = false;
+      services.openssh.passwordAuthentication = false;
+      services.openssh.allowRootLogin = "no";
+      security.polkit.enable = false;
+      security.sudo.enable = false;
+
+      # Security hardening for users
+      users.users.root.password = "!";
+      users.users.root.lockPasswd = true;
+
+      # No new privileges
+      security.noNewPrivileges = true;
+    };
 
   # Standard security configuration for all containers
   standardSecurity = applySecurityProfile "default";
 
   # Database-specific security
   databaseSecurity = applySecurityProfile "database";
-  
+
   # Web server security
   webSecurity = applySecurityProfile "web";
-  
+
   # Cache server security
   cacheSecurity = applySecurityProfile "cache";
 
@@ -253,61 +249,41 @@ in rec {
   inherit standardSecurity databaseSecurity webSecurity cacheSecurity;
 
   # Function to create a secure container configuration
-  mkSecureContainer = {
-    name,
-    config,
-    profile ? "default",
-    ...
-  }:
-  applySecurityProfile profile config;
+  mkSecureContainer = { config, profile ? "default", ... }:
+    applySecurityProfile profile config;
 
   # Function to add security to existing services
-  withSecurity = { name, serviceConfig }: 
+  withSecurity = { name, serviceConfig }:
     serviceConfig // rec {
       imports = (serviceConfig.imports or [ ]) ++ [ ./security.nix ];
       services.${name}.openFirewall = false;
     };
 
   # Function to create a security-hardened user
-  mkSecureUser = {
-    name,
-    uid ? 1000,
-    gid ? 1000,
-    home ? "/home/${name}",
-    shell ? pkgs.bash,
-    systemUser ? true,
-    ...
-  }:
-  {
-    users.users.${name} = {
-      isSystemUser = systemUser;
-      uid = uid;
-      gid = gid;
-      group = name;
-      home = home;
-      shell = shell;
-      description = "${name} service user";
-      passwords = [ "!" ];  # Disable password login
-      lockPasswd = true;
-      openssh.authorizedKeys.keys = [ ];  # No SSH keys by default
+  mkSecureUser = { name, uid ? 1000, gid ? 1000, home ? "/home/${name}"
+    , shell ? pkgs.bash, systemUser ? true, ... }: {
+      users.users.${name} = {
+        isSystemUser = systemUser;
+        uid = uid;
+        gid = gid;
+        group = name;
+        home = home;
+        shell = shell;
+        description = "${name} service user";
+        passwords = [ "!" ]; # Disable password login
+        lockPasswd = true;
+        openssh.authorizedKeys.keys = [ ]; # No SSH keys by default
+      };
+
+      users.groups.${name} = { gid = gid; };
     };
-    
-    users.groups.${name} = {
-      gid = gid;
-    };
-  };
 
   # Function to create secure directories
-  mkSecureDirs = {
-    paths ? [ ],
-    owner ? "nobody",
-    group ? "nogroup",
-    mode ? "750",
-    ...
-  }:
-  lib.mkAfter (builtins.concatMap (path: ''
-    mkdir -p ${path}
-    chown -R ${owner}:${group} ${path}
-    chmod -R ${mode} ${path}
-  '') paths);
+  mkSecureDirs =
+    { paths ? [ ], owner ? "nobody", group ? "nogroup", mode ? "750", ... }:
+    lib.mkAfter (builtins.concatMap (path: ''
+      mkdir -p ${path}
+      chown -R ${owner}:${group} ${path}
+      chmod -R ${mode} ${path}
+    '') paths);
 }

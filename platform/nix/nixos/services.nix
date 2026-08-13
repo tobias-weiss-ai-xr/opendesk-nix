@@ -5,7 +5,7 @@
 # NixOS Service Catalog for openDesk
 # Provides a catalog of all openDesk services and builds their container images.
 
-{ pkgs, lib, docks, ... }:
+{ pkgs, docks, ... }:
 
 let
   # =============================================================================
@@ -87,7 +87,7 @@ let
       uid = 1000;
     };
     collabora = {
-      package = null;  # Not in nixpkgs, requires custom build
+      package = null; # Not in nixpkgs, requires custom build
       version = "24.04.0";
       port = 9980;
       type = "web";
@@ -262,7 +262,7 @@ let
       uid = 1000;
     };
     sogo5 = {
-      package = pkgs.sogo;  # SOGo 5.x (same package as sogo)
+      package = pkgs.sogo; # SOGo 5.x (same package as sogo)
       version = "5.12.9";
       port = 20000;
       type = "web";
@@ -270,7 +270,7 @@ let
       uid = 1000;
     };
     sogo6 = {
-      package = null;  # SOGo 6 not yet in nixpkgs
+      package = null; # SOGo 6 not yet in nixpkgs
       version = "6.0.0";
       port = 20000;
       type = "web";
@@ -352,7 +352,7 @@ let
       uid = 1000;
     };
     opencloud = {
-      package = null;  # Not in nixos-24.11
+      package = null; # Not in nixos-24.11
       version = "7.3.0";
       port = 9200;
       type = "web";
@@ -360,7 +360,7 @@ let
       uid = 1000;
     };
     open-webui = {
-      package = null;  # Not in nixos-24.11
+      package = null; # Not in nixos-24.11
       version = "0.11.0";
       port = 3000;
       type = "web";
@@ -426,7 +426,7 @@ let
       uid = 1000;
     };
     stalwart = {
-      package = null;  # Not in nixos-24.11
+      package = null; # Not in nixos-24.11
       version = "0.15.5";
       port = 443;
       type = "web";
@@ -638,7 +638,7 @@ let
       uid = 1000;
     };
     open-xchange = {
-      package = null;  # Not in nixos-24.11
+      package = null; # Not in nixos-24.11
       version = "8.0.0";
       port = 8009;
       type = "web";
@@ -698,7 +698,7 @@ let
       tag = "${svc.version}-nixos";
 
       containerConfig = {
-        ExposedPorts = { "${toString svc.port}/tcp" = {}; };
+        ExposedPorts = { "${toString svc.port}/tcp" = { }; };
         Env = [
           "OPENDESK_ENV=production"
           "NIXOS=1"
@@ -721,17 +721,20 @@ let
       };
 
       extraPackages = p:
-        (if svc.package != null then [ svc.package ] else [])
+        (if svc.package != null then [ svc.package ] else [ ])
         ++ (with p; [ bash coreutils openssl curl procps ]);
 
       ociLabels = {
         "org.opencontainers.image.title" = "${name}-opendesk";
-        "org.opencontainers.image.description" = "${name} ${svc.version} for openDesk Edu with NixOS";
+        "org.opencontainers.image.description" =
+          "${name} ${svc.version} for openDesk Edu with NixOS";
         "org.opencontainers.image.version" = "${svc.version}-nixos";
         "org.opencontainers.image.authors" = "openDesk Edu Team";
         "org.opencontainers.image.url" = "https://opendesk.hrz.uni-marburg.de";
-        "org.opencontainers.image.documentation" = "https://github.com/opendesk-edu/opendesk-nix";
-        "org.opencontainers.image.source" = "https://github.com/opendesk-edu/opendesk-nix";
+        "org.opencontainers.image.documentation" =
+          "https://github.com/opendesk-edu/opendesk-nix";
+        "org.opencontainers.image.source" =
+          "https://github.com/opendesk-edu/opendesk-nix";
         "org.opencontainers.image.licenses" = "Apache-2.0";
         "com.opendesk.service" = name;
         "com.opendesk.environment" = "production";
@@ -750,9 +753,8 @@ let
   serviceList = builtins.attrNames services;
 
   countByType = type:
-    builtins.length (
-      builtins.filter (name: services.${name}.type == type) serviceList
-    );
+    builtins.length
+    (builtins.filter (name: services.${name}.type == type) serviceList);
 
   serviceCounts = {
     total = builtins.length serviceList;
@@ -770,6 +772,4 @@ let
     };
   };
 
-in {
-  inherit services allContainers serviceCounts buildServiceImage;
-}
+in { inherit services allContainers serviceCounts buildServiceImage; }

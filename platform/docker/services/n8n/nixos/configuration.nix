@@ -7,7 +7,7 @@
 # OpenSpec: Full compliance (FR-IMAGE-001 through FR-IMAGE-009)
 # 
 
-{ config ? {}, pkgs, lib, ... }:
+{ pkgs, lib, ... }:
 
 {
   # Import openDesk overlays
@@ -30,9 +30,7 @@
     description = "n8n Service User";
   };
 
-  users.groups.n8n = {
-    gid = 1000;
-  };
+  users.groups.n8n = { gid = 1000; };
 
   # Setup directories
   system.activationScripts.setupn8n = lib.mkAfter ''

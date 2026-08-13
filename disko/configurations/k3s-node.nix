@@ -9,10 +9,9 @@
 # - EFI System Partition
 # - Btrfs root with subvolumes
 
-{ config, lib, pkgs, ... }:
+{ config, lib, ... }:
 
-let
-  cfg = config.disko.configurations.k3sNode;
+let cfg = config.disko.configurations.k3sNode;
 in {
   meta.maintainers = [ "opendesk-edu" ];
 
@@ -78,7 +77,11 @@ in {
 
                     "/nix" = {
                       mountPoint = "/nix";
-                      mountOptions = [ "subvol=nix" "noatime" "compress=${cfg.btrfsCompression}" ];
+                      mountOptions = [
+                        "subvol=nix"
+                        "noatime"
+                        "compress=${cfg.btrfsCompression}"
+                      ];
                     };
 
                     "/var" = {

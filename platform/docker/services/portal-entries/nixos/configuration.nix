@@ -7,7 +7,7 @@
 # OpenSpec: Full compliance (FR-IMAGE-001 through FR-IMAGE-009)
 # 
 
-{ config ? {}, pkgs, lib, ... }:
+{ pkgs, lib, ... }:
 
 {
   # Import openDesk overlays
@@ -30,9 +30,7 @@
     description = "portal-entries Service User";
   };
 
-  users.groups.portal-entries = {
-    gid = 1000;
-  };
+  users.groups.portal-entries = { gid = 1000; };
 
   # Setup directories
   system.activationScripts.setupportal-entries = lib.mkAfter ''

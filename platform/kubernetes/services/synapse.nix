@@ -21,8 +21,14 @@ let
   db = env.database;
 
   resources = {
-    requests = { cpu = "250m"; memory = "512Mi"; };
-    limits = { cpu = "1"; memory = "2Gi"; };
+    requests = {
+      cpu = "250m";
+      memory = "512Mi";
+    };
+    limits = {
+      cpu = "1";
+      memory = "2Gi";
+    };
   };
 
   securityContext = {
@@ -110,9 +116,18 @@ let
   '';
 
   containerEnv = [
-    { name = "SYNAPSE_SERVER_NAME"; value = env.hosts.matrix; }
-    { name = "SYNAPSE_REPORT_STATS"; value = "no"; }
-    { name = "SYNAPSE_CONFIG_PATH"; value = "/config/homeserver.yaml"; }
+    {
+      name = "SYNAPSE_SERVER_NAME";
+      value = env.hosts.matrix;
+    }
+    {
+      name = "SYNAPSE_REPORT_STATS";
+      value = "no";
+    }
+    {
+      name = "SYNAPSE_CONFIG_PATH";
+      value = "/config/homeserver.yaml";
+    }
   ];
 
 in [
@@ -127,20 +142,45 @@ in [
     replicas = env.replicas.default;
 
     volumeMounts = [
-      { name = "config"; mountPath = "/config"; readOnly = true; }
-      { name = "log-config"; mountPath = "/data/log.config"; subPath = "log.config"; readOnly = true; }
-      { name = "data"; mountPath = "/data"; }
+      {
+        name = "config";
+        mountPath = "/config";
+        readOnly = true;
+      }
+      {
+        name = "log-config";
+        mountPath = "/data/log.config";
+        subPath = "log.config";
+        readOnly = true;
+      }
+      {
+        name = "data";
+        mountPath = "/data";
+      }
     ];
 
     volumes = [
-      { name = "config"; configMap = { name = "${name}-config"; }; }
-      { name = "log-config"; configMap = { name = "${name}-config"; items = [{ key = "log.config"; path = "log.config"; }]; }; }
-      { name = "data"; persistentVolumeClaim = { claimName = "${name}-data"; }; }
+      {
+        name = "config";
+        configMap = { name = "${name}-config"; };
+      }
+      {
+        name = "log-config";
+        configMap = {
+          name = "${name}-config";
+          items = [{
+            key = "log.config";
+            path = "log.config";
+          }];
+        };
+      }
+      {
+        name = "data";
+        persistentVolumeClaim = { claimName = "${name}-data"; };
+      }
     ];
 
-    annotations = {
-      "checksum/config" = "synapse-config-v1";
-    };
+    annotations = { "checksum/config" = "synapse-config-v1"; };
   })
 
   (lib.service {
@@ -183,8 +223,6 @@ in [
     name = "${name}-db";
     namespace = env.namespace;
     labels = labels;
-    stringData = {
-      "db-password" = db.synapse.password;
-    };
+    stringData = { "db-password" = db.synapse.password; };
   })
 ]

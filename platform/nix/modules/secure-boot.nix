@@ -12,8 +12,7 @@
 
 { config, lib, pkgs, ... }:
 
-let
-  cfg = config.security.secureBoot;
+let cfg = config.security.secureBoot;
 in {
   meta.maintainers = [ "opendesk-edu" ];
 
@@ -49,7 +48,7 @@ in {
 
       allowedSigners = lib.mkOption {
         type = lib.types.listOf lib.types.str;
-        default = [];
+        default = [ ];
         description = "List of allowed signers (email/SPKI)";
       };
 
@@ -65,12 +64,11 @@ in {
 
   config = lib.mkIf cfg.enable {
     # Import lanzaboote module
-    imports = [ 
-      (if pkgs ? lanzaboote then 
+    imports = [
+      (if pkgs ? lanzaboote then
         "${toString pkgs.lanzaboote}/nix/modules/lanzaboote"
-      else 
-        throw "lanzaboote not available in this nixpkgs version"
-      )
+      else
+        throw "lanzaboote not available in this nixpkgs version")
     ];
 
     # Lanzaboote configuration
@@ -80,33 +78,34 @@ in {
     };
 
     # Generate Secure Boot keys
-    environment.etc."lanzaboote/generate-keys.sh".source = pkgs.writeScript "generate-keys" ''
-      #!/usr/bin/env bash
-      set -euo pipefail
-      
-      PKI_DIR="/etc/lanzaboote/pki"
-      KEY_SIZE=${toString cfg.keySize}
-      
-      mkdir -p "$PKI_DIR"
-      
-      # Generate CA key
-      openssl req -x509 -newkey rsa:$KEY_SIZE -keyout "$PKI_DIR/ca.key" \
-        -out "$PKI_DIR/ca.crt" -days 3650 -nodes \
-        -subj "/CN=openDesk Edu Secure Boot CA"
-      
-      # Generate signing key
-      openssl req -x509 -newkey rsa:$KEY_SIZE -keyout "$PKI_DIR/db.key" \
-        -out "$PKI_DIR/db.crt" -days 3650 -nodes \
-        -subj "/CN=openDesk Edu Signing Key"
-      
-      # Generate platform key
-      openssl req -x509 -newkey rsa:$KEY_SIZE -keyout "$PKI_DIR/plat.key" \
-        -out "$PKI_DIR/plat.crt" -days 3650 -nodes \
-        -subj "/CN=openDesk Edu Platform Key"
-      
-      chmod 600 "$PKI_DIR"/*.key
-      echo "Keys generated in $PKI_DIR"
-    '';
+    environment.etc."lanzaboote/generate-keys.sh".source =
+      pkgs.writeScript "generate-keys" ''
+        #!/usr/bin/env bash
+        set -euo pipefail
+
+        PKI_DIR="/etc/lanzaboote/pki"
+        KEY_SIZE=${toString cfg.keySize}
+
+        mkdir -p "$PKI_DIR"
+
+        # Generate CA key
+        openssl req -x509 -newkey rsa:$KEY_SIZE -keyout "$PKI_DIR/ca.key" \
+          -out "$PKI_DIR/ca.crt" -days 3650 -nodes \
+          -subj "/CN=openDesk Edu Secure Boot CA"
+
+        # Generate signing key
+        openssl req -x509 -newkey rsa:$KEY_SIZE -keyout "$PKI_DIR/db.key" \
+          -out "$PKI_DIR/db.crt" -days 3650 -nodes \
+          -subj "/CN=openDesk Edu Signing Key"
+
+        # Generate platform key
+        openssl req -x509 -newkey rsa:$KEY_SIZE -keyout "$PKI_DIR/plat.key" \
+          -out "$PKI_DIR/plat.crt" -days 3650 -nodes \
+          -subj "/CN=openDesk Edu Platform Key"
+
+        chmod 600 "$PKI_DIR"/*.key
+        echo "Keys generated in $PKI_DIR"
+      '';
 
     # TPM 2.0 configuration
     services.tpm2 = lib.mkIf cfg.tpmAttestation {
@@ -117,7 +116,7 @@ in {
     # Measured boot configuration
     boot.initrd.systemd = lib.mkIf cfg.measuredBoot {
       enable = true;
-      
+
       # Add TPM measurements
       units."tpm2-measure.service" = {
         description = "Measure boot components to TPM PCR";
@@ -127,7 +126,7 @@ in {
         script = ''
           # Measure kernel command line
           echo "$INITRD_KERNEL_CMDLINE" | ${pkgs.tpm2-tools}/bin/tpm2_pcrextend 7:sha256
-          
+
           # Measure initrd hash
           ${pkgs.coreutils}/bin/sha256sum /run/initramfs/stage2/initrd | \
             ${pkgs.tpm2-tools}/bin/tpm2_pcrextend 7:sha256
@@ -142,7 +141,7 @@ in {
         secureBoot = true;
         tpmStateVerification = cfg.tpmAttestation;
       };
-      
+
       efi = {
         canTouchEfiVariables = true;
         efiSysMountPoint = "/boot/efi";
@@ -150,10 +149,7 @@ in {
     };
 
     # Kernel parameters for secure boot
-    boot.kernelParams = [
-      "tpm.log=verbose"
-      "secureboot=enforce"
-    ];
+    boot.kernelParams = [ "tpm.log=verbose" "secureboot=enforce" ];
 
     # Audit logging for security events
     audit = {
@@ -167,7 +163,7 @@ in {
 
     # Firewall rules for attestation
     networking.firewall.allowedTCPPorts = lib.mkIf cfg.tpmAttestation [
-      8443  # Attestation service
+      8443 # Attestation service
     ];
   };
 }

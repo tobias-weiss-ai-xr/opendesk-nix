@@ -8,8 +8,7 @@
 
 { config, lib, pkgs, ... }:
 
-let
-  cfg = config.services.attic-server;
+let cfg = config.services.attic-server;
 in {
   meta.maintainers = [ "opendesk-edu" ];
 
@@ -56,7 +55,7 @@ in {
       };
 
       storageBackend = lib.mkOption {
-        type = lib.types.enum ["local" "s3" "ceph"];
+        type = lib.types.enum [ "local" "s3" "ceph" ];
         default = "local";
         description = "Storage backend type";
       };
@@ -121,7 +120,7 @@ in {
       home = cfg.cacheDir;
     };
 
-    users.groups.attic = {};
+    users.groups.attic = { };
 
     # Create cache directory
     systemd.tmpfiles.rules = [
@@ -133,13 +132,11 @@ in {
     # Generate signing key if not provided
     environment.etc."attic/signing.key".source =
       lib.mkIf (cfg.signingKey == null)
-        (pkgs.runCommand "attic-signing-key" {
-          buildInputs = [ pkgs.attic ];
-        } ''
-          mkdir -p $out
-          ATTIC_KEY_FILE=$out/signing.key ${pkgs.attic}/bin/attic key generate
-          chmod 600 $out/signing.key
-        '');
+      (pkgs.runCommand "attic-signing-key" { buildInputs = [ pkgs.attic ]; } ''
+        mkdir -p $out
+        ATTIC_KEY_FILE=$out/signing.key ${pkgs.attic}/bin/attic key generate
+        chmod 600 $out/signing.key
+      '');
 
     # Attic server systemd service
     systemd.services.attic-server = {
@@ -158,13 +155,16 @@ in {
           ${cfg.package}/bin/attic server \
             --listen ${cfg.listenAddress}:${toString cfg.listenPort} \
             --cache-dir ${cfg.cacheDir} \
-            ${lib.optionalString (cfg.storageBackend == "s3" || cfg.storageBackend == "ceph") ''
-              --storage s3 \
-              --s3-endpoint ${cfg.s3Endpoint} \
-              --s3-bucket ${cfg.s3Bucket} \
-              --s3-access-key-id ${cfg.s3AccessKeyId} \
-              --s3-secret-key ${cfg.s3SecretKey}
-            ''}
+            ${
+              lib.optionalString
+              (cfg.storageBackend == "s3" || cfg.storageBackend == "ceph") ''
+                --storage s3 \
+                --s3-endpoint ${cfg.s3Endpoint} \
+                --s3-bucket ${cfg.s3Bucket} \
+                --s3-access-key-id ${cfg.s3AccessKeyId} \
+                --s3-secret-key ${cfg.s3SecretKey}
+              ''
+            }
         '';
 
         # Security hardening
@@ -183,9 +183,8 @@ in {
     };
 
     # Open firewall if requested
-    networking.firewall = lib.mkIf cfg.openFirewall {
-      allowedTCPPorts = [ cfg.firewallPort ];
-    };
+    networking.firewall =
+      lib.mkIf cfg.openFirewall { allowedTCPPorts = [ cfg.firewallPort ]; };
 
     # Prometheus metrics endpoint
     services.prometheus.exporters.custom = lib.mkIf cfg.enableMetrics {

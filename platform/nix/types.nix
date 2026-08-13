@@ -39,7 +39,8 @@ let
         description = "Custom build steps (bash script)";
       };
       configFiles = lib.mkOption {
-        type = lib.types.attrsOf (lib.types.either lib.types.str lib.types.path);
+        type =
+          lib.types.attrsOf (lib.types.either lib.types.str lib.types.path);
         default = { };
         description = "Configuration files to copy into the image";
       };
@@ -198,7 +199,10 @@ let
         type = lib.types.listOf (lib.types.submodule {
           options = {
             name = lib.mkOption { type = lib.types.str; };
-            value = lib.mkOption { type = lib.types.nullOr lib.types.str; default = null; };
+            value = lib.mkOption {
+              type = lib.types.nullOr lib.types.str;
+              default = null;
+            };
             valueFrom = lib.mkOption {
               type = lib.types.nullOr (lib.types.submodule {
                 options = {
@@ -236,7 +240,10 @@ let
               type = lib.types.nullOr (lib.types.submodule {
                 options = {
                   name = lib.mkOption { type = lib.types.str; };
-                  optional = lib.mkOption { type = lib.types.bool; default = false; };
+                  optional = lib.mkOption {
+                    type = lib.types.bool;
+                    default = false;
+                  };
                 };
               });
               default = null;
@@ -245,7 +252,10 @@ let
               type = lib.types.nullOr (lib.types.submodule {
                 options = {
                   name = lib.mkOption { type = lib.types.str; };
-                  optional = lib.mkOption { type = lib.types.bool; default = false; };
+                  optional = lib.mkOption {
+                    type = lib.types.bool;
+                    default = false;
+                  };
                 };
               });
               default = null;
@@ -261,8 +271,14 @@ let
             requests = lib.mkOption {
               type = lib.types.submodule {
                 options = {
-                  cpu = lib.mkOption { type = lib.types.str; default = "100m"; };
-                  memory = lib.mkOption { type = lib.types.str; default = "128Mi"; };
+                  cpu = lib.mkOption {
+                    type = lib.types.str;
+                    default = "100m";
+                  };
+                  memory = lib.mkOption {
+                    type = lib.types.str;
+                    default = "128Mi";
+                  };
                 };
               };
               default = { };
@@ -270,8 +286,14 @@ let
             limits = lib.mkOption {
               type = lib.types.submodule {
                 options = {
-                  cpu = lib.mkOption { type = lib.types.str; default = "500m"; };
-                  memory = lib.mkOption { type = lib.types.str; default = "512Mi"; };
+                  cpu = lib.mkOption {
+                    type = lib.types.str;
+                    default = "500m";
+                  };
+                  memory = lib.mkOption {
+                    type = lib.types.str;
+                    default = "512Mi";
+                  };
                 };
               };
               default = { };
@@ -284,11 +306,26 @@ let
       securityContext = lib.mkOption {
         type = lib.types.nullOr (lib.types.submodule {
           options = {
-            allowPrivilegeEscalation = lib.mkOption { type = lib.types.bool; default = false; };
-            runAsNonRoot = lib.mkOption { type = lib.types.bool; default = true; };
-            runAsUser = lib.mkOption { type = lib.types.int; default = 1000; };
-            runAsGroup = lib.mkOption { type = lib.types.int; default = 1000; };
-            readOnlyRootFilesystem = lib.mkOption { type = lib.types.bool; default = true; };
+            allowPrivilegeEscalation = lib.mkOption {
+              type = lib.types.bool;
+              default = false;
+            };
+            runAsNonRoot = lib.mkOption {
+              type = lib.types.bool;
+              default = true;
+            };
+            runAsUser = lib.mkOption {
+              type = lib.types.int;
+              default = 1000;
+            };
+            runAsGroup = lib.mkOption {
+              type = lib.types.int;
+              default = 1000;
+            };
+            readOnlyRootFilesystem = lib.mkOption {
+              type = lib.types.bool;
+              default = true;
+            };
             capabilities = lib.mkOption {
               type = lib.types.nullOr (lib.types.submodule {
                 options = {
@@ -315,34 +352,57 @@ let
             httpGet = lib.mkOption {
               type = lib.types.nullOr (lib.types.submodule {
                 options = {
-                  path = lib.mkOption { type = lib.types.str; default = "/healthz"; };
-                  port = lib.mkOption { type = lib.types.int; default = 80; };
-                  scheme = lib.mkOption { type = lib.types.enum [ "HTTP" "HTTPS" ]; default = "HTTP"; };
+                  path = lib.mkOption {
+                    type = lib.types.str;
+                    default = "/healthz";
+                  };
+                  port = lib.mkOption {
+                    type = lib.types.int;
+                    default = 80;
+                  };
+                  scheme = lib.mkOption {
+                    type = lib.types.enum [ "HTTP" "HTTPS" ];
+                    default = "HTTP";
+                  };
                 };
               });
               default = null;
             };
             tcpSocket = lib.mkOption {
               type = lib.types.nullOr (lib.types.submodule {
-                options = {
-                  port = lib.mkOption { type = lib.types.int; };
-                };
+                options = { port = lib.mkOption { type = lib.types.int; }; };
               });
               default = null;
             };
             exec = lib.mkOption {
               type = lib.types.nullOr (lib.types.submodule {
                 options = {
-                  command = lib.mkOption { type = lib.types.listOf lib.types.str; };
+                  command =
+                    lib.mkOption { type = lib.types.listOf lib.types.str; };
                 };
               });
               default = null;
             };
-            initialDelaySeconds = lib.mkOption { type = lib.types.int; default = 30; };
-            periodSeconds = lib.mkOption { type = lib.types.int; default = 10; };
-            timeoutSeconds = lib.mkOption { type = lib.types.int; default = 5; };
-            successThreshold = lib.mkOption { type = lib.types.int; default = 1; };
-            failureThreshold = lib.mkOption { type = lib.types.int; default = 3; };
+            initialDelaySeconds = lib.mkOption {
+              type = lib.types.int;
+              default = 30;
+            };
+            periodSeconds = lib.mkOption {
+              type = lib.types.int;
+              default = 10;
+            };
+            timeoutSeconds = lib.mkOption {
+              type = lib.types.int;
+              default = 5;
+            };
+            successThreshold = lib.mkOption {
+              type = lib.types.int;
+              default = 1;
+            };
+            failureThreshold = lib.mkOption {
+              type = lib.types.int;
+              default = 3;
+            };
           };
         });
         default = null;
@@ -354,34 +414,57 @@ let
             httpGet = lib.mkOption {
               type = lib.types.nullOr (lib.types.submodule {
                 options = {
-                  path = lib.mkOption { type = lib.types.str; default = "/healthz"; };
-                  port = lib.mkOption { type = lib.types.int; default = 80; };
-                  scheme = lib.mkOption { type = lib.types.enum [ "HTTP" "HTTPS" ]; default = "HTTP"; };
+                  path = lib.mkOption {
+                    type = lib.types.str;
+                    default = "/healthz";
+                  };
+                  port = lib.mkOption {
+                    type = lib.types.int;
+                    default = 80;
+                  };
+                  scheme = lib.mkOption {
+                    type = lib.types.enum [ "HTTP" "HTTPS" ];
+                    default = "HTTP";
+                  };
                 };
               });
               default = null;
             };
             tcpSocket = lib.mkOption {
               type = lib.types.nullOr (lib.types.submodule {
-                options = {
-                  port = lib.mkOption { type = lib.types.int; };
-                };
+                options = { port = lib.mkOption { type = lib.types.int; }; };
               });
               default = null;
             };
             exec = lib.mkOption {
               type = lib.types.nullOr (lib.types.submodule {
                 options = {
-                  command = lib.mkOption { type = lib.types.listOf lib.types.str; };
+                  command =
+                    lib.mkOption { type = lib.types.listOf lib.types.str; };
                 };
               });
               default = null;
             };
-            initialDelaySeconds = lib.mkOption { type = lib.types.int; default = 5; };
-            periodSeconds = lib.mkOption { type = lib.types.int; default = 5; };
-            timeoutSeconds = lib.mkOption { type = lib.types.int; default = 3; };
-            successThreshold = lib.mkOption { type = lib.types.int; default = 1; };
-            failureThreshold = lib.mkOption { type = lib.types.int; default = 3; };
+            initialDelaySeconds = lib.mkOption {
+              type = lib.types.int;
+              default = 5;
+            };
+            periodSeconds = lib.mkOption {
+              type = lib.types.int;
+              default = 5;
+            };
+            timeoutSeconds = lib.mkOption {
+              type = lib.types.int;
+              default = 3;
+            };
+            successThreshold = lib.mkOption {
+              type = lib.types.int;
+              default = 1;
+            };
+            failureThreshold = lib.mkOption {
+              type = lib.types.int;
+              default = 3;
+            };
           };
         });
         default = null;
@@ -392,8 +475,14 @@ let
           options = {
             name = lib.mkOption { type = lib.types.str; };
             mountPath = lib.mkOption { type = lib.types.str; };
-            subPath = lib.mkOption { type = lib.types.nullOr lib.types.str; default = null; };
-            readOnly = lib.mkOption { type = lib.types.bool; default = true; };
+            subPath = lib.mkOption {
+              type = lib.types.nullOr lib.types.str;
+              default = null;
+            };
+            readOnly = lib.mkOption {
+              type = lib.types.bool;
+              default = true;
+            };
           };
         });
         default = [ ];
@@ -536,7 +625,8 @@ let
         description = "Domain name for ingress";
       };
       configFiles = lib.mkOption {
-        type = lib.types.attrsOf (lib.types.either lib.types.str lib.types.path);
+        type =
+          lib.types.attrsOf (lib.types.either lib.types.str lib.types.path);
         default = { };
         description = "Configuration files";
       };
@@ -556,8 +646,14 @@ let
             requests = lib.mkOption {
               type = lib.types.submodule {
                 options = {
-                  cpu = lib.mkOption { type = lib.types.str; default = "100m"; };
-                  memory = lib.mkOption { type = lib.types.str; default = "128Mi"; };
+                  cpu = lib.mkOption {
+                    type = lib.types.str;
+                    default = "100m";
+                  };
+                  memory = lib.mkOption {
+                    type = lib.types.str;
+                    default = "128Mi";
+                  };
                 };
               };
               default = { };
@@ -565,8 +661,14 @@ let
             limits = lib.mkOption {
               type = lib.types.submodule {
                 options = {
-                  cpu = lib.mkOption { type = lib.types.str; default = "500m"; };
-                  memory = lib.mkOption { type = lib.types.str; default = "512Mi"; };
+                  cpu = lib.mkOption {
+                    type = lib.types.str;
+                    default = "500m";
+                  };
+                  memory = lib.mkOption {
+                    type = lib.types.str;
+                    default = "512Mi";
+                  };
                 };
               };
               default = { };
@@ -592,13 +694,8 @@ let
   # ENVIRONMENT TYPES
   # =============================================================================
   # Environment types
-  environmentType = lib.types.enum [
-    "local"
-    "demo"
-    "staging"
-    "hrz"
-    "production"
-  ];
+  environmentType =
+    lib.types.enum [ "local" "demo" "staging" "hrz" "production" ];
   # Environment configuration
   environmentConfigType = lib.types.submodule {
     options = {
@@ -710,11 +807,7 @@ let
   # SBOM TYPES
   # =============================================================================
   # SBOM format types
-  sbomFormatType = lib.types.enum [
-    "spdx"
-    "cyclonedx"
-    "both"
-  ];
+  sbomFormatType = lib.types.enum [ "spdx" "cyclonedx" "both" ];
   # SBOM configuration
   sbomConfigType = lib.types.submodule {
     options = {
@@ -751,18 +844,7 @@ let
     };
   };
 in {
-  inherit
-    imageConfigType
-    k8sContainerType
-    serviceCategoryType
-    serviceTierType
-    servicePhaseType
-    serviceType
-    environmentType
-    environmentConfigType
-    registryType
-    registryConfigType
-    sbomFormatType
-    sbomConfigType
-    ;
+  inherit imageConfigType k8sContainerType serviceCategoryType serviceTierType
+    servicePhaseType serviceType environmentType environmentConfigType
+    registryType registryConfigType sbomFormatType sbomConfigType;
 }

@@ -28,7 +28,10 @@ let
 
   # Galera configuration
   wsrepClusterName = "opendesk-galera";
-  wsrepClusterAddress = "gcomm://galera-0.galera-headless." + env.namespace + ".svc.cluster.local:4567,galera-1.galera-headless." + env.namespace + ".svc.cluster.local:4567,galera-2.galera-headless." + env.namespace + ".svc.cluster.local:4567";
+  wsrepClusterAddress = "gcomm://galera-0.galera-headless." + env.namespace
+    + ".svc.cluster.local:4567,galera-1.galera-headless." + env.namespace
+    + ".svc.cluster.local:4567,galera-2.galera-headless." + env.namespace
+    + ".svc.cluster.local:4567";
 
   # Database init SQL — creates databases and users for all services
   initSql = ''
@@ -139,13 +142,20 @@ let
   };
 
   resources = {
-    requests = { cpu = "250m"; memory = "512Mi"; };
-    limits = { cpu = "2"; memory = "4Gi"; };
+    requests = {
+      cpu = "250m";
+      memory = "512Mi";
+    };
+    limits = {
+      cpu = "2";
+      memory = "4Gi";
+    };
   };
 
   livenessProbe = lib.mkProbe {
     type = "exec";
-    path = "mariadb-admin ping -h localhost -u root -p'ChangeMeGalera123!' 2>/dev/null || exit 1";
+    path =
+      "mariadb-admin ping -h localhost -u root -p'ChangeMeGalera123!' 2>/dev/null || exit 1";
     initialDelaySeconds = 180;
     periodSeconds = 15;
     failureThreshold = 10;
@@ -153,7 +163,8 @@ let
 
   readinessProbe = lib.mkProbe {
     type = "exec";
-    path = "mariadb -h localhost -u root -p'ChangeMeGalera123!' -e 'SELECT 1' 2>/dev/null || exit 1";
+    path =
+      "mariadb -h localhost -u root -p'ChangeMeGalera123!' -e 'SELECT 1' 2>/dev/null || exit 1";
     initialDelaySeconds = 30;
     periodSeconds = 10;
     failureThreshold = 6;
@@ -163,9 +174,7 @@ let
   podAntiAffinity = {
     podAntiAffinity = {
       requiredDuringSchedulingIgnoredDuringExecution = [{
-        labelSelector = {
-          matchLabels = { app = name; };
-        };
+        labelSelector = { matchLabels = { app = name; }; };
         topologyKey = "kubernetes.io/hostname";
       }];
     };
@@ -188,31 +197,83 @@ in [
     affinity = podAntiAffinity;
 
     ports = [
-      { containerPort = 3306; name = "mysql"; protocol = "TCP"; }
-      { containerPort = 4567; name = "galera"; protocol = "TCP"; }
-      { containerPort = 4568; name = "galera-sst"; protocol = "TCP"; }
-      { containerPort = 4569; name = "galera-ist"; protocol = "TCP"; }
+      {
+        containerPort = 3306;
+        name = "mysql";
+        protocol = "TCP";
+      }
+      {
+        containerPort = 4567;
+        name = "galera";
+        protocol = "TCP";
+      }
+      {
+        containerPort = 4568;
+        name = "galera-sst";
+        protocol = "TCP";
+      }
+      {
+        containerPort = 4569;
+        name = "galera-ist";
+        protocol = "TCP";
+      }
     ];
 
     env = [
-      { name = "MYSQL_ROOT_PASSWORD"; value = "ChangeMeGalera123!"; }
-      { name = "MARIADB_ROOT_PASSWORD"; value = "ChangeMeGalera123!"; }
-      { name = "MARIADB_AUTO_UPGRADE"; value = "1"; }
+      {
+        name = "MYSQL_ROOT_PASSWORD";
+        value = "ChangeMeGalera123!";
+      }
+      {
+        name = "MARIADB_ROOT_PASSWORD";
+        value = "ChangeMeGalera123!";
+      }
+      {
+        name = "MARIADB_AUTO_UPGRADE";
+        value = "1";
+      }
     ];
 
     command = [ "/bin/bash" "/scripts/bootstrap.sh" ];
 
     volumeMounts = [
-      { name = "data"; mountPath = "/var/lib/mysql"; }
-      { name = "config"; mountPath = "/etc/mysql/conf.d"; readOnly = true; }
-      { name = "initdb"; mountPath = "/docker-entrypoint-initdb.d"; readOnly = true; }
-      { name = "scripts"; mountPath = "/scripts"; readOnly = true; }
+      {
+        name = "data";
+        mountPath = "/var/lib/mysql";
+      }
+      {
+        name = "config";
+        mountPath = "/etc/mysql/conf.d";
+        readOnly = true;
+      }
+      {
+        name = "initdb";
+        mountPath = "/docker-entrypoint-initdb.d";
+        readOnly = true;
+      }
+      {
+        name = "scripts";
+        mountPath = "/scripts";
+        readOnly = true;
+      }
     ];
 
     volumes = [
-      { name = "config"; configMap = { name = "${name}-config"; }; }
-      { name = "initdb"; configMap = { name = "${name}-initdb"; }; }
-      { name = "scripts"; configMap = { name = "${name}-bootstrap"; defaultMode = 493; }; }
+      {
+        name = "config";
+        configMap = { name = "${name}-config"; };
+      }
+      {
+        name = "initdb";
+        configMap = { name = "${name}-initdb"; };
+      }
+      {
+        name = "scripts";
+        configMap = {
+          name = "${name}-bootstrap";
+          defaultMode = 493;
+        };
+      }
     ];
 
     # Per-pod PVC via volumeClaimTemplates
@@ -221,9 +282,7 @@ in [
       spec = {
         accessModes = [ "ReadWriteOnce" ];
         storageClassName = storageClass;
-        resources = {
-          requests = { storage = storageSize; };
-        };
+        resources = { requests = { storage = storageSize; }; };
       };
     }];
 
@@ -240,10 +299,30 @@ in [
     labels = labels;
     namespace = env.namespace;
     ports = [
-      { port = 3306; targetPort = 3306; protocol = "TCP"; name = "mysql"; }
-      { port = 4567; targetPort = 4567; protocol = "TCP"; name = "galera"; }
-      { port = 4568; targetPort = 4568; protocol = "TCP"; name = "galera-sst"; }
-      { port = 4569; targetPort = 4569; protocol = "TCP"; name = "galera-ist"; }
+      {
+        port = 3306;
+        targetPort = 3306;
+        protocol = "TCP";
+        name = "mysql";
+      }
+      {
+        port = 4567;
+        targetPort = 4567;
+        protocol = "TCP";
+        name = "galera";
+      }
+      {
+        port = 4568;
+        targetPort = 4568;
+        protocol = "TCP";
+        name = "galera-sst";
+      }
+      {
+        port = 4569;
+        targetPort = 4569;
+        protocol = "TCP";
+        name = "galera-ist";
+      }
     ];
   })
 
@@ -265,9 +344,7 @@ in [
     name = "${name}-config";
     namespace = env.namespace;
     labels = labels;
-    data = {
-      "galera.cnf" = galeraConfig;
-    };
+    data = { "galera.cnf" = galeraConfig; };
   })
 
   # ===================================================================
@@ -277,9 +354,7 @@ in [
     name = "${name}-initdb";
     namespace = env.namespace;
     labels = labels;
-    data = {
-      "01-init-databases.sql" = initSql;
-    };
+    data = { "01-init-databases.sql" = initSql; };
   })
 
   # ===================================================================
@@ -289,9 +364,7 @@ in [
     name = "${name}-bootstrap";
     namespace = env.namespace;
     labels = labels;
-    data = {
-      "bootstrap.sh" = bootstrapScript;
-    };
+    data = { "bootstrap.sh" = bootstrapScript; };
   })
 
   # ===================================================================
@@ -330,14 +403,34 @@ in [
     policyTypes = [ "Ingress" ];
     ingress = [{
       from = [
-        { namespaceSelector = { matchLabels = { "kubernetes.io/metadata.name" = env.namespace; }; }; }
-        { namespaceSelector = { matchLabels = { "kubernetes.io/metadata.name" = env.namespaceEdu; }; }; }
+        {
+          namespaceSelector = {
+            matchLabels = { "kubernetes.io/metadata.name" = env.namespace; };
+          };
+        }
+        {
+          namespaceSelector = {
+            matchLabels = { "kubernetes.io/metadata.name" = env.namespaceEdu; };
+          };
+        }
       ];
       ports = [
-        { protocol = "TCP"; port = 3306; }
-        { protocol = "TCP"; port = 4567; }
-        { protocol = "TCP"; port = 4568; }
-        { protocol = "TCP"; port = 4569; }
+        {
+          protocol = "TCP";
+          port = 3306;
+        }
+        {
+          protocol = "TCP";
+          port = 4567;
+        }
+        {
+          protocol = "TCP";
+          port = 4568;
+        }
+        {
+          protocol = "TCP";
+          port = 4569;
+        }
       ];
     }];
   })

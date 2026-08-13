@@ -7,7 +7,7 @@
 # OpenSpec: Full compliance (FR-IMAGE-001 through FR-IMAGE-009)
 # 
 
-{ config ? {}, pkgs, lib, ... }:
+{ pkgs, lib, ... }:
 
 {
   # Import openDesk overlays
@@ -30,9 +30,7 @@
     description = "typo3 Service User";
   };
 
-  users.groups.typo3 = {
-    gid = 1000;
-  };
+  users.groups.typo3 = { gid = 1000; };
 
   # Setup directories
   system.activationScripts.setuptypo3 = lib.mkAfter ''

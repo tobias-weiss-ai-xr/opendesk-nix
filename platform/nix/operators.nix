@@ -23,8 +23,10 @@ let
     tag = "latest";
     fromImage = pkgs.dockerTools.pullImage {
       imageName = "gcr.io/distroless/static-debian11";
-      imageDigest = "sha256:9d7619fd40aae13a9123f87b237596709f4689b07e2d8f40c5f8e8e9a3c2e8f1";
-      sha256 = "sha256-9d7619fd40aae13a9123f87b237596709f4689b07e2d8f40c5f8e8e9a3c2e8f1";
+      imageDigest =
+        "sha256:9d7619fd40aae13a9123f87b237596709f4689b07e2d8f40c5f8e8e9a3c2e8f1";
+      sha256 =
+        "sha256-9d7619fd40aae13a9123f87b237596709f4689b07e2d8f40c5f8e8e9a3c2e8f1";
     };
     config = {
       User = "1000";
@@ -108,8 +110,14 @@ let
     image = "${operatorBaseImage.name}:latest";
     replicas = 2;
     ports = [
-      { containerPort = 8080; name = "metrics"; }
-      { containerPort = 9443; name = "webhook"; }
+      {
+        containerPort = 8080;
+        name = "metrics";
+      }
+      {
+        containerPort = 9443;
+        name = "webhook";
+      }
     ];
     resources = {
       requests.memory = "256Mi";
@@ -118,9 +126,18 @@ let
       limits.cpu = "500m";
     };
     env = [
-      { name = "WATCH_NAMESPACE"; value = ""; }  # Watch all namespaces
-      { name = "OPERATOR_NAME"; value = "compliance-operator"; }
-      { name = "LOG_LEVEL"; value = "info"; }
+      {
+        name = "WATCH_NAMESPACE";
+        value = "";
+      } # Watch all namespaces
+      {
+        name = "OPERATOR_NAME";
+        value = "compliance-operator";
+      }
+      {
+        name = "LOG_LEVEL";
+        value = "info";
+      }
     ];
     serviceAccountName = "compliance-operator";
     securityContext = {
@@ -129,19 +146,15 @@ let
       runAsGroup = 1000;
       fsGroup = 1000;
     };
-    volumes = [
-      {
-        name = "certs";
-        secret = { secretName = "compliance-operator-cert"; };
-      }
-    ];
-    volumeMounts = [
-      {
-        name = "certs";
-        mountPath = "/etc/operator/certs";
-        readOnly = true;
-      }
-    ];
+    volumes = [{
+      name = "certs";
+      secret = { secretName = "compliance-operator-cert"; };
+    }];
+    volumeMounts = [{
+      name = "certs";
+      mountPath = "/etc/operator/certs";
+      readOnly = true;
+    }];
   };
 
   # Compliance Operator RBAC
@@ -151,7 +164,8 @@ let
     rules = [
       {
         apiGroups = [ "opendesk-edu.org" ];
-        resources = [ "compliances" "compliances/status" "compliances/finalizers" ];
+        resources =
+          [ "compliances" "compliances/status" "compliances/finalizers" ];
         verbs = [ "get" "list" "watch" "create" "update" "patch" "delete" ];
       }
       {
@@ -252,8 +266,14 @@ let
     image = "${operatorBaseImage.name}:latest";
     replicas = 1;
     ports = [
-      { containerPort = 8081; name = "metrics"; }
-      { containerPort = 9444; name = "webhook"; }
+      {
+        containerPort = 8081;
+        name = "metrics";
+      }
+      {
+        containerPort = 9444;
+        name = "webhook";
+      }
     ];
     resources = {
       requests.memory = "512Mi";
@@ -262,11 +282,26 @@ let
       limits.cpu = "2000m";
     };
     env = [
-      { name = "WATCH_NAMESPACE"; value = "opendesk"; }
-      { name = "OPERATOR_NAME"; value = "image-builder-operator"; }
-      { name = "LOG_LEVEL"; value = "info"; }
-      { name = "NIX_STORE"; value = "/nix/store"; }
-      { name = "BUILD_TIMEOUT"; value = "3600"; }  # 1 hour timeout
+      {
+        name = "WATCH_NAMESPACE";
+        value = "opendesk";
+      }
+      {
+        name = "OPERATOR_NAME";
+        value = "image-builder-operator";
+      }
+      {
+        name = "LOG_LEVEL";
+        value = "info";
+      }
+      {
+        name = "NIX_STORE";
+        value = "/nix/store";
+      }
+      {
+        name = "BUILD_TIMEOUT";
+        value = "3600";
+      } # 1 hour timeout
     ];
     serviceAccountName = "image-builder-operator";
     securityContext = {
@@ -314,7 +349,8 @@ let
     rules = [
       {
         apiGroups = [ "opendesk-edu.org" ];
-        resources = [ "imagebuilds" "imagebuilds/status" "imagebuilds/finalizers" ];
+        resources =
+          [ "imagebuilds" "imagebuilds/status" "imagebuilds/finalizers" ];
         verbs = [ "get" "list" "watch" "create" "update" "patch" "delete" ];
       }
       {
@@ -426,30 +462,25 @@ in {
   # Combined operators deployment
   all-operators = {
     crds = [ complianceCRD imageBuilderCRD ];
-    deployments = [
-      complianceOperatorDeployment
-      imageBuilderOperatorDeployment
-    ];
-    rbac = [
-      complianceOperatorRBAC
-      imageBuilderOperatorRBAC
-    ];
+    deployments =
+      [ complianceOperatorDeployment imageBuilderOperatorDeployment ];
+    rbac = [ complianceOperatorRBAC imageBuilderOperatorRBAC ];
   };
 
   # Helper function to create operator namespace
-  createOperatorNamespace = name: lib.k8s.mkNamespace {
-    inherit name;
-    labels = {
-      "app.kubernetes.io/name" = name;
-      "app.kubernetes.io/component" = "operator";
+  createOperatorNamespace = name:
+    lib.k8s.mkNamespace {
+      inherit name;
+      labels = {
+        "app.kubernetes.io/name" = name;
+        "app.kubernetes.io/component" = "operator";
+      };
     };
-  };
 
   # Helper function to create operator service account
-  createOperatorServiceAccount = name: namespace: lib.k8s.mkServiceAccount {
-    inherit name namespace;
-    annotations = {
-      "kubernetes.io/service-account.name" = name;
+  createOperatorServiceAccount = name: namespace:
+    lib.k8s.mkServiceAccount {
+      inherit name namespace;
+      annotations = { "kubernetes.io/service-account.name" = name; };
     };
-  };
 }

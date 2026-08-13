@@ -21,8 +21,14 @@ let
   db = env.database;
 
   resources = {
-    requests = { cpu = "250m"; memory = "512Mi"; };
-    limits = { cpu = "1"; memory = "2Gi"; };
+    requests = {
+      cpu = "250m";
+      memory = "512Mi";
+    };
+    limits = {
+      cpu = "1";
+      memory = "2Gi";
+    };
   };
 
   securityContext = {
@@ -63,10 +69,18 @@ let
       WOListenQueueSize = 5;
       SxVMemLimit = 400;
       SOGoMemcachedHost = "memcached.opendesk.svc.cluster.local:11211";
-      SOGoProfileURL = "mysql://${db.sogo.user}:${db.sogo.password}@${db.host}:${toString db.port}/${db.sogo.name}/sogo_user_profile";
-      OCSAclURL = "mysql://${db.sogo.user}:${db.sogo.password}@${db.host}:${toString db.port}/${db.sogo.name}/sogo_acl";
-      OCSFolderInfoURL = "mysql://${db.sogo.user}:${db.sogo.password}@${db.host}:${toString db.port}/${db.sogo.name}/sogo_folder_profile";
-      OCSSessionsFolderURL = "mysql://${db.sogo.user}:${db.sogo.password}@${db.host}:${toString db.port}/${db.sogo.name}/sogo_sessions_folder";
+      SOGoProfileURL = "mysql://${db.sogo.user}:${db.sogo.password}@${db.host}:${
+        toString db.port
+      }/${db.sogo.name}/sogo_user_profile";
+      OCSAclURL = "mysql://${db.sogo.user}:${db.sogo.password}@${db.host}:${
+        toString db.port
+      }/${db.sogo.name}/sogo_acl";
+      OCSFolderInfoURL = "mysql://${db.sogo.user}:${db.sogo.password}@${db.host}:${
+        toString db.port
+      }/${db.sogo.name}/sogo_folder_profile";
+      OCSSessionsFolderURL = "mysql://${db.sogo.user}:${db.sogo.password}@${db.host}:${
+        toString db.port
+      }/${db.sogo.name}/sogo_sessions_folder";
       SOGoIMAPServer = "imaps://stalwart-stalwart.opendesk-edu.svc.cluster.local:993";
       SOGoSMTPServer = "smtp://stalwart-stalwart.opendesk-edu.svc.cluster.local:587";
       SOGoSieveServer = "sieve://stalwart-stalwart.opendesk-edu.svc.cluster.local:4190";
@@ -90,11 +104,26 @@ let
   '';
 
   containerEnv = [
-    { name = "DB_HOST"; value = db.host; }
-    { name = "DB_PORT"; value = toString db.port; }
-    { name = "DB_NAME"; value = db.sogo.name; }
-    { name = "DB_USER"; value = db.sogo.user; }
-    { name = "DB_PASSWORD"; value = db.sogo.password; }
+    {
+      name = "DB_HOST";
+      value = db.host;
+    }
+    {
+      name = "DB_PORT";
+      value = toString db.port;
+    }
+    {
+      name = "DB_NAME";
+      value = db.sogo.name;
+    }
+    {
+      name = "DB_USER";
+      value = db.sogo.user;
+    }
+    {
+      name = "DB_PASSWORD";
+      value = db.sogo.password;
+    }
   ];
 
 in [
@@ -109,13 +138,33 @@ in [
     replicas = env.replicas.default;
 
     volumeMounts = [
-      { name = "config"; mountPath = "/etc/sogo/sogo.conf"; subPath = "sogo.conf"; readOnly = true; }
-      { name = "data"; mountPath = "/var/spool/sogo"; }
+      {
+        name = "config";
+        mountPath = "/etc/sogo/sogo.conf";
+        subPath = "sogo.conf";
+        readOnly = true;
+      }
+      {
+        name = "data";
+        mountPath = "/var/spool/sogo";
+      }
     ];
 
     volumes = [
-      { name = "config"; configMap = { name = "${name}-config"; items = [{ key = "sogo.conf"; path = "sogo.conf"; }]; }; }
-      { name = "data"; persistentVolumeClaim = { claimName = "${name}-data"; }; }
+      {
+        name = "config";
+        configMap = {
+          name = "${name}-config";
+          items = [{
+            key = "sogo.conf";
+            path = "sogo.conf";
+          }];
+        };
+      }
+      {
+        name = "data";
+        persistentVolumeClaim = { claimName = "${name}-data"; };
+      }
     ];
   })
 
@@ -141,9 +190,7 @@ in [
     name = "${name}-config";
     namespace = env.namespaceEdu;
     labels = labels;
-    data = {
-      "sogo.conf" = sogoConfig;
-    };
+    data = { "sogo.conf" = sogoConfig; };
   })
 
   (lib.pvc {

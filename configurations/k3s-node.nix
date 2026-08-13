@@ -10,10 +10,9 @@
 # - HAProxy ingress
 # - Binary cache support
 
-{ config, lib, pkgs, ... }:
+{ config, lib, ... }:
 
-let
-  cfg = config.services.k3s;
+let cfg = config.services.k3s;
 in {
   meta.maintainers = [ "opendesk-edu" ];
 
@@ -36,7 +35,7 @@ in {
 
       extraOptions = lib.mkOption {
         type = lib.types.attrs;
-        default = {};
+        default = { };
         description = "Additional K3s command-line options";
       };
     };
@@ -71,7 +70,8 @@ in {
       enable = true;
       role = cfg.role;
       clusterToken = cfg.clusterToken;
-      extraFlags = lib.mapAttrsToList (name: value: "--${name}=${value}") cfg.extraOptions;
+      extraFlags =
+        lib.mapAttrsToList (name: value: "--${name}=${value}") cfg.extraOptions;
     };
 
     # Ceph CSI configuration
@@ -84,8 +84,14 @@ in {
     services.haproxy = lib.mkIf cfg.haproxy.enable {
       enable = true;
       listenAddresses = [
-        { addr = "0.0.0.0"; port = 80; }
-        { addr = "0.0.0.0"; port = 443; }
+        {
+          addr = "0.0.0.0";
+          port = 80;
+        }
+        {
+          addr = "0.0.0.0";
+          port = 443;
+        }
       ];
     };
 
@@ -93,13 +99,13 @@ in {
     networking.firewall = {
       enable = true;
       allowedTCPPorts = [
-        6443  # K3s API server
-        80    # HTTP
-        443   # HTTPS
+        6443 # K3s API server
+        80 # HTTP
+        443 # HTTPS
         10250 # Kubelet
       ];
       allowedUDPPorts = [
-        8472  # Flannel
+        8472 # Flannel
         10267 # K3s egress selector
       ];
     };

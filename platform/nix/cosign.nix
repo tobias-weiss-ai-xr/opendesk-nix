@@ -1,13 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
 
-{ lib, pkgs, ... }:
+{ pkgs, ... }:
 
 let
   mkCosignKeyPair = { name ? "cosign" }:
-    pkgs.runCommand "${name}-keypair" {
-      inherit (pkgs) cosign;
-    } ''
+    pkgs.runCommand "${name}-keypair" { inherit (pkgs) cosign; } ''
       mkdir -p $out
       cosign generate-key-pair --output-key $out/${name}.key --output-pubkey $out/${name}.pub
       chmod 600 $out/${name}.key
@@ -30,6 +28,4 @@ let
       echo "Verification result saved to ${outputPath}"
     '';
 
-in {
-  inherit mkCosignKeyPair signWithCosign verifyWithCosign;
-}
+in { inherit mkCosignKeyPair signWithCosign verifyWithCosign; }

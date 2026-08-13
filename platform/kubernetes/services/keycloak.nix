@@ -21,8 +21,14 @@ let
   db = env.database;
 
   resources = {
-    requests = { cpu = "500m"; memory = "1Gi"; };
-    limits = { cpu = "2"; memory = "3Gi"; };
+    requests = {
+      cpu = "500m";
+      memory = "1Gi";
+    };
+    limits = {
+      cpu = "2";
+      memory = "3Gi";
+    };
   };
 
   securityContext = {
@@ -60,19 +66,59 @@ let
   };
 
   containerEnv = [
-    { name = "KC_BOOTSTRAP_ADMIN_USERNAME"; value = "admin"; }
-    { name = "KC_BOOTSTRAP_ADMIN_PASSWORD"; value = "admin"; }
-    { name = "KC_HOSTNAME"; value = env.hosts.keycloak; }
-    { name = "KC_HTTP_ENABLED"; value = "true"; }
-    { name = "KC_PROXY_HEADERS"; value = "xforwarded"; }
-    { name = "KC_HOSTNAME_STRICT"; value = "false"; }
-    { name = "KC_HOSTNAME_STRICT_HTTPS"; value = "false"; }
-    { name = "KC_DB"; value = "mariadb"; }
-    { name = "KC_DB_URL"; value = "jdbc:mariadb://${db.host}:${toString db.port}/${db.keycloak.name}"; }
-    { name = "KC_DB_USERNAME"; value = db.keycloak.user; }
-    { name = "KC_DB_PASSWORD"; value = db.keycloak.password; }
-    { name = "KC_LOG_LEVEL"; value = "INFO"; }
-    { name = "KC_FEATURES"; value = "token-exchange,admin-fine-grained-authz"; }
+    {
+      name = "KC_BOOTSTRAP_ADMIN_USERNAME";
+      value = "admin";
+    }
+    {
+      name = "KC_BOOTSTRAP_ADMIN_PASSWORD";
+      value = "admin";
+    }
+    {
+      name = "KC_HOSTNAME";
+      value = env.hosts.keycloak;
+    }
+    {
+      name = "KC_HTTP_ENABLED";
+      value = "true";
+    }
+    {
+      name = "KC_PROXY_HEADERS";
+      value = "xforwarded";
+    }
+    {
+      name = "KC_HOSTNAME_STRICT";
+      value = "false";
+    }
+    {
+      name = "KC_HOSTNAME_STRICT_HTTPS";
+      value = "false";
+    }
+    {
+      name = "KC_DB";
+      value = "mariadb";
+    }
+    {
+      name = "KC_DB_URL";
+      value =
+        "jdbc:mariadb://${db.host}:${toString db.port}/${db.keycloak.name}";
+    }
+    {
+      name = "KC_DB_USERNAME";
+      value = db.keycloak.user;
+    }
+    {
+      name = "KC_DB_PASSWORD";
+      value = db.keycloak.password;
+    }
+    {
+      name = "KC_LOG_LEVEL";
+      value = "INFO";
+    }
+    {
+      name = "KC_FEATURES";
+      value = "token-exchange,admin-fine-grained-authz";
+    }
   ];
 
 in [
@@ -89,13 +135,15 @@ in [
     command = [ "/opt/keycloak/bin/kc.sh" ];
     cmdArgs = [ "start" ];
 
-    volumeMounts = [
-      { name = "data"; mountPath = "/opt/keycloak/data"; }
-    ];
+    volumeMounts = [{
+      name = "data";
+      mountPath = "/opt/keycloak/data";
+    }];
 
-    volumes = [
-      { name = "data"; persistentVolumeClaim = { claimName = "${name}-data"; }; }
-    ];
+    volumes = [{
+      name = "data";
+      persistentVolumeClaim = { claimName = "${name}-data"; };
+    }];
   })
 
   (lib.service {
@@ -128,8 +176,6 @@ in [
     name = "${name}-db";
     namespace = env.namespace;
     labels = labels;
-    stringData = {
-      "db-password" = db.keycloak.password;
-    };
+    stringData = { "db-password" = db.keycloak.password; };
   })
 ]

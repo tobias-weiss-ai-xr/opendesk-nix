@@ -37,36 +37,30 @@
             annotations = {
               "policies.kyverno.io/title" = "Require Non-Root Containers";
               "policies.kyverno.io/category" = "ZKI Compliance";
-              "policies.kyverno.io/description" = "Containers should run as non-root users to prevent privilege escalation.";
+              "policies.kyverno.io/description" =
+                "Containers should run as non-root users to prevent privilege escalation.";
             };
           };
           spec = {
             validationFailureAction = "enforce";
             background = true;
-            rules = [
-              {
-                name = "run-as-non-root";
-                match = {
-                  any = [
-                    {
-                      resources = {
-                        kinds = [ "Pod" "Deployment" "StatefulSet" "DaemonSet" ];
-                      };
-                    }
-                  ];
-                };
-                validate = {
-                  message = "Containers must run as non-root user. Set securityContext.runAsNonRoot to true.";
-                  pattern = {
-                    spec = {
-                      securityContext = {
-                        runAsNonRoot = true;
-                      };
-                    };
+            rules = [{
+              name = "run-as-non-root";
+              match = {
+                any = [{
+                  resources = {
+                    kinds = [ "Pod" "Deployment" "StatefulSet" "DaemonSet" ];
                   };
+                }];
+              };
+              validate = {
+                message =
+                  "Containers must run as non-root user. Set securityContext.runAsNonRoot to true.";
+                pattern = {
+                  spec = { securityContext = { runAsNonRoot = true; }; };
                 };
-              }
-            ];
+              };
+            }];
           };
         };
 
@@ -83,48 +77,48 @@
             annotations = {
               "policies.kyverno.io/title" = "Require Network Policies";
               "policies.kyverno.io/category" = "ZKI Compliance";
-              "policies.kyverno.io/description" = "All namespaces must have network policies defined for network segmentation.";
+              "policies.kyverno.io/description" =
+                "All namespaces must have network policies defined for network segmentation.";
             };
           };
           spec = {
             validationFailureAction = "audit";
             background = true;
-            rules = [
-              {
-                name = "check-network-policy";
-                context = [
-                  {
-                    name = "namespace";
-                    variable = {
-                      jmesPath = "request.object.metadata.namespace";
-                    };
-                  }
-                  {
-                    name = "networkPolicies";
-                    apiCall = {
-                      urlPath = "/apis/networking.k8s.io/v1/namespaces/${namespace}/networkpolicies";
-                    };
-                  }
-                ];
-                preconditions = {
-                  all = [
-                    {
-                      key = "{{request.operation}}";
-                      operator = "NotEquals";
-                      values = [ "DELETE" ];
-                    }
-                  ];
-                };
-                validate = {
-                  message = "Namespace must have at least one network policy defined.";
-                  pattern = {
-                    spec = {
-                      networkPolicyCount = "{{networkPolicies.items | length(@)}}";
-                    };
+            rules = [{
+              name = "check-network-policy";
+              context = [
+                {
+                  name = "namespace";
+                  variable = {
+                    jmesPath = "request.object.metadata.namespace";
+                  };
+                }
+                {
+                  name = "networkPolicies";
+                  apiCall = {
+                    urlPath =
+                      "/apis/networking.k8s.io/v1/namespaces/${namespace}/networkpolicies";
+                  };
+                }
+              ];
+              preconditions = {
+                all = [{
+                  key = "{{request.operation}}";
+                  operator = "NotEquals";
+                  values = [ "DELETE" ];
+                }];
+              };
+              validate = {
+                message =
+                  "Namespace must have at least one network policy defined.";
+                pattern = {
+                  spec = {
+                    networkPolicyCount =
+                      "{{networkPolicies.items | length(@)}}";
                   };
                 };
-              }
-            ];
+              };
+            }];
           };
         };
 
@@ -141,7 +135,8 @@
             annotations = {
               "policies.kyverno.io/title" = "Require Resource Labels";
               "policies.kyverno.io/category" = "ZKI Compliance";
-              "policies.kyverno.io/description" = "All resources must have required labels for audit and tracking.";
+              "policies.kyverno.io/description" =
+                "All resources must have required labels for audit and tracking.";
             };
           };
           spec = {
@@ -151,43 +146,30 @@
               {
                 name = "check-app-label";
                 match = {
-                  any = [
-                    {
-                      resources = {
-                        kinds = [ "Deployment" "Service" "ConfigMap" "Secret" ];
-                      };
-                    }
-                  ];
+                  any = [{
+                    resources = {
+                      kinds = [ "Deployment" "Service" "ConfigMap" "Secret" ];
+                    };
+                  }];
                 };
                 validate = {
-                  message = "Resource must have 'app' label for identification.";
-                  pattern = {
-                    metadata = {
-                      labels = {
-                        app = "?*";
-                      };
-                    };
-                  };
+                  message =
+                    "Resource must have 'app' label for identification.";
+                  pattern = { metadata = { labels = { app = "?*"; }; }; };
                 };
               }
               {
                 name = "check-kubernetes-io-labels";
                 match = {
-                  any = [
-                    {
-                      resources = {
-                        kinds = [ "Deployment" "Service" ];
-                      };
-                    }
-                  ];
+                  any =
+                    [{ resources = { kinds = [ "Deployment" "Service" ]; }; }];
                 };
                 validate = {
-                  message = "Resources must have 'app.kubernetes.io/name' label.";
+                  message =
+                    "Resources must have 'app.kubernetes.io/name' label.";
                   pattern = {
                     metadata = {
-                      labels = {
-                        "app.kubernetes.io/name" = "?*";
-                      };
+                      labels = { "app.kubernetes.io/name" = "?*"; };
                     };
                   };
                 };
@@ -209,7 +191,8 @@
             annotations = {
               "policies.kyverno.io/title" = "Require Resource Limits";
               "policies.kyverno.io/category" = "ZKI Compliance";
-              "policies.kyverno.io/description" = "All containers must have resource limits defined to prevent resource exhaustion.";
+              "policies.kyverno.io/description" =
+                "All containers must have resource limits defined to prevent resource exhaustion.";
             };
           };
           spec = {
@@ -219,27 +202,18 @@
               {
                 name = "check-cpu-limits";
                 match = {
-                  any = [
-                    {
-                      resources = {
-                        kinds = [ "Pod" "Deployment" "StatefulSet" "DaemonSet" ];
-                      };
-                    }
-                  ];
+                  any = [{
+                    resources = {
+                      kinds = [ "Pod" "Deployment" "StatefulSet" "DaemonSet" ];
+                    };
+                  }];
                 };
                 validate = {
                   message = "Containers must have CPU limits defined.";
                   pattern = {
                     spec = {
-                      containers = [
-                        {
-                          resources = {
-                            limits = {
-                              cpu = "?*";
-                            };
-                          };
-                        }
-                      ];
+                      containers =
+                        [{ resources = { limits = { cpu = "?*"; }; }; }];
                     };
                   };
                 };
@@ -247,27 +221,18 @@
               {
                 name = "check-memory-limits";
                 match = {
-                  any = [
-                    {
-                      resources = {
-                        kinds = [ "Pod" "Deployment" "StatefulSet" "DaemonSet" ];
-                      };
-                    }
-                  ];
+                  any = [{
+                    resources = {
+                      kinds = [ "Pod" "Deployment" "StatefulSet" "DaemonSet" ];
+                    };
+                  }];
                 };
                 validate = {
                   message = "Containers must have memory limits defined.";
                   pattern = {
                     spec = {
-                      containers = [
-                        {
-                          resources = {
-                            limits = {
-                              memory = "?*";
-                            };
-                          };
-                        }
-                      ];
+                      containers =
+                        [{ resources = { limits = { memory = "?*"; }; }; }];
                     };
                   };
                 };
@@ -289,37 +254,27 @@
             annotations = {
               "policies.kyverno.io/title" = "Verify Image Signatures";
               "policies.kyverno.io/category" = "Supply Chain Security";
-              "policies.kyverno.io/description" = "All container images must be signed and verified using Cosign.";
+              "policies.kyverno.io/description" =
+                "All container images must be signed and verified using Cosign.";
             };
           };
           spec = {
             validationFailureAction = "enforce";
             background = false;
-            rules = [
-              {
-                name = "check-signatures";
-                match = {
-                  any = [
-                    {
-                      resources = {
-                        kinds = [ "Pod" ];
-                      };
-                    }
-                  ];
-                };
-                verifyImages = [
-                  {
-                    registry = "registry.opencode.de/umr/opendesk-edu/opendesk-nix/";
-                    attestations = [
-                      {
-                        predicateType = "https://slsa.dev/provenance/v0.2";
-                      }
-                    ];
-                    key = "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC...\n-----END PUBLIC KEY-----";
-                  }
-                ];
-              }
-            ];
+            rules = [{
+              name = "check-signatures";
+              match = { any = [{ resources = { kinds = [ "Pod" ]; }; }]; };
+              verifyImages = [{
+                registry =
+                  "registry.opencode.de/umr/opendesk-edu/opendesk-nix/";
+                attestations =
+                  [{ predicateType = "https://slsa.dev/provenance/v0.2"; }];
+                key = ''
+                  -----BEGIN PUBLIC KEY-----
+                  MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC...
+                  -----END PUBLIC KEY-----'';
+              }];
+            }];
           };
         };
 
@@ -336,36 +291,32 @@
             annotations = {
               "policies.kyverno.io/title" = "Require Read-Only Root Filesystem";
               "policies.kyverno.io/category" = "ZKI Compliance";
-              "policies.kyverno.io/description" = "Containers should use read-only root filesystem to prevent unauthorized modifications.";
+              "policies.kyverno.io/description" =
+                "Containers should use read-only root filesystem to prevent unauthorized modifications.";
             };
           };
           spec = {
             validationFailureAction = "enforce";
             background = true;
-            rules = [
-              {
-                name = "read-only-rootfs";
-                match = {
-                  any = [
-                    {
-                      resources = {
-                        kinds = [ "Pod" "Deployment" "StatefulSet" "DaemonSet" ];
-                      };
-                    }
-                  ];
-                };
-                validate = {
-                  message = "Containers must use read-only root filesystem. Set securityContext.readOnlyRootFilesystem to true.";
-                  pattern = {
-                    spec = {
-                      securityContext = {
-                        readOnlyRootFilesystem = true;
-                      };
-                    };
+            rules = [{
+              name = "read-only-rootfs";
+              match = {
+                any = [{
+                  resources = {
+                    kinds = [ "Pod" "Deployment" "StatefulSet" "DaemonSet" ];
+                  };
+                }];
+              };
+              validate = {
+                message =
+                  "Containers must use read-only root filesystem. Set securityContext.readOnlyRootFilesystem to true.";
+                pattern = {
+                  spec = {
+                    securityContext = { readOnlyRootFilesystem = true; };
                   };
                 };
-              }
-            ];
+              };
+            }];
           };
         };
 
@@ -382,94 +333,38 @@
             annotations = {
               "policies.kyverno.io/title" = "Drop All Capabilities";
               "policies.kyverno.io/category" = "ZKI Compliance";
-              "policies.kyverno.io/description" = "Containers should drop all capabilities and only add required ones.";
+              "policies.kyverno.io/description" =
+                "Containers should drop all capabilities and only add required ones.";
             };
           };
           spec = {
             validationFailureAction = "enforce";
             background = true;
-            rules = [
-              {
-                name = "drop-all";
-                match = {
-                  any = [
-                    {
-                      resources = {
-                        kinds = [ "Pod" "Deployment" "StatefulSet" "DaemonSet" ];
-                      };
-                    }
-                  ];
-                };
-                validate = {
-                  message = "Containers must drop all capabilities. Add only required capabilities.";
-                  pattern = {
-                    spec = {
-                      securityContext = {
-                        capabilities = {
-                          drop = [ "ALL" ];
-                        };
-                      };
-                    };
+            rules = [{
+              name = "drop-all";
+              match = {
+                any = [{
+                  resources = {
+                    kinds = [ "Pod" "Deployment" "StatefulSet" "DaemonSet" ];
+                  };
+                }];
+              };
+              validate = {
+                message =
+                  "Containers must drop all capabilities. Add only required capabilities.";
+                pattern = {
+                  spec = {
+                    securityContext = { capabilities = { drop = [ "ALL" ]; }; };
                   };
                 };
-              }
-            ];
+              };
+            }];
           };
         };
 
         # ====================================================================
         # Compliance Scan Job
         # ====================================================================
-
-        complianceScanJob = {
-          apiVersion = "batch/v1";
-          kind = "Job";
-          metadata = {
-            name = "compliance-scan-{{TIMESTAMP}}";
-            labels = {
-              app = "compliance-scan";
-              "app.kubernetes.io/component" = "compliance";
-            };
-          };
-          spec = {
-            template = {
-              spec = {
-                containers = [
-                  {
-                    name = "scan";
-                    image = "kyverno/cli:latest";
-                    command = ["/bin/sh" "-c"];
-                    args = [
-                      "kyverno apply /policies --resource /resources --output /results"
-                    ];
-                    volumeMounts = [
-                      {
-                        name = "policies";
-                        mountPath = "/policies";
-                      }
-                      {
-                        name = "results";
-                        mountPath = "/results";
-                      }
-                    ];
-                  }
-                ];
-                volumes = [
-                  {
-                    name = "policies";
-                    configMap = { name = "compliance-policies"; };
-                  }
-                  {
-                    name = "results";
-                    emptyDir = {};
-                  }
-                ];
-                restartPolicy = "Never";
-              };
-            };
-            backoffLimit = 3;
-          };
-        };
 
         # ====================================================================
         # Combined Manifest
@@ -510,11 +405,7 @@
         default = self.packages.${system}.compliance-policies;
 
         devShells.default = pkgs.mkShell {
-          buildInputs = [
-            pkgs.kubectl
-            pkgs.kyverno-cli
-            pkgs.yq
-          ];
+          buildInputs = [ pkgs.kubectl pkgs.kyverno-cli pkgs.yq ];
 
           shellHook = ''
             echo "openDesk Edu - Compliance Example"

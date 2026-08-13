@@ -7,7 +7,7 @@
 # OpenSpec: Full compliance (FR-IMAGE-001 through FR-IMAGE-009)
 # 
 
-{ config ? {}, pkgs, lib, ... }:
+{ pkgs, lib, ... }:
 
 {
   # Import openDesk overlays
@@ -30,9 +30,7 @@
     description = "kibana Service User";
   };
 
-  users.groups.kibana = {
-    gid = 1000;
-  };
+  users.groups.kibana = { gid = 1000; };
 
   # Setup directories
   system.activationScripts.setupkibana = lib.mkAfter ''

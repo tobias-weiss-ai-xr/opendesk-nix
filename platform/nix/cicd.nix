@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
 
-{ lib, pkgs, ... }:
+{ pkgs, ... }:
 
 let
   mkWorkflow = { serviceName, scriptBody }:
@@ -11,50 +11,50 @@ let
     mkWorkflow {
       inherit serviceName;
       scriptBody = ''
-name: Build-${serviceName}
+        name: Build-${serviceName}
 
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+        on:
+          push:
+            branches: [ main ]
+          pull_request:
+            branches: [ main ]
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Build with Nix
-        uses: cachix/install-nix-action@v26
-        with:
-          nix_path: nixpkgs=channel:nixos-unstable
-      - name: Build image
-        run: nix build .#packages.${serviceName}-image
-      - name: Test
-        run: nix flake check
-'';
+        jobs:
+          build:
+            runs-on: ubuntu-latest
+            steps:
+              - name: Checkout
+                uses: actions/checkout@v4
+              - name: Build with Nix
+                uses: cachix/install-nix-action@v26
+                with:
+                  nix_path: nixpkgs=channel:nixos-unstable
+              - name: Build image
+                run: nix build .#packages.${serviceName}-image
+              - name: Test
+                run: nix flake check
+      '';
     };
 
   deployWorkflow = { serviceName, environment ? "production" }:
     mkWorkflow {
       inherit serviceName;
       scriptBody = ''
-name: Deploy-${serviceName}
+        name: Deploy-${serviceName}
 
-on:
-  push:
-    branches: [ main ]
+        on:
+          push:
+            branches: [ main ]
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Deploy
-        run: echo "Deploying ${serviceName} to ${environment}"
-'';
+        jobs:
+          deploy:
+            runs-on: ubuntu-latest
+            steps:
+              - name: Checkout
+                uses: actions/checkout@v4
+              - name: Deploy
+                run: echo "Deploying ${serviceName} to ${environment}"
+      '';
     };
 
   # GitLab CI configuration
@@ -74,6 +74,4 @@ jobs:
           - nix flake check
     '';
 
-in {
-  inherit buildWorkflow deployWorkflow mkWorkflow gitlabBuild;
-}
+in { inherit buildWorkflow deployWorkflow mkWorkflow gitlabBuild; }

@@ -7,7 +7,7 @@
 # OpenSpec: Full compliance (FR-IMAGE-001 through FR-IMAGE-009)
 # 
 
-{ config ? {}, pkgs, lib, ... }:
+{ pkgs, lib, ... }:
 
 {
   # Import openDesk overlays
@@ -30,9 +30,7 @@
     description = "intercom Service User";
   };
 
-  users.groups.intercom = {
-    gid = 1000;
-  };
+  users.groups.intercom = { gid = 1000; };
 
   # Setup directories
   system.activationScripts.setupintercom = lib.mkAfter ''

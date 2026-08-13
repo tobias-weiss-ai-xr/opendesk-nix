@@ -7,7 +7,7 @@
 # OpenSpec: Full compliance (FR-IMAGE-001 through FR-IMAGE-009)
 # 
 
-{ config ? {}, pkgs, lib, ... }:
+{ pkgs, lib, ... }:
 
 {
   # Import openDesk overlays
@@ -30,9 +30,7 @@
     description = "jitsi Service User";
   };
 
-  users.groups.jitsi = {
-    gid = 1000;
-  };
+  users.groups.jitsi = { gid = 1000; };
 
   # Setup directories
   system.activationScripts.setupjitsi = lib.mkAfter ''

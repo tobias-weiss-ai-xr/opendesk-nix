@@ -3,10 +3,8 @@
 
 { config, lib, pkgs, ... }:
 
-let
-  cfg = config.nix.postBuildHook;
-in
-{
+let cfg = config.nix.postBuildHook;
+in {
   options = {
     nix.postBuildHook = {
       enable = lib.mkEnableOption "Automatic upload to binary cache";
@@ -29,7 +27,7 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    nix.settings.post-build-hook = 
+    nix.settings.post-build-hook =
       "${pkgs.attic}/bin/attic upload --key ${cfg.atticKey} --cache ${cfg.atticCache} $out";
   };
 }

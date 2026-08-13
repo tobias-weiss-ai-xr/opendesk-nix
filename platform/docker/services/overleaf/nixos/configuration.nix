@@ -7,7 +7,7 @@
 # OpenSpec: Full compliance (FR-IMAGE-001 through FR-IMAGE-009)
 # 
 
-{ config ? {}, pkgs, lib, ... }:
+{ pkgs, lib, ... }:
 
 {
   # Import openDesk overlays
@@ -30,9 +30,7 @@
     description = "overleaf Service User";
   };
 
-  users.groups.overleaf = {
-    gid = 1000;
-  };
+  users.groups.overleaf = { gid = 1000; };
 
   # Setup directories
   system.activationScripts.setupoverleaf = lib.mkAfter ''

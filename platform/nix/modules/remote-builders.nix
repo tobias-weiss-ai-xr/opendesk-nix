@@ -12,10 +12,9 @@
 # - Build parallelization
 # - Automatic node health checking
 
-{ config, lib, pkgs, ... }:
+{ config, lib, ... }:
 
-let
-  cfg = config.nix.remoteBuilders;
+let cfg = config.nix.remoteBuilders;
 in {
   meta.maintainers = [ "opendesk-edu" ];
 
@@ -68,7 +67,7 @@ in {
             };
           };
         });
-        default = [];
+        default = [ ];
         description = "List of remote builder nodes";
       };
 
@@ -91,12 +90,14 @@ in {
   config = lib.mkIf cfg.enable {
     # Configure Nix to use remote builders
     nix.settings = {
-      builders = lib.mapAttrsToList (name: value:
-        "${value.endpoint} ${value.system} ${toString value.speedFactor} ${toString value.maxJobs} ${lib.concatStringsSep "," value.supportedFeatures}"
-      ) (lib.listToAttrs (lib.mapIndexed (i: node: {
-        name = "builder-${toString i}";
-        value = node;
-      }) cfg.nodes));
+      builders = lib.mapAttrsToList (_name: value:
+        "${value.endpoint} ${value.system} ${toString value.speedFactor} ${
+          toString value.maxJobs
+        } ${lib.concatStringsSep "," value.supportedFeatures}") (lib.listToAttrs
+          (lib.mapIndexed (i: node: {
+            name = "builder-${toString i}";
+            value = node;
+          }) cfg.nodes));
 
       builders-use-substitutes = true;
       connect-timeout = cfg.connectTimeout;
@@ -122,12 +123,12 @@ in {
       description = "Nix Remote Builder Health Check";
       wantedBy = [ "multi-user.target" ];
       after = [ "network.target" ];
-      
+
       serviceConfig = {
         Type = "oneshot";
         User = "root";
       };
-      
+
       script = ''
         for node in $(nix show-config | grep -o 'nix-builder-[0-9]*'); do
           if ! ssh -o ConnectTimeout=10 -o BatchMode=yes "$node" "exit 0"; then

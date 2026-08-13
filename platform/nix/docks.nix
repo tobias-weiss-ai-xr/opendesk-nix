@@ -15,29 +15,28 @@ let
   getAttrWithDefault = attr: default: config:
     if config ? ${attr} then config.${attr} else default;
 
-  mkImage = {
-    name ? "opendesk-image",
-    tag ? "latest",
-    config ? {},
-    containerConfig ? {},
-    extraPackages ? (_: []),
-    ociLabels ? {},
-    ...
-  }:
+  mkImage = { name ? "opendesk-image", tag ? "latest", config ? { }
+    , containerConfig ? { }, extraPackages ? (_: [ ]), ociLabels ? { }, ... }:
 
     let
-      cmd = getAttrWithDefault "Cmd" [ "/usr/bin/env" "bash" "-c" "echo Container ready" ] containerConfig;
-      env = getAttrWithDefault "Env" [] containerConfig;
+      cmd = getAttrWithDefault "Cmd" [
+        "/usr/bin/env"
+        "bash"
+        "-c"
+        "echo Container ready"
+      ] containerConfig;
+      env = getAttrWithDefault "Env" [ ] containerConfig;
       user = getAttrWithDefault "User" "nobody" containerConfig;
       workingDir = getAttrWithDefault "WorkingDir" "/" containerConfig;
-      exposedPorts = getAttrWithDefault "ExposedPorts" {} containerConfig;
-      volumes = getAttrWithDefault "Volumes" {} containerConfig;
+      exposedPorts = getAttrWithDefault "ExposedPorts" { } containerConfig;
+      volumes = getAttrWithDefault "Volumes" { } containerConfig;
       healthCheck = getAttrWithDefault "HealthCheck" null containerConfig;
       stopSignal = getAttrWithDefault "StopSignal" "SIGTERM" containerConfig;
       stopTimeout = getAttrWithDefault "StopTimeout" 30 containerConfig;
 
       # Determine if we need to create a custom user
-      userName = if user == "nobody" || user == "root" || user == "" then null else user;
+      userName =
+        if user == "nobody" || user == "root" || user == "" then null else user;
 
       # Volume paths from the Volumes attribute set
       volumePaths = builtins.attrNames volumes;
@@ -66,23 +65,22 @@ let
         ''}
         ${lib.concatMapStrings (path: ''
           mkdir -p ${path}
-          ${lib.optionalString (userName != null) "chown -R ${userName}:${userName} ${path}"}
+          ${lib.optionalString (userName != null)
+          "chown -R ${userName}:${userName} ${path}"}
         '') volumePaths}
       '';
 
-    in
-    dockerTools.buildImage {
+    in dockerTools.buildImage {
       inherit name tag;
       runAsRoot = runAsRootScript;
       # Use copyToRoot with buildEnv for proper /bin, /usr/bin symlinks
       copyToRoot = rootEnv;
       config = {
-        inherit cmd env user workingDir exposedPorts volumes healthCheck stopSignal;
+        inherit cmd env user workingDir exposedPorts volumes healthCheck
+          stopSignal;
         StopTimeout = stopTimeout;
         Labels = ociLabels;
       };
     };
 
-in {
-  inherit mkImage;
-}
+in { inherit mkImage; }

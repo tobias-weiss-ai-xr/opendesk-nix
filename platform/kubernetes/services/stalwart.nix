@@ -18,8 +18,14 @@ let
   };
 
   resources = {
-    requests = { cpu = "200m"; memory = "512Mi"; };
-    limits = { cpu = "1"; memory = "1Gi"; };
+    requests = {
+      cpu = "200m";
+      memory = "512Mi";
+    };
+    limits = {
+      cpu = "1";
+      memory = "1Gi";
+    };
   };
 
   securityContext = {
@@ -111,9 +117,18 @@ let
   '';
 
   containerEnv = [
-    { name = "STALWART_PORT"; value = toString port; }
-    { name = "STALWART_HOSTNAME"; value = env.hosts.stalwart; }
-    { name = "STALWART_CONFIG"; value = "/etc/stalwart/config.toml"; }
+    {
+      name = "STALWART_PORT";
+      value = toString port;
+    }
+    {
+      name = "STALWART_HOSTNAME";
+      value = env.hosts.stalwart;
+    }
+    {
+      name = "STALWART_CONFIG";
+      value = "/etc/stalwart/config.toml";
+    }
   ];
 
 in [
@@ -130,22 +145,66 @@ in [
     replicas = env.replicas.default;
 
     ports = [
-      { containerPort = 8080; name = "http"; protocol = "TCP"; }
-      { containerPort = 25; name = "smtp"; protocol = "TCP"; }
-      { containerPort = 587; name = "submission"; protocol = "TCP"; }
-      { containerPort = 465; name = "submissions"; protocol = "TCP"; }
-      { containerPort = 143; name = "imap"; protocol = "TCP"; }
-      { containerPort = 993; name = "imaptls"; protocol = "TCP"; }
+      {
+        containerPort = 8080;
+        name = "http";
+        protocol = "TCP";
+      }
+      {
+        containerPort = 25;
+        name = "smtp";
+        protocol = "TCP";
+      }
+      {
+        containerPort = 587;
+        name = "submission";
+        protocol = "TCP";
+      }
+      {
+        containerPort = 465;
+        name = "submissions";
+        protocol = "TCP";
+      }
+      {
+        containerPort = 143;
+        name = "imap";
+        protocol = "TCP";
+      }
+      {
+        containerPort = 993;
+        name = "imaptls";
+        protocol = "TCP";
+      }
     ];
 
     volumeMounts = [
-      { name = "config"; mountPath = "/etc/stalwart/config.toml"; subPath = "config.toml"; readOnly = true; }
-      { name = "data"; mountPath = "/data"; }
+      {
+        name = "config";
+        mountPath = "/etc/stalwart/config.toml";
+        subPath = "config.toml";
+        readOnly = true;
+      }
+      {
+        name = "data";
+        mountPath = "/data";
+      }
     ];
 
     volumes = [
-      { name = "config"; configMap = { name = "${name}-config"; items = [{ key = "config.toml"; path = "config.toml"; }]; }; }
-      { name = "data"; persistentVolumeClaim = { claimName = "${name}-data"; }; }
+      {
+        name = "config";
+        configMap = {
+          name = "${name}-config";
+          items = [{
+            key = "config.toml";
+            path = "config.toml";
+          }];
+        };
+      }
+      {
+        name = "data";
+        persistentVolumeClaim = { claimName = "${name}-data"; };
+      }
     ];
   })
 
@@ -153,12 +212,42 @@ in [
     inherit name port labels;
     namespace = env.namespaceEdu;
     ports = [
-      { port = 8080; targetPort = 8080; protocol = "TCP"; name = "http"; }
-      { port = 25; targetPort = 25; protocol = "TCP"; name = "smtp"; }
-      { port = 587; targetPort = 587; protocol = "TCP"; name = "submission"; }
-      { port = 465; targetPort = 465; protocol = "TCP"; name = "submissions"; }
-      { port = 143; targetPort = 143; protocol = "TCP"; name = "imap"; }
-      { port = 993; targetPort = 993; protocol = "TCP"; name = "imaptls"; }
+      {
+        port = 8080;
+        targetPort = 8080;
+        protocol = "TCP";
+        name = "http";
+      }
+      {
+        port = 25;
+        targetPort = 25;
+        protocol = "TCP";
+        name = "smtp";
+      }
+      {
+        port = 587;
+        targetPort = 587;
+        protocol = "TCP";
+        name = "submission";
+      }
+      {
+        port = 465;
+        targetPort = 465;
+        protocol = "TCP";
+        name = "submissions";
+      }
+      {
+        port = 143;
+        targetPort = 143;
+        protocol = "TCP";
+        name = "imap";
+      }
+      {
+        port = 993;
+        targetPort = 993;
+        protocol = "TCP";
+        name = "imaptls";
+      }
     ];
   })
 
@@ -175,9 +264,7 @@ in [
     name = "${name}-config";
     namespace = env.namespaceEdu;
     labels = labels;
-    data = {
-      "config.toml" = stalwartConfig;
-    };
+    data = { "config.toml" = stalwartConfig; };
   })
 
   (lib.pvc {

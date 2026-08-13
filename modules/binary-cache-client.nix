@@ -6,10 +6,9 @@
 #
 # Configures Nix to use Attic or other binary caches as substituters
 
-{ config, lib, pkgs, ... }:
+{ config, lib, ... }:
 
-let
-  cfg = config.nix.binaryCache;
+let cfg = config.nix.binaryCache;
 in {
   meta.maintainers = [ "opendesk-edu" ];
 
@@ -50,13 +49,12 @@ in {
   config = lib.mkIf cfg.enable {
     nix.settings = {
       substituters = lib.mkOrder cfg.priority [ cfg.url ];
-      
-      trusted-public-keys = lib.mkIf (cfg.publicKeys != [ ])
-        cfg.publicKeys;
-      
+
+      trusted-public-keys = lib.mkIf (cfg.publicKeys != [ ]) cfg.publicKeys;
+
       # Prefer binary cache over building
       builders-use-substitutes = true;
-      
+
       # Retry substituters on failure
       connect-timeout = 10;
       max-jobs = lib.mkDefault (builtins.length config.nix.builders);

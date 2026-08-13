@@ -2,17 +2,12 @@
 # SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
 # 6 Sigma Quality - Defect-free Nix code
 
-{ pkgs, lib, docks ? null, ... }:
+{ pkgs, lib, ... }:
 
 let
   # Build Docker/OCI images using dockerTools
   # All parameters are optional with sensible defaults
-  buildImage = { 
-    name, 
-    contents ? [ ],
-    config ? { },
-    maxLayers ? 100 
-  }:
+  buildImage = { name, contents ? [ ], config ? { }, maxLayers ? 100 }:
     pkgs.dockerTools.buildLayeredImage {
       inherit name contents maxLayers;
       config = {
@@ -20,14 +15,15 @@ let
         User = "nobody";
         WorkingDir = "/app";
         Labels = {
-          org.opencontainers.image.source = "https://github.com/opendesk-edu/opendesk-nix";
+          org.opencontainers.image.source =
+            "https://github.com/opendesk-edu/opendesk-nix";
           org.opencontainers.image.vendor = "openDesk Edu";
         };
       } // config;
     };
 
   # Database images
-  buildDBImage = name: 
+  buildDBImage = name:
     buildImage {
       name = "${name}-opendesk";
       contents = [ (pkgs.lib.getAttr name pkgs) ];
@@ -43,5 +39,6 @@ let
   redis-opendesk = buildDBImage "redis";
 
 in {
-  inherit buildImage buildDBImage mariadb-opendesk postgresql-opendesk redis-opendesk;
+  inherit buildImage buildDBImage mariadb-opendesk postgresql-opendesk
+    redis-opendesk;
 }

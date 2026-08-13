@@ -11,8 +11,7 @@
 
 { config, lib, pkgs, ... }:
 
-let
-  cfg = config.services.abUpdates;
+let cfg = config.services.abUpdates;
 in {
   meta.maintainers = [ "opendesk-edu" ];
 
@@ -67,7 +66,7 @@ in {
       Verify=${lib.boolToString cfg.verifySignatures}
       Mode=atomic
       Slots=${cfg.slots}
-      
+
       [Partition]
       Type=root-${cfg.slots}
       Priority=100
@@ -78,7 +77,7 @@ in {
       description = "A/B Update Rollback Assessment";
       wantedBy = [ "multi-user.target" ];
       after = [ "network.target" ];
-      
+
       serviceConfig = {
         Type = "oneshot";
         ExecStart = "${pkgs.systemd}/lib/systemd/systemd-sysupdate assess /";

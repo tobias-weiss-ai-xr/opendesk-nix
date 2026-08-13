@@ -7,7 +7,7 @@
 # Ingress: HAProxy
 # Registry: Local at 172.26.24.6:5001 (air-gapped, containerd mirror)
 
-{ lib, ... }:
+{ ... }:
 
 {
   # Cluster identity
@@ -34,8 +34,8 @@
 
   # Storage classes (Ceph CSI on SCS cluster)
   storage = {
-    rwo = "ceph-rbd";       # ReadWriteOnce (block)
-    rwx = "ceph-cephfs";    # ReadWriteMany (shared)
+    rwo = "ceph-rbd"; # ReadWriteOnce (block)
+    rwx = "ceph-cephfs"; # ReadWriteMany (shared)
     defaultClass = "ceph-rbd";
   };
 
@@ -84,15 +84,33 @@
   networking = {
     proxy = "";
     dns = [ "8.8.8.8" "8.8.4.4" ];
-    noProxy = [ "127.0.0.1" "10.0.0.0/8" "172.16.0.0/12" "172.26.24.0/24" "192.168.0.0/16" ];
+    noProxy = [
+      "127.0.0.1"
+      "10.0.0.0/8"
+      "172.16.0.0/12"
+      "172.26.24.0/24"
+      "192.168.0.0/16"
+    ];
   };
 
   # Resource profiles
   resources = {
-    small = { cpu = "100m"; memory = "128Mi"; };
-    medium = { cpu = "250m"; memory = "512Mi"; };
-    large = { cpu = "500m"; memory = "1Gi"; };
-    database = { cpu = "500m"; memory = "1Gi"; };
+    small = {
+      cpu = "100m";
+      memory = "128Mi";
+    };
+    medium = {
+      cpu = "250m";
+      memory = "512Mi";
+    };
+    large = {
+      cpu = "500m";
+      memory = "1Gi";
+    };
+    database = {
+      cpu = "500m";
+      memory = "1Gi";
+    };
   };
 
   # Replica counts

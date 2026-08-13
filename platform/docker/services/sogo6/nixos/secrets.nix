@@ -7,7 +7,7 @@
 # OpenSpec: FR-SEC-004 (Image verification & secrets)
 # 
 
-{ config, lib, ... }:
+{ ... }:
 
 {
   services.sogo6 = {

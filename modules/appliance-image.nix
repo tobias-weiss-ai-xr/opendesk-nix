@@ -11,8 +11,7 @@
 
 { config, lib, pkgs, ... }:
 
-let
-  cfg = config.image;
+let cfg = config.image;
 in {
   meta.maintainers = [ "opendesk-edu" ];
 
@@ -38,8 +37,14 @@ in {
         type = lib.types.attrs;
         description = "Partition definitions";
         default = {
-          boot = { size = "1M"; type = "EF02"; };
-          esp = { size = "512M"; type = "EF00"; };
+          boot = {
+            size = "1M";
+            type = "EF02";
+          };
+          esp = {
+            size = "512M";
+            type = "EF00";
+          };
           rootA = { size = "50%"; };
           rootB = { size = "50%"; };
         };

@@ -20,8 +20,14 @@ let
   };
 
   resources = {
-    requests = { cpu = "500m"; memory = "1Gi"; };
-    limits = { cpu = "2"; memory = "2Gi"; };
+    requests = {
+      cpu = "500m";
+      memory = "1Gi";
+    };
+    limits = {
+      cpu = "2";
+      memory = "2Gi";
+    };
   };
 
   securityContext = {
@@ -195,12 +201,30 @@ let
   '';
 
   containerEnv = [
-    { name = "OC_URL"; value = "https://${env.hosts.opencloud}"; }
-    { name = "OC_INSECURE"; value = "false"; }
-    { name = "OIDC_ISSUER"; value = "https://${env.hosts.keycloak}/realms/${env.keycloak.realm}"; }
-    { name = "OIDC_CLIENT_ID"; value = "opendesk-opencloud"; }
-    { name = "OIDC_CLIENT_SECRET"; value = "opencloud-secret-change-me"; }
-    { name = "OC_LOG_LEVEL"; value = "info"; }
+    {
+      name = "OC_URL";
+      value = "https://${env.hosts.opencloud}";
+    }
+    {
+      name = "OC_INSECURE";
+      value = "false";
+    }
+    {
+      name = "OIDC_ISSUER";
+      value = "https://${env.hosts.keycloak}/realms/${env.keycloak.realm}";
+    }
+    {
+      name = "OIDC_CLIENT_ID";
+      value = "opendesk-opencloud";
+    }
+    {
+      name = "OIDC_CLIENT_SECRET";
+      value = "opencloud-secret-change-me";
+    }
+    {
+      name = "OC_LOG_LEVEL";
+      value = "info";
+    }
   ];
 
 in [
@@ -215,13 +239,26 @@ in [
     replicas = env.replicas.default;
 
     volumeMounts = [
-      { name = "data"; mountPath = "/var/lib/opencloud"; }
-      { name = "config"; mountPath = "/etc/opencloud"; readOnly = true; }
+      {
+        name = "data";
+        mountPath = "/var/lib/opencloud";
+      }
+      {
+        name = "config";
+        mountPath = "/etc/opencloud";
+        readOnly = true;
+      }
     ];
 
     volumes = [
-      { name = "data"; persistentVolumeClaim = { claimName = "${name}-data"; }; }
-      { name = "config"; secret = { secretName = "${name}-config"; }; }
+      {
+        name = "data";
+        persistentVolumeClaim = { claimName = "${name}-data"; };
+      }
+      {
+        name = "config";
+        secret = { secretName = "${name}-config"; };
+      }
     ];
   })
 
@@ -257,17 +294,13 @@ in [
     name = "${name}-config";
     namespace = env.namespaceEdu;
     labels = labels;
-    stringData = {
-      "opencloud.yaml" = opencloudConfig;
-    };
+    stringData = { "opencloud.yaml" = opencloudConfig; };
   })
 
   (lib.secret {
     name = "${name}-db";
     namespace = env.namespaceEdu;
     labels = labels;
-    stringData = {
-      "oidc-client-secret" = "opencloud-secret-change-me";
-    };
+    stringData = { "oidc-client-secret" = "opencloud-secret-change-me"; };
   })
 ]

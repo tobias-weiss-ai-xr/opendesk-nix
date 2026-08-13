@@ -18,8 +18,14 @@ let
   };
 
   resources = {
-    requests = { cpu = "100m"; memory = "128Mi"; };
-    limits = { cpu = "500m"; memory = "512Mi"; };
+    requests = {
+      cpu = "100m";
+      memory = "128Mi";
+    };
+    limits = {
+      cpu = "500m";
+      memory = "512Mi";
+    };
   };
 
   securityContext = {
@@ -86,17 +92,25 @@ in [
     namespace = env.namespace;
     replicas = env.replicas.default;
 
-    volumeMounts = [
-      { name = "config"; mountPath = "/app/config.json"; subPath = "config.json"; readOnly = true; }
-    ];
+    volumeMounts = [{
+      name = "config";
+      mountPath = "/app/config.json";
+      subPath = "config.json";
+      readOnly = true;
+    }];
 
-    volumes = [
-      { name = "config"; configMap = { name = "${name}-config"; items = [{ key = "config.json"; path = "config.json"; }]; }; }
-    ];
+    volumes = [{
+      name = "config";
+      configMap = {
+        name = "${name}-config";
+        items = [{
+          key = "config.json";
+          path = "config.json";
+        }];
+      };
+    }];
 
-    annotations = {
-      "checksum/config" = "element-config-v1";
-    };
+    annotations = { "checksum/config" = "element-config-v1"; };
   })
 
   (lib.service {
@@ -117,8 +131,6 @@ in [
     name = "${name}-config";
     namespace = env.namespace;
     labels = labels;
-    data = {
-      "config.json" = elementConfig;
-    };
+    data = { "config.json" = elementConfig; };
   })
 ]

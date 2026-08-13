@@ -7,7 +7,7 @@
 # OpenSpec: Full compliance (FR-IMAGE-001 through FR-IMAGE-009)
 # 
 
-{ config ? {}, pkgs, lib, ... }:
+{ pkgs, lib, ... }:
 
 {
   # Import openDesk overlays
@@ -30,9 +30,7 @@
     description = "ilias-full Service User";
   };
 
-  users.groups.ilias-full = {
-    gid = 1000;
-  };
+  users.groups.ilias-full = { gid = 1000; };
 
   # Setup directories
   system.activationScripts.setupilias-full = lib.mkAfter ''

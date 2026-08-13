@@ -21,13 +21,9 @@
         pkgs = nixpkgs.legacyPackages.${system};
 
         # Import openDesk Edu libraries
-        lib = {
-          k8s = import ../../lib/k8s.nix { inherit pkgs lib; };
-          security = import ../../lib/security.nix { inherit pkgs lib; };
-        };
 
         # Simple function to create deployment
-        mkDeployment = { name, image, ports, resources ? {} }: {
+        mkDeployment = { name, image, ports, resources ? { } }: {
           apiVersion = "apps/v1";
           kind = "Deployment";
           metadata = {
@@ -43,27 +39,26 @@
             template = {
               metadata.labels.app = name;
               spec = {
-                containers = [
-                  {
-                    inherit name image;
-                    ports = map (p: { inherit (p) containerPort; }) ports;
-                    resources = if resources != {} then {
-                      requests = {
-                        memory = resources.memory or "256Mi";
-                        cpu = resources.cpu or "100m";
-                      };
-                      limits = {
-                        memory = resources.memoryLimit or "512Mi";
-                        cpu = resources.cpuLimit or "500m";
-                      };
-                    } else {};
-                    securityContext = {
-                      runAsNonRoot = true;
-                      runAsUser = 999;
-                      readOnlyRootFilesystem = true;
+                containers = [{
+                  inherit name image;
+                  ports = map (p: { inherit (p) containerPort; }) ports;
+                  resources = if resources != { } then {
+                    requests = {
+                      memory = resources.memory or "256Mi";
+                      cpu = resources.cpu or "100m";
                     };
-                  }
-                ];
+                    limits = {
+                      memory = resources.memoryLimit or "512Mi";
+                      cpu = resources.cpuLimit or "500m";
+                    };
+                  } else
+                    { };
+                  securityContext = {
+                    runAsNonRoot = true;
+                    runAsUser = 999;
+                    readOnlyRootFilesystem = true;
+                  };
+                }];
               };
             };
           };
@@ -94,7 +89,10 @@
         mariadb = {
           name = "mariadb";
           image = "mariadb:11.4.4";
-          ports = [ { name = "mysql"; port = 3306; } ];
+          ports = [{
+            name = "mysql";
+            port = 3306;
+          }];
           resources = {
             memory = "512Mi";
             cpu = "250m";
@@ -130,11 +128,7 @@
         default = self.packages.${system}.mariadb-all;
 
         devShells.default = pkgs.mkShell {
-          buildInputs = [
-            pkgs.kubectl
-            pkgs.kubernetes-helm
-            pkgs.yq
-          ];
+          buildInputs = [ pkgs.kubectl pkgs.kubernetes-helm pkgs.yq ];
 
           shellHook = ''
             echo "openDesk Edu - Basic Example"

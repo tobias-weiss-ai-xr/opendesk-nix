@@ -36,12 +36,12 @@
         includes = [ "*.nix" ];
       };
 
-      # YAML/JSON formatting
-      prettier = {
-        command = pkgs.lib.getExe pkgs.prettier;
-        options = [ "--write" ];
-        includes = [ "*.yaml" "*.yml" "*.json" "*.md" ];
-      };
+      # YAML/JSON formatting (commented out - prettier not available in nixpkgs)
+      # prettier = {
+      #   command = pkgs.lib.getExe pkgs.prettier;
+      #   options = [ "--write" ];
+      #   includes = [ "*.yaml" "*.yml" "*.json" "*.md" ];
+      # };
 
       # Shell formatting
       shfmt = {
