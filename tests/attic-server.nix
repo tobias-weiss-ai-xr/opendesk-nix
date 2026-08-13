@@ -1,28 +1,23 @@
 # SPDX-License-Identifier: Apache-2.0
 # Attic server integration test
 
-{ pkgs, ... };
+{ pkgs, ... }: {
 
-{
   name = "attic-server";
 
   nodes = {
-    attic = { ... }: {
-      modules = [ .././modules/attic-server.nix ];
+    attic = { config, pkgs, ... }: {
       services.attic-server = {
         enable = true;
         listenPort = 8080;
         openFirewall = false;
+        cacheDir = "/var/lib/attic";
       };
     };
 
-    client = { ... }: {
-      modules = [ .././modules/binary-cache-client.nix ];
-      nix.binaryCache = {
-        enable = true;
-        url = "http://attic:8080";
-        publicKeys = [ "attic.scs.hrz@uni-marburg.de-1:abc123" ];
-      };
+    client = { config, pkgs, ... }: {
+      nix.settings.substituters = [ "http://attic:8080" ];
+      nix.settings.trusted-public-keys = [ "attic.scs.hrz@uni-marburg.de-1:abc123" ];
     };
   };
 

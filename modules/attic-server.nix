@@ -8,14 +8,14 @@
 
 { config, lib, pkgs, ... }:
 
-let cfg = config.services.attic-server;
+let cfg = config.services.attic;
 in {
   meta.maintainers = [ "opendesk-edu" ];
 
   ###### interface
 
   options = {
-    services.attic-server = {
+    services.attic = {
       enable = lib.mkEnableOption "Attic binary cache server";
 
       package = lib.mkOption {
@@ -139,7 +139,7 @@ in {
       '');
 
     # Attic server systemd service
-    systemd.services.attic-server = {
+    systemd.services.attic = {
       description = "Attic Binary Cache Server";
       after = [ "network.target" ];
       wantedBy = [ "multi-user.target" ];
@@ -202,8 +202,10 @@ in {
     };
 
     # Logging
-    systemd.services.attic-server.serviceConfig.LogTarget = "journal";
-    systemd.services.attic-server.serviceConfig.StandardOutput = "journal";
-    systemd.services.attic-server.serviceConfig.StandardError = "journal";
+    systemd.services.attic.serviceConfig = {
+      LogTarget = "journal";
+      StandardOutput = "journal";
+      StandardError = "journal";
+    };
   };
 }

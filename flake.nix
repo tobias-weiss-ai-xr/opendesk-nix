@@ -13,9 +13,13 @@
 
     # Code quality tools (best practices from ~/git/nix-best-practices)
     treefmt-nix.url = "github:numtide/treefmt-nix";
+
+    # Binary cache (from nix-community)
+    attic.url = "github:zhaofengli/attic";
+    attic.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = { self, nixpkgs, flake-utils, treefmt-nix, ... }@inputs:
+  outputs = { self, nixpkgs, flake-utils, treefmt-nix, attic, ... }@inputs:
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs {
