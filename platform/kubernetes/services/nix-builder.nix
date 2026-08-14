@@ -49,6 +49,11 @@ let
       echo "Setup complete. Use /workspace for your git repos and build context."
       echo "Build with: nix build .#<image-name>"
       echo "Push with:  skopeo copy docker-archive:result docker://''${REGISTRY:-172.17.0.6:5001}/<name>:<tag>"
+
+      # Create containers policy for skopeo (allows insecure registries)
+      mkdir -p /root/.config/containers
+      echo '{"default": [{"type": "insecureAcceptAnything"}]}' > /root/.config/containers/policy.json
+      echo "Containers policy created."
     '';
 
     clone-repo.sh = ''
@@ -106,6 +111,11 @@ let
       echo "=== Image info ==="
       skopeo inspect docker-archive:"$RESULT" 2>/dev/null | head -20 || true
       echo ""
+
+      # Ensure containers policy exists for skopeo
+      mkdir -p /root/.config/containers
+      echo '{"default": [{"type": "insecureAcceptAnything"}]}' > /root/.config/containers/policy.json
+
       echo "=== Pushing to $REGISTRY/$IMAGE_NAME:$TAG ==="
       skopeo copy --dest-tls-verify=false \
         docker-archive:"$RESULT" \
