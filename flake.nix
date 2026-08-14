@@ -17,6 +17,10 @@
     # Binary cache (from nix-community)
     attic.url = "github:zhaofengli/attic";
     attic.inputs.nixpkgs.follows = "nixpkgs";
+
+    # GitOps for NixOS base OS (continuously deploys from Git, like ArgoCD for the OS layer)
+    comin.url = "github:nlewo/comin/e72d8cc7ad188dbb109994cba9babf026bacf6ab";
+    comin.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =
@@ -36,10 +40,13 @@
             allowUnfree = true;
             permittedInsecurePackages = [ "keycloak-23.0.6" ];
           };
-          # Provide the attic package from the flake input (not in nixpkgs 24.11)
+          # Provide packages from flake inputs (not in nixpkgs 24.11)
           overlays = [
             (final: _prev: {
               attic = inputs.attic.packages.${final.system}.attic;
+            })
+            (final: _prev: {
+              comin = inputs.comin.packages.${final.system}.comin;
             })
           ];
         };
@@ -477,6 +484,9 @@
           # Immutable appliance images with A/B OTA updates
           appliance-image = import ./modules/appliance-image.nix;
 
+          # GitOps for NixOS base OS (continuously deploys from Git)
+          comin = inputs.comin.nixosModules.comin;
+
           # DevGuard Pattern: Compliance module
           compliance-module = pkgs.writeText "compliance-module.nix" ''
             { config, pkgs, ... }:
@@ -707,6 +717,16 @@
       # Reusable overlays
       overlays = {
         opendesk = import ./overlays/opendesk.nix;
+      };
+
+      # System-independent NixOS modules (consumers can import these directly)
+      nixosModules = {
+        comin = inputs.comin.nixosModules.comin;
+        appliance-image = import ./modules/appliance-image.nix;
+        k3s-node = import ./configurations/k3s-node.nix;
+        attic-server = import ./modules/attic-server.nix;
+        binary-cache-client = import ./modules/binary-cache-client.nix;
+        post-build-hook = import ./modules/post-build-hook.nix;
       };
 
       # NixOS system configurations
