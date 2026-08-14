@@ -469,6 +469,9 @@
           binary-cache-client = binaryCacheClient;
           post-build-hook = postBuildHook;
 
+          # Immutable appliance images with A/B OTA updates
+          appliance-image = import ./modules/appliance-image.nix;
+
           # DevGuard Pattern: Compliance module
           compliance-module = pkgs.writeText "compliance-module.nix" ''
             { config, pkgs, ... }:
