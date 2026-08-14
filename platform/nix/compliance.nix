@@ -1080,7 +1080,7 @@ let
             let
               nonComp = count.nonCompliant;
             in
-            !nonComp || nonComp <= maxCount || action == "ignore";
+            nonComp == 0 || nonComp <= maxCount || action == "ignore";
         }
       ) counts.bySeverity;
 

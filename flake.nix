@@ -148,6 +148,9 @@
             inherit nixpkgs;
           };
 
+          # Compliance report generation (DevGuard CI gate)
+          compliance-report = pkgs.callPackage ./tests/compliance-report.nix { };
+
           # Integration tests (slower - validate service behavior)
           integration = pkgs.testers.runNixOSTest ./tests/integration.nix;
 
