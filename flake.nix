@@ -711,6 +711,18 @@
             opendesk.k3s-node.role = "server";
             # clusterTokenFile = /run/secrets/k3s-token;
 
+            # Binary cache: local attic is primary (priority 10), nixos.org fallback (40)
+            nix.binaryCache = {
+              enable = true;
+              url = "http://attic.internal:8080";
+              priority = 10;
+              publicKeys = [ "opendesk-1:REPLACE_WITH_ATTIC_PUBLIC_KEY" ];
+            };
+            nix.settings.extra-substituters = [ "https://cache.nixos.org/" ];
+            nix.settings.extra-trusted-public-keys = [
+              "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
+            ];
+
             # Minimal boot config so the system evaluates as bootable
             # (adjust to match disko layout for real deployments)
             boot.loader.grub.enable = true;

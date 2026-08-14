@@ -59,7 +59,6 @@ in
 
       # Retry substituters on failure
       connect-timeout = 10;
-      max-jobs = lib.mkDefault (builtins.length config.nix.builders);
     };
   };
 }
