@@ -216,6 +216,13 @@
                 ---
               '' (map (m: builtins.toJSON m) scsDeploy.opencloud));
 
+            # Nix builder
+            scs-nix-builder = pkgs.writeText "nix-builder.yaml"
+              (builtins.concatStringsSep ''
+
+                ---
+              '' (map (m: builtins.toJSON m) scsDeploy.nixBuilder));
+
             # Combined manifest for all SCS services
             scs-all = pkgs.writeText "scs-all.yaml" scsDeploy.allYaml;
           };

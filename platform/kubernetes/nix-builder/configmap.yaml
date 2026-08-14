@@ -1,0 +1,120 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nix-builder-scripts
+  namespace: nix-builder
+  labels:
+    app.kubernetes.io/name: nix-builder
+    app.kubernetes.io/part-of: opendesk
+data:
+  setup.sh: |
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "=== Nix Builder Setup ==="
+
+    # Install skopeo for pushing images to registry (persists on /nix PVC)
+    if ! command -v skopeo &>/dev/null; then
+      echo "Installing skopeo..."
+      nix profile install nixpkgs#skopeo
+      echo "skopeo installed."
+    else
+      echo "skopeo already available."
+    fi
+
+    # Install git (already in nixos/nix, but ensure it's in profile)
+    if ! command -v git &>/dev/null; then
+      echo "Installing git..."
+      nix profile install nixpkgs#git
+    fi
+
+    echo ""
+    echo "=== Nix info ==="
+    nix --version
+    echo "Store: $(du -sh /nix/store 2>/dev/null | cut -f1)"
+    echo "Profile packages: $(ls /nix/var/nix/profiles/default/bin/ 2>/dev/null | wc -l) bins"
+    echo ""
+    echo "Setup complete. Use /workspace for your git repos and build context."
+    echo "Build with: nix build .#<image-name>"
+    echo "Push with:  skopeo copy docker-archive:result docker://$REGISTRY/<name>:<tag>"
+
+  clone-repo.sh: |
+    #!/usr/bin/env bash
+    # Clone a git repo into /workspace for building
+    # Usage: clone-repo.sh <repo-url> [destination]
+    # Example: clone-repo.sh https://github.com/opendesk-edu/opendesk-edu.git
+    set -euo pipefail
+
+    REPO_URL="${1:?Usage: clone-repo.sh <repo-url> [destination]}"
+    DEST="${2:-/workspace/$(basename "$REPO_URL" .git)}"
+
+    echo "Cloning $REPO_URL → $DEST"
+    mkdir -p /workspace
+    if [ -d "$DEST" ]; then
+      echo "Destination exists, pulling..."
+      cd "$DEST"
+      git pull
+    else
+      git clone "$REPO_URL" "$DEST"
+      cd "$DEST"
+    fi
+    echo ""
+    echo "=== Nix files ==="
+    ls -la nix/ 2>/dev/null || echo "No nix/ directory"
+    echo ""
+    echo "=== Available images ==="
+    if [ -f nix/flake.nix ]; then
+      cd nix
+      nix flake show 2>/dev/null || echo "Run 'nix flake update' first"
+    else
+      echo "No flake.nix found"
+    fi
+
+  build.sh: |
+    #!/usr/bin/env bash
+    # Build a Nix container image and push to registry
+    # Usage: build.sh <image-name> <tag> [flake-attr] [flake-dir]
+    # Example: build.sh dkimpy-milter 1.1.8 dkimpy-milter /workspace/opendesk-edu/nix
+    set -euo pipefail
+
+    IMAGE_NAME="${1:?Usage: build.sh <image-name> <tag> [flake-attr] [flake-dir]}"
+    TAG="${2:?Usage: build.sh <image-name> <tag> [flake-attr] [flake-dir]}"
+    ATTR="${3:-$IMAGE_NAME}"
+    FLAKE_DIR="${4:-/workspace/opendesk-edu/nix}"
+    REGISTRY="${REGISTRY:-172.17.0.6:5001}"
+
+    echo "=== Building $ATTR → $REGISTRY/$IMAGE_NAME:$TAG ==="
+
+    if [ ! -f "$FLAKE_DIR/flake.nix" ]; then
+      echo "ERROR: $FLAKE_DIR/flake.nix not found."
+      echo "Run clone-repo.sh first, or specify flake-dir as 4th argument."
+      exit 1
+    fi
+
+    cd "$FLAKE_DIR"
+    echo "Building $ATTR from $FLAKE_DIR..."
+    nix build .#"$ATTR" --print-build-logs
+
+    # nix build creates ./result symlink pointing to the store path
+    if [ ! -L "./result" ]; then
+      echo "ERROR: nix build did not produce ./result"
+      exit 1
+    fi
+
+    RESULT=$(readlink -f ./result)
+    echo "Built: $RESULT"
+    echo ""
+    echo "=== Image info ==="
+    skopeo inspect docker-archive:"$RESULT" 2>/dev/null | head -20 || true
+    echo ""
+
+    # Push to registry
+    echo "=== Pushing to $REGISTRY/$IMAGE_NAME:$TAG ==="
+    skopeo copy --dest-tls-verify=false \
+      docker-archive:"$RESULT" \
+      docker://$REGISTRY/$IMAGE_NAME:$TAG
+
+    echo ""
+    echo "=== Verifying in registry ==="
+    skopeo inspect --tls-verify=false docker://$REGISTRY/$IMAGE_NAME:$TAG 2>/dev/null | head -10 || true
+    echo ""
+    echo "Done. Image available at $REGISTRY/$IMAGE_NAME:$TAG"

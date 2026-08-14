@@ -64,6 +64,12 @@ let
     };
   };
 
+  # Nix builder (builds Nix container images inside the cluster)
+  nixBuilder = import ../services/nix-builder.nix {
+    lib = k8sLib;
+    inherit env;
+  };
+
   # Collect all manifests
   allManifests = [
     # Namespaces
@@ -75,7 +81,9 @@ let
     # Core services (opendesk namespace)
     ++ keycloak ++ synapse ++ element
     # Edu services (opendesk-edu namespace)
-    ++ sogo ++ stalwart ++ opencloud;
+    ++ sogo ++ stalwart ++ opencloud
+    # Nix builder (nix-builder namespace)
+    ++ nixBuilder;
 
   # Convert manifests to YAML
 
@@ -162,7 +170,7 @@ in {
   inherit env allManifests allYaml manifestDir;
 
   # Individual services
-  inherit galera keycloak synapse element sogo stalwart opencloud;
+  inherit galera keycloak synapse element sogo stalwart opencloud nixBuilder;
 
   # Namespaces
   inherit opendeskNamespace opendeskEduNamespace;

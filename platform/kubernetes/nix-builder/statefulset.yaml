@@ -1,0 +1,125 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: nix-builder
+  namespace: nix-builder
+  labels:
+    app.kubernetes.io/name: nix-builder
+    app.kubernetes.io/part-of: opendesk
+spec:
+  serviceName: nix-builder
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nix-builder
+  template:
+    metadata:
+      labels:
+        app: nix-builder
+        app.kubernetes.io/name: nix-builder
+        app.kubernetes.io/part-of: opendesk
+    spec:
+      securityContext:
+        fsGroup: 0
+      initContainers:
+      - name: init-nix-store
+        image: nixos/nix:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - sh
+        - -c
+        - |
+          set -e
+          if [ ! -d /nix-pvc/store ] || [ -z "$(ls -A /nix-pvc/store 2>/dev/null)" ]; then
+            echo "Initializing nix store on PVC (copying from image)..."
+            cp -a /nix/* /nix-pvc/
+            echo "Nix store initialized ($(du -sh /nix-pvc 2>/dev/null | cut -f1))"
+          else
+            echo "Nix store already exists on PVC ($(du -sh /nix-pvc 2>/dev/null | cut -f1))"
+          fi
+        volumeMounts:
+        - name: nix-store
+          mountPath: /nix-pvc
+      containers:
+      - name: nix
+        image: nixos/nix:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - sh
+        - -c
+        - |
+          # nixos/nix image lacks /etc/nsswitch.conf and /lib — create them for DNS resolution
+          if [ ! -f /etc/nsswitch.conf ]; then
+            echo "hosts: files dns" > /etc/nsswitch.conf
+            echo "networks: files dns" >> /etc/nsswitch.conf
+          fi
+          # Create /lib symlink to glibc NSS modules (nixos/nix has no /lib)
+          if [ ! -e /lib ]; then
+            GLIBC_LIB=$(ls -d /nix/store/*-glibc-*/lib 2>/dev/null | head -1)
+            if [ -n "$GLIBC_LIB" ]; then
+              ln -sf "$GLIBC_LIB" /lib
+            fi
+          fi
+          # Enable nix-command and flakes experimental features
+          if ! grep -q "experimental-features" /etc/nix/nix.conf 2>/dev/null; then
+            echo "experimental-features = nix-command flakes" >> /etc/nix/nix.conf
+          fi
+          exec sleep infinity
+        env:
+        - name: NIX_PATH
+          value: /nix/var/nix/profiles/per-user/root/channels:/root/.nix-defexpr/channels
+        - name: NIX_SSL_CERT_FILE
+          value: /nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt
+        - name: SSL_CERT_FILE
+          value: /nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt
+        - name: GIT_SSL_CAINFO
+          value: /nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt
+        # Registry (override via ConfigMap/Secret in overlays)
+        - name: REGISTRY
+          value: "172.17.0.6:5001"
+        # Proxy settings (override or remove in overlays)
+        - name: HTTP_PROXY
+          value: ""
+        - name: HTTPS_PROXY
+          value: ""
+        - name: NO_PROXY
+          value: "localhost,127.0.0.1,10.0.0.0/8,172.16.0.0/12,.svc,.cluster.local"
+        volumeMounts:
+        - name: nix-store
+          mountPath: /nix
+        - name: workspace
+          mountPath: /workspace
+        - name: scripts
+          mountPath: /scripts
+          readOnly: true
+        resources:
+          requests:
+            cpu: '2'
+            memory: 4Gi
+          limits:
+            cpu: '8'
+            memory: 16Gi
+      volumes:
+      - name: workspace
+        persistentVolumeClaim:
+          claimName: nix-workspace
+      - name: scripts
+        configMap:
+          name: nix-builder-scripts
+          defaultMode: 493
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: 'true'
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
+  volumeClaimTemplates:
+  - metadata:
+      name: nix-store
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      storageClassName: ceph-rbd
+      resources:
+        requests:
+          storage: 50Gi

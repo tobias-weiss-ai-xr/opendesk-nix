@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nix-builder
+  labels:
+    kubernetes.io/metadata.name: nix-builder
+    app.kubernetes.io/name: nix-builder
+    app.kubernetes.io/part-of: opendesk

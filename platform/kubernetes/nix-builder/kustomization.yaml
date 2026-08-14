@@ -1,0 +1,27 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Nix Builder — Kubernetes StatefulSet for building Nix container images
+# inside the cluster using Ceph-backed PVCs.
+#
+# Usage:
+#   kubectl apply -k platform/kubernetes/nix-builder/
+#
+# Or with overlays:
+#   kubectl apply -k platform/kubernetes/nix-builder/overlay/scs/
+#
+# The nix-builder provides a persistent Nix environment (nixos/nix:latest)
+# with /nix on Ceph RBD and /workspace on CephFS. Build scripts are mounted
+# from a ConfigMap. Use `kubectl exec` to run builds.
+#
+# Requirements:
+#   - Ceph CSI (ceph-rbd and ceph-cephfs storage classes)
+#   - A container registry reachable from the cluster (default: 172.17.0.6:5001)
+#   - nixos/nix:latest image available (push to local registry first)
+
+resources:
+- namespace.yaml
+- pvc.yaml
+- configmap.yaml
+- statefulset.yaml
+- networkpolicy.yaml

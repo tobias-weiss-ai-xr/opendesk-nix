@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nix-workspace
+  namespace: nix-builder
+  labels:
+    app.kubernetes.io/name: nix-builder
+    app.kubernetes.io/part-of: opendesk
+spec:
+  accessModes:
+  - ReadWriteMany
+  storageClassName: ceph-cephfs
+  resources:
+    requests:
+      storage: 20Gi
