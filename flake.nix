@@ -136,6 +136,11 @@
             inherit nixos-services;
           };
 
+          # Appliance image builds (immutable A/B-updatable NixOS image)
+          appliance-image = pkgs.callPackage ./tests/appliance-image.nix {
+            inherit nixpkgs;
+          };
+
           # Integration tests (slower - validate service behavior)
           integration = pkgs.testers.runNixOSTest ./tests/integration.nix;
 
