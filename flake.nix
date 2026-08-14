@@ -727,6 +727,7 @@
         attic-server = import ./modules/attic-server.nix;
         binary-cache-client = import ./modules/binary-cache-client.nix;
         post-build-hook = import ./modules/post-build-hook.nix;
+        remote-builders = import ./modules/remote-builders.nix;
       };
 
       # NixOS system configurations
