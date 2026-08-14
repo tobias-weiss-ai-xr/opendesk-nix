@@ -5,7 +5,11 @@
 # Uses shared Galera cluster for database
 # Image: docker.io/weissto/sogo:bookworm-5.12.9
 
-{ lib, env ? import ../environments/scs/default.nix { inherit lib; }, ... }:
+{
+  lib,
+  env ? import ../environments/scs/default.nix { inherit lib; },
+  ...
+}:
 
 let
   name = "sogo";
@@ -35,8 +39,12 @@ let
     allowPrivilegeEscalation = false;
     runAsNonRoot = false;
     readOnlyRootFilesystem = false;
-    capabilities = { drop = [ ]; };
-    seccompProfile = { type = "RuntimeDefault"; };
+    capabilities = {
+      drop = [ ];
+    };
+    seccompProfile = {
+      type = "RuntimeDefault";
+    };
   };
 
   podSecurityContext = {
@@ -69,18 +77,10 @@ let
       WOListenQueueSize = 5;
       SxVMemLimit = 400;
       SOGoMemcachedHost = "memcached.opendesk.svc.cluster.local:11211";
-      SOGoProfileURL = "mysql://${db.sogo.user}:${db.sogo.password}@${db.host}:${
-        toString db.port
-      }/${db.sogo.name}/sogo_user_profile";
-      OCSAclURL = "mysql://${db.sogo.user}:${db.sogo.password}@${db.host}:${
-        toString db.port
-      }/${db.sogo.name}/sogo_acl";
-      OCSFolderInfoURL = "mysql://${db.sogo.user}:${db.sogo.password}@${db.host}:${
-        toString db.port
-      }/${db.sogo.name}/sogo_folder_profile";
-      OCSSessionsFolderURL = "mysql://${db.sogo.user}:${db.sogo.password}@${db.host}:${
-        toString db.port
-      }/${db.sogo.name}/sogo_sessions_folder";
+      SOGoProfileURL = "mysql://${db.sogo.user}:${db.sogo.password}@${db.host}:${toString db.port}/${db.sogo.name}/sogo_user_profile";
+      OCSAclURL = "mysql://${db.sogo.user}:${db.sogo.password}@${db.host}:${toString db.port}/${db.sogo.name}/sogo_acl";
+      OCSFolderInfoURL = "mysql://${db.sogo.user}:${db.sogo.password}@${db.host}:${toString db.port}/${db.sogo.name}/sogo_folder_profile";
+      OCSSessionsFolderURL = "mysql://${db.sogo.user}:${db.sogo.password}@${db.host}:${toString db.port}/${db.sogo.name}/sogo_sessions_folder";
       SOGoIMAPServer = "imaps://stalwart-stalwart.opendesk-edu.svc.cluster.local:993";
       SOGoSMTPServer = "smtp://stalwart-stalwart.opendesk-edu.svc.cluster.local:587";
       SOGoSieveServer = "sieve://stalwart-stalwart.opendesk-edu.svc.cluster.local:4190";
@@ -126,12 +126,20 @@ let
     }
   ];
 
-in [
+in
+[
   (lib.deployment {
-    inherit name image tag port resources labels;
+    inherit
+      name
+      image
+      tag
+      port
+      resources
+      labels
+      ;
     env = containerEnv;
-    securityContext = securityContext;
-    podSecurityContext = podSecurityContext;
+    inherit securityContext;
+    inherit podSecurityContext;
     liveness = livenessProbe;
     readiness = readinessProbe;
     namespace = env.namespaceEdu;
@@ -155,15 +163,19 @@ in [
         name = "config";
         configMap = {
           name = "${name}-config";
-          items = [{
-            key = "sogo.conf";
-            path = "sogo.conf";
-          }];
+          items = [
+            {
+              key = "sogo.conf";
+              path = "sogo.conf";
+            }
+          ];
         };
       }
       {
         name = "data";
-        persistentVolumeClaim = { claimName = "${name}-data"; };
+        persistentVolumeClaim = {
+          claimName = "${name}-data";
+        };
       }
     ];
   })
@@ -176,8 +188,8 @@ in [
   (lib.ingressWithCert {
     inherit name;
     host = env.hosts.sogo;
-    port = port;
-    className = env.ingress.className;
+    inherit port;
+    inherit (env.ingress) className;
     tlsSecretName = env.tls.secretName;
     annotations = env.ingress.annotations // {
       "haproxy-ingress.github.io/proxy-body-size" = "50M";
@@ -189,8 +201,10 @@ in [
   (lib.configMap {
     name = "${name}-config";
     namespace = env.namespaceEdu;
-    labels = labels;
-    data = { "sogo.conf" = sogoConfig; };
+    inherit labels;
+    data = {
+      "sogo.conf" = sogoConfig;
+    };
   })
 
   (lib.pvc {
@@ -199,6 +213,6 @@ in [
     storageClass = env.storage.rwo;
     accessModes = [ "ReadWriteOnce" ];
     namespace = env.namespaceEdu;
-    labels = labels;
+    inherit labels;
   })
 ]

@@ -8,7 +8,12 @@
 #   nix build .#scs-manifests
 #   kubectl apply -f result/
 
-{ pkgs, lib, k8s, ... }:
+{
+  pkgs,
+  lib,
+  k8s,
+  ...
+}:
 
 let
   # Merge pkgs.lib with k8s builders so service files get both
@@ -96,17 +101,22 @@ let
   };
 
   # Collect all manifests
-  allManifests = [
-    # Namespaces
-    opendeskNamespace
-    opendeskEduNamespace
-  ]
-  # Galera cluster (universal SQL database)
+  allManifests =
+    [
+      # Namespaces
+      opendeskNamespace
+      opendeskEduNamespace
+    ]
+    # Galera cluster (universal SQL database)
     ++ galera
     # Core services (opendesk namespace)
-    ++ keycloak ++ synapse ++ element
+    ++ keycloak
+    ++ synapse
+    ++ element
     # Edu services (opendesk-edu namespace)
-    ++ sogo ++ stalwart ++ opencloud
+    ++ sogo
+    ++ stalwart
+    ++ opencloud
     # Nix builder (nix-builder namespace)
     ++ nixBuilder
     # Security operators (separate namespaces)
@@ -120,10 +130,12 @@ let
   # Convert manifests to YAML
 
   # Build a single YAML file with all manifests
-  allYaml = pkgs.writeText "scs-manifests.yaml" (builtins.concatStringsSep ''
+  allYaml = pkgs.writeText "scs-manifests.yaml" (
+    builtins.concatStringsSep ''
 
-    ---
-  '' (map (m: builtins.toJSON m) allManifests));
+      ---
+    '' (map (m: builtins.toJSON m) allManifests)
+  );
 
   # Build a directory with individual YAML files
   manifestDir = pkgs.runCommand "scs-manifests" { } ''
@@ -139,117 +151,165 @@ let
     EOF
 
     # Galera
-    ${builtins.concatStringsSep "\n" (map (m: ''
-      cat >> $out/10-galera.yaml << 'YAMLEOF'
-      ---
-      ${builtins.toJSON m}
-      YAMLEOF
-    '') galera)}
+    ${builtins.concatStringsSep "\n" (
+      map (m: ''
+        cat >> $out/10-galera.yaml << 'YAMLEOF'
+        ---
+        ${builtins.toJSON m}
+        YAMLEOF
+      '') galera
+    )}
 
     # Keycloak
-    ${builtins.concatStringsSep "\n" (map (m: ''
-      cat >> $out/20-keycloak.yaml << 'YAMLEOF'
-      ---
-      ${builtins.toJSON m}
-      YAMLEOF
-    '') keycloak)}
+    ${builtins.concatStringsSep "\n" (
+      map (m: ''
+        cat >> $out/20-keycloak.yaml << 'YAMLEOF'
+        ---
+        ${builtins.toJSON m}
+        YAMLEOF
+      '') keycloak
+    )}
 
     # Synapse
-    ${builtins.concatStringsSep "\n" (map (m: ''
-      cat >> $out/30-synapse.yaml << 'YAMLEOF'
-      ---
-      ${builtins.toJSON m}
-      YAMLEOF
-    '') synapse)}
+    ${builtins.concatStringsSep "\n" (
+      map (m: ''
+        cat >> $out/30-synapse.yaml << 'YAMLEOF'
+        ---
+        ${builtins.toJSON m}
+        YAMLEOF
+      '') synapse
+    )}
 
     # Element
-    ${builtins.concatStringsSep "\n" (map (m: ''
-      cat >> $out/31-element.yaml << 'YAMLEOF'
-      ---
-      ${builtins.toJSON m}
-      YAMLEOF
-    '') element)}
+    ${builtins.concatStringsSep "\n" (
+      map (m: ''
+        cat >> $out/31-element.yaml << 'YAMLEOF'
+        ---
+        ${builtins.toJSON m}
+        YAMLEOF
+      '') element
+    )}
 
     # SOGo
-    ${builtins.concatStringsSep "\n" (map (m: ''
-      cat >> $out/40-sogo.yaml << 'YAMLEOF'
-      ---
-      ${builtins.toJSON m}
-      YAMLEOF
-    '') sogo)}
+    ${builtins.concatStringsSep "\n" (
+      map (m: ''
+        cat >> $out/40-sogo.yaml << 'YAMLEOF'
+        ---
+        ${builtins.toJSON m}
+        YAMLEOF
+      '') sogo
+    )}
 
     # Stalwart
-    ${builtins.concatStringsSep "\n" (map (m: ''
-      cat >> $out/41-stalwart.yaml << 'YAMLEOF'
-      ---
-      ${builtins.toJSON m}
-      YAMLEOF
-    '') stalwart)}
+    ${builtins.concatStringsSep "\n" (
+      map (m: ''
+        cat >> $out/41-stalwart.yaml << 'YAMLEOF'
+        ---
+        ${builtins.toJSON m}
+        YAMLEOF
+      '') stalwart
+    )}
 
     # OpenCloud
-    ${builtins.concatStringsSep "\n" (map (m: ''
-      cat >> $out/42-opencloud.yaml << 'YAMLEOF'
-      ---
-      ${builtins.toJSON m}
-      YAMLEOF
-    '') opencloud)}
+    ${builtins.concatStringsSep "\n" (
+      map (m: ''
+        cat >> $out/42-opencloud.yaml << 'YAMLEOF'
+        ---
+        ${builtins.toJSON m}
+        YAMLEOF
+      '') opencloud
+    )}
 
     # Also write a combined file
     cp ${allYaml} $out/all-manifests.yaml
 
     # Security operators
-    ${builtins.concatStringsSep "\n" (map (m: ''
-      cat >> $out/50-trivy-operator.yaml << 'YAMLEOF'
-      ---
-      ${builtins.toJSON m}
-      YAMLEOF
-    '') trivyOperator)}
+    ${builtins.concatStringsSep "\n" (
+      map (m: ''
+        cat >> $out/50-trivy-operator.yaml << 'YAMLEOF'
+        ---
+        ${builtins.toJSON m}
+        YAMLEOF
+      '') trivyOperator
+    )}
 
-    ${builtins.concatStringsSep "\n" (map (m: ''
-      cat >> $out/51-kyverno.yaml << 'YAMLEOF'
-      ---
-      ${builtins.toJSON m}
-      YAMLEOF
-    '') kyverno)}
+    ${builtins.concatStringsSep "\n" (
+      map (m: ''
+        cat >> $out/51-kyverno.yaml << 'YAMLEOF'
+        ---
+        ${builtins.toJSON m}
+        YAMLEOF
+      '') kyverno
+    )}
 
-    ${builtins.concatStringsSep "\n" (map (m: ''
-      cat >> $out/52-kyverno-policies.yaml << 'YAMLEOF'
-      ---
-      ${builtins.toJSON m}
-      YAMLEOF
-    '') kyvernoPolicies)}
+    ${builtins.concatStringsSep "\n" (
+      map (m: ''
+        cat >> $out/52-kyverno-policies.yaml << 'YAMLEOF'
+        ---
+        ${builtins.toJSON m}
+        YAMLEOF
+      '') kyvernoPolicies
+    )}
 
-    ${builtins.concatStringsSep "\n" (map (m: ''
-      cat >> $out/53-sealed-secrets.yaml << 'YAMLEOF'
-      ---
-      ${builtins.toJSON m}
-      YAMLEOF
-    '') sealedSecrets)}
+    ${builtins.concatStringsSep "\n" (
+      map (m: ''
+        cat >> $out/53-sealed-secrets.yaml << 'YAMLEOF'
+        ---
+        ${builtins.toJSON m}
+        YAMLEOF
+      '') sealedSecrets
+    )}
 
-    ${builtins.concatStringsSep "\n" (map (m: ''
-      cat >> $out/54-falco.yaml << 'YAMLEOF'
-      ---
-      ${builtins.toJSON m}
-      YAMLEOF
-    '') falco)}
+    ${builtins.concatStringsSep "\n" (
+      map (m: ''
+        cat >> $out/54-falco.yaml << 'YAMLEOF'
+        ---
+        ${builtins.toJSON m}
+        YAMLEOF
+      '') falco
+    )}
 
-    ${builtins.concatStringsSep "\n" (map (m: ''
-      cat >> $out/55-cosign-policies.yaml << 'YAMLEOF'
-      ---
-      ${builtins.toJSON m}
-      YAMLEOF
-    '') cosignPolicies)}
+    ${builtins.concatStringsSep "\n" (
+      map (m: ''
+        cat >> $out/55-cosign-policies.yaml << 'YAMLEOF'
+        ---
+        ${builtins.toJSON m}
+        YAMLEOF
+      '') cosignPolicies
+    )}
   '';
 
-in {
-  inherit env allManifests allYaml manifestDir;
+in
+{
+  inherit
+    env
+    allManifests
+    allYaml
+    manifestDir
+    ;
 
   # Individual services
-  inherit galera keycloak synapse element sogo stalwart opencloud nixBuilder;
+  inherit
+    galera
+    keycloak
+    synapse
+    element
+    sogo
+    stalwart
+    opencloud
+    nixBuilder
+    ;
 
   # Namespaces
   inherit opendeskNamespace opendeskEduNamespace;
 
   # Security operators
-  inherit trivyOperator kyverno kyvernoPolicies sealedSecrets falco cosignPolicies;
+  inherit
+    trivyOperator
+    kyverno
+    kyvernoPolicies
+    sealedSecrets
+    falco
+    cosignPolicies
+    ;
 }

@@ -18,30 +18,43 @@ let
   # ============================================================================
 
   # Escape markdown special characters
-  escapeMarkdown = str:
-    lib.replaceStrings ["`" "*" "_" "[" "]" "{" "}"]
-                       ["\\`" "\\*" "\\_" "\\[" "\\]" "\\{" "\\}"]
-                       str;
+  escapeMarkdown =
+    str:
+    lib.replaceStrings
+      [
+        "`"
+        "*"
+        "_"
+        "["
+        "]"
+        "{"
+        "}"
+      ]
+      [
+        "\\`"
+        "\\*"
+        "\\_"
+        "\\["
+        "\\]"
+        "\\{"
+        "\\}"
+      ]
+      str;
 
   # Generate code block
-  codeBlock = lang: code:
-    "```${lang}\n${code}\n```";
+  codeBlock = lang: code: "```${lang}\n${code}\n```";
 
   # Generate header
-  header = level: text:
-    "${lib.replicate level "#" } ${text}\n";
+  header = level: text: "${lib.replicate level "#"} ${text}\n";
 
   # Generate table row
-  tableRow = cells:
-    "| ${lib.concatStringsSep " | " cells} |\n";
+  tableRow = cells: "| ${lib.concatStringsSep " | " cells} |\n";
 
   # Generate table header
-  tableHeader = headers:
-    tableRow headers + tableHeaderSeparator (length headers);
+  tableHeader = headers: tableRow headers + tableHeaderSeparator (length headers);
 
   # Generate table header separator
-  tableHeaderSeparator = count:
-    lib.concatStringsSep "" (lib.genList (_i: "---|") count) + "\n";
+  tableHeaderSeparator = count: lib.concatStringsSep "" (lib.genList (_i: "---|") count) + "\n";
 
   # ============================================================================
   # Function Documentation
@@ -67,15 +80,22 @@ let
   '';
 
   # Generate parameters documentation
-  generateParametersDoc = func:
+  generateParametersDoc =
+    func:
     let
       args = lib.functionArgs func;
     in
-    if args == []
-    then "No parameters."
+    if args == [ ] then
+      "No parameters."
     else
-      tableHeader [ "Parameter" "Type" "Required" "Description" ] +
-      lib.concatMapStrings (arg:
+      tableHeader [
+        "Parameter"
+        "Type"
+        "Required"
+        "Description"
+      ]
+      + lib.concatMapStrings (
+        arg:
         tableRow [
           (escapeMarkdown arg)
           "any"
@@ -85,7 +105,8 @@ let
       ) args;
 
   # Generate returns documentation
-  generateReturnsDoc = func:
+  generateReturnsDoc =
+    func:
     let
       returnType = toString (lib.typeOf func);
     in
@@ -96,23 +117,30 @@ let
   # ============================================================================
 
   # Generate README for a library
-  generateLibraryReadme = { name, description, functions, examples ? [] }: ''
-    # ${name}
+  generateLibraryReadme =
+    {
+      name,
+      description,
+      functions,
+      examples ? [ ],
+    }:
+    ''
+      # ${name}
 
-    ${description}
+      ${description}
 
-    ## Functions
+      ## Functions
 
-    ${lib.concatMapStrings (f: generateFunctionDoc f.name f.func f.description f.examples) functions}
+      ${lib.concatMapStrings (f: generateFunctionDoc f.name f.func f.description f.examples) functions}
 
-    ## Examples
+      ## Examples
 
-    ${lib.concatMapStrings (example: codeBlock "nix" example) examples}
+      ${lib.concatMapStrings (example: codeBlock "nix" example) examples}
 
-    ## License
+      ## License
 
-    This library is part of openDesk Edu and is licensed under the Apache License 2.0.
-  '';
+      This library is part of openDesk Edu and is licensed under the Apache License 2.0.
+    '';
 
   # ============================================================================
   # k8s.nix Documentation
@@ -129,7 +157,9 @@ let
     functions = [
       {
         name = "mkDeployment";
-        func = { replicas ? 1 }: {};
+        func =
+          _:
+          { };
         description = ''
           Create a Kubernetes Deployment resource.
 
@@ -152,7 +182,9 @@ let
       }
       {
         name = "mkService";
-        func = { type ? "ClusterIP" }: {};
+        func =
+          _:
+          { };
         description = ''
           Create a Kubernetes Service resource.
 
@@ -171,7 +203,7 @@ let
       }
       {
         name = "mkConfigMap";
-        func = { data }: {};
+        func = { data }: { };
         description = ''
           Create a Kubernetes ConfigMap resource.
 
@@ -182,9 +214,9 @@ let
             lib.k8s.mkConfigMap {
               name = "app-config";
               data = {
-                "config.yaml" = ''
+                "config.yaml" = '''
                   _key: value
-                '';
+                ''';
               };
             }
           ''
@@ -192,7 +224,9 @@ let
       }
       {
         name = "mkSecret";
-        func = { type ? "Opaque" }: {};
+        func =
+          _:
+          { };
         description = ''
           Create a Kubernetes Secret resource.
 
@@ -213,7 +247,9 @@ let
       }
       {
         name = "mkNamespace";
-        func = { labels ? {} }: {};
+        func =
+          _:
+          { };
         description = ''
           Create a Kubernetes Namespace resource.
 
@@ -232,7 +268,7 @@ let
       }
       {
         name = "mkRBAC";
-        func = { rules }: {};
+        func = { rules }: { };
         description = ''
           Create Kubernetes RBAC resources (Role, RoleBinding, ServiceAccount).
 
@@ -288,7 +324,9 @@ let
     functions = [
       {
         name = "mkSecurityContext";
-        func = { readOnlyRootFilesystem ? true }: {};
+        func =
+          _:
+          { };
         description = ''
           Create a secure container security context.
 
@@ -306,7 +344,9 @@ let
       }
       {
         name = "mkNetworkPolicy";
-        func = { egress ? [] }: {};
+        func =
+          _:
+          { };
         description = ''
           Create a Kubernetes NetworkPolicy.
 
@@ -323,7 +363,9 @@ let
       }
       {
         name = "mkKyvernoPolicy";
-        func = { validationFailureAction ? "enforce" }: {};
+        func =
+          _:
+          { };
         description = ''
           Create a Kyverno ClusterPolicy.
 
@@ -376,7 +418,7 @@ let
     functions = [
       {
         name = "compliance-operator";
-        func = { checkpoints }: {};
+        func = { checkpoints }: { };
         description = ''
           Compliance Operator for ZKI-IT-Grundschutz automation.
 
@@ -395,7 +437,7 @@ let
       }
       {
         name = "image-builder-operator";
-        func = { rbac }: {};
+        func = { rbac }: { };
         description = ''
           Image Builder Operator for automated Nix builds.
 
@@ -433,12 +475,12 @@ let
 
   combined-docs = pkgs.runCommand "opendesk-nix-docs" { } ''
     mkdir -p $out/docs/lib
-    
+
     # Generate individual library docs
     echo "${k8s-docs}" > $out/docs/lib/k8s.md
     echo "${security-docs}" > $out/docs/lib/security.md
     echo "${operators-docs}" > $out/docs/lib/operators.md
-    
+
     # Generate combined index
     cat > $out/index.md << 'EOF'
     # openDesk Edu Library Documentation
@@ -469,7 +511,7 @@ let
     This documentation is part of openDesk Edu and is licensed under
     the Apache License 2.0.
     EOF
-    
+
     touch $out/DocumentationGenerated
   '';
 
@@ -477,7 +519,8 @@ let
   # Export
   # ============================================================================
 
-in {
+in
+{
   # Individual library documentation
   k8s-docs = pkgs.writeText "k8s-docs.md" k8s-docs;
   security-docs = pkgs.writeText "security-docs.md" security-docs;
@@ -487,12 +530,30 @@ in {
   all-docs = combined-docs;
 
   # Helper function to generate docs for any library
-  generateDocs = { name, description, functions, examples ? [] }:
-    pkgs.writeText "${name}-docs.md"
-      (generateLibraryReadme { inherit name description functions examples; });
+  generateDocs =
+    {
+      name,
+      description,
+      functions,
+      examples ? [ ],
+    }:
+    pkgs.writeText "${name}-docs.md" (generateLibraryReadme {
+      inherit
+        name
+        description
+        functions
+        examples
+        ;
+    });
 
   # Markdown generation utilities
   utils = {
-    inherit escapeMarkdown codeBlock header tableRow tableHeader;
+    inherit
+      escapeMarkdown
+      codeBlock
+      header
+      tableRow
+      tableHeader
+      ;
   };
 }

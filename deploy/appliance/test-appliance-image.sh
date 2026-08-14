@@ -33,17 +33,17 @@ log_step() { echo -e "${BLUE}[STEP]${NC} $*"; }
 # Build appliance image
 build_image() {
     log_step "Building appliance image..."
-    
-    if ! command -v nix &> /dev/null; then
+
+    if ! command -v nix &>/dev/null; then
         log_error "Nix not found. Please install Nix first."
         exit 1
     fi
-    
+
     log_info "Running: nix build .#image-${IMAGE_NAME}"
-    
+
     if nix build ".#image-${IMAGE_NAME}" --out-link ./result-image; then
         log_info "✓ Image built successfully"
-        
+
         # Check image file
         if [ -f ./result-image/disk-image.img ]; then
             local size
@@ -61,14 +61,14 @@ build_image() {
 # Create test VM
 create_vm() {
     log_step "Creating test VM..."
-    
-    if ! command -v qemu-system-x86_64 &> /dev/null; then
+
+    if ! command -v qemu-system-x86_64 &>/dev/null; then
         log_error "QEMU not found. Install qemu-kvm package."
         exit 1
     fi
-    
+
     log_info "Creating VM with ${DISK_SIZE} disk..."
-    
+
     # Create disk image if not exists
     if [ ! -f "/tmp/${VM_NAME}.qcow2" ]; then
         qemu-img create -f qcow2 "/tmp/${VM_NAME}.qcow2" "${DISK_SIZE}"
@@ -76,7 +76,7 @@ create_vm() {
     else
         log_warn "Disk image already exists, reusing"
     fi
-    
+
     # Copy appliance image to VM disk
     if [ -f ./result-image/disk-image.img ]; then
         cp ./result-image/disk-image.img "/tmp/${VM_NAME}.qcow2"
@@ -87,7 +87,7 @@ create_vm() {
 # Start VM
 start_vm() {
     log_step "Starting VM..."
-    
+
     qemu-system-x86_64 \
         -m 4096 \
         -cpu host \
@@ -97,7 +97,7 @@ start_vm() {
         -display none \
         -daemonize \
         -name "${VM_NAME}"
-    
+
     log_info "✓ VM started"
     log_info "  SSH access: ssh -p 2222 root@localhost"
 }
@@ -105,20 +105,20 @@ start_vm() {
 # Wait for VM to boot
 wait_for_vm() {
     log_step "Waiting for VM to boot..."
-    
+
     local max_attempts=60
     local attempt=0
-    
+
     while [ $attempt -lt $max_attempts ]; do
         if ssh -p 2222 -o ConnectTimeout=5 -o BatchMode=yes root@localhost "exit" 2>/dev/null; then
             log_info "✓ VM is ready"
             return 0
         fi
-        
+
         attempt=$((attempt + 1))
         sleep 2
     done
-    
+
     log_error "✗ VM failed to boot within 2 minutes"
     return 1
 }
@@ -126,7 +126,7 @@ wait_for_vm() {
 # Test K3s startup
 test_k3s() {
     log_step "Testing K3s startup..."
-    
+
     if ssh -p 2222 root@localhost "systemctl is-active k3s" | grep -q active; then
         log_info "✓ K3s is running"
     else
@@ -138,16 +138,16 @@ test_k3s() {
 # Test network connectivity
 test_network() {
     log_step "Testing network connectivity..."
-    
+
     # Test internet
-    if ssh -p 2222 root@localhost "ping -c 1 -W 2 8.8.8.8" &> /dev/null; then
+    if ssh -p 2222 root@localhost "ping -c 1 -W 2 8.8.8.8" &>/dev/null; then
         log_info "✓ Internet connectivity OK"
     else
         log_warn "Internet connectivity failed"
     fi
-    
+
     # Test DNS
-    if ssh -p 2222 root@localhost "ping -c 1 -W 2 google.com" &> /dev/null; then
+    if ssh -p 2222 root@localhost "ping -c 1 -W 2 google.com" &>/dev/null; then
         log_info "✓ DNS resolution OK"
     else
         log_warn "DNS resolution failed"
@@ -157,18 +157,18 @@ test_network() {
 # Test storage configuration
 test_storage() {
     log_step "Testing storage configuration..."
-    
+
     # Check disk layout
     ssh -p 2222 root@localhost "lsblk -f" || true
-    
+
     # Check btrfs subvolumes
-    if ssh -p 2222 root@localhost "btrfs subvolume list /" &> /dev/null; then
+    if ssh -p 2222 root@localhost "btrfs subvolume list /" &>/dev/null; then
         log_info "✓ Btrfs subvolumes configured"
         ssh -p 2222 root@localhost "btrfs subvolume list /"
     else
         log_warn "Btrfs subvolumes not found"
     fi
-    
+
     # Check disk space
     ssh -p 2222 root@localhost "df -h" || true
 }
@@ -176,16 +176,16 @@ test_storage() {
 # Test binary cache
 test_binary_cache() {
     log_step "Testing binary cache..."
-    
+
     # Check substituters
     if ssh -p 2222 root@localhost "nix show-config | grep substituters" | grep -q "attic"; then
         log_info "✓ Binary cache substituter configured"
     else
         log_warn "Binary cache not configured"
     fi
-    
+
     # Test substitution
-    if ssh -p 2222 root@localhost "nix-store -q --replacements /run/current-system" &> /dev/null; then
+    if ssh -p 2222 root@localhost "nix-store -q --replacements /run/current-system" &>/dev/null; then
         log_info "✓ Binary cache substitution working"
     else
         log_warn "Binary cache substitution failed"
@@ -195,7 +195,7 @@ test_binary_cache() {
 # Cleanup
 cleanup() {
     log_step "Cleaning up..."
-    
+
     # Stop VM
     if qemu-monitor-command -q socket -p 4444 "${VM_NAME}" "quit" 2>/dev/null; then
         log_info "✓ VM stopped"
@@ -203,7 +203,7 @@ cleanup() {
         pkill -f "qemu-system-x86_64.*${VM_NAME}" || true
         log_info "✓ VM process killed"
     fi
-    
+
     # Remove disk
     rm -f "/tmp/${VM_NAME}.qcow2"
     log_info "✓ Disk image removed"
@@ -215,10 +215,10 @@ main() {
     log_info "Appliance Image Test for SCS Hardware"
     log_info "=========================================="
     log_info ""
-    
+
     # Trap cleanup on exit
     trap cleanup EXIT
-    
+
     build_image
     create_vm
     start_vm
@@ -227,7 +227,7 @@ main() {
     test_network
     test_storage
     test_binary_cache
-    
+
     log_info ""
     log_info "=========================================="
     log_info "Test Complete!"

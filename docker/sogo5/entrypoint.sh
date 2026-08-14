@@ -114,24 +114,24 @@ log_error() {
 cleanup() {
     local exit_code=${1:-0}
     local signal_name="$2"
-    
+
     if ${SHUTDOWN_REQUESTED:-false}; then
         log_info "Already handling shutdown, ignoring signal ${signal_name}"
         return
     fi
-    
+
     SHUTDOWN_REQUESTED=true
     log_info "Received signal ${signal_name:-unknown}, performing graceful shutdown..."
-    
+
     # Order matters: stop services in reverse startup order
-    
+
     # 3. Stop health server
     if [[ -n "${HEALTH_PID}" && -f "/proc/${HEALTH_PID}/status" ]]; then
         log_info "Stopping health server (PID: ${HEALTH_PID})..."
         stop_process "${HEALTH_PID}" "health server" "${GRACEFUL_TIMEOUT}"
         HEALTH_PID=""
     fi
-    
+
     # 2. Stop SOGo
     if [[ -n "${SOGO_PID}" && -f "/proc/${SOGO_PID}/status" ]]; then
         log_info "Stopping SOGo (PID: ${SOGO_PID})..."
@@ -140,17 +140,17 @@ cleanup() {
         stop_related_processes "sogod" "SOGo child processes"
         SOGO_PID=""
     fi
-    
+
     # 1. Stop Memcached
     if [[ -n "${MEMCACHED_PID}" && -f "/proc/${MEMCACHED_PID}/status" ]]; then
         log_info "Stopping Memcached (PID: ${MEMCACHED_PID})..."
         stop_process "${MEMCACHED_PID}" "Memcached" "${GRACEFUL_TIMEOUT}"
         MEMCACHED_PID=""
     fi
-    
+
     # Cleanup PID files
     cleanup_pid_files
-    
+
     log_info "All services stopped, exiting with code ${exit_code}"
     exit ${exit_code}
 }
@@ -159,13 +159,13 @@ stop_process() {
     local pid="$1"
     local name="$2"
     local timeout="$3"
-    
+
     # Try graceful shutdown first
     if ! kill -0 "${pid}" 2>/dev/null; then
         log_info "${name} already stopped"
         return 0
     fi
-    
+
     # Send TERM signal
     if kill -TERM "${pid}" 2>/dev/null; then
         local count=0
@@ -173,7 +173,7 @@ stop_process() {
             sleep 1
             count=$((count + 1))
         done
-        
+
         if kill -0 "${pid}" 2>/dev/null; then
             log_warn "${name} did not stop gracefully, sending SIGKILL"
             kill -KILL "${pid}" 2>/dev/null || true
@@ -189,18 +189,18 @@ stop_process() {
 stop_related_processes() {
     local name="$1"
     local description="$2"
-    
+
     log_info "Stopping ${description}..."
     local pids
     pids=$(pgrep -f "${name}" 2>/dev/null || true)
-    
+
     if [[ -n "${pids}" ]]; then
         for pid in ${pids}; do
             if [[ "${pid}" != "$$" && "${pid}" != "${SOGO_PID}" ]]; then
                 kill -TERM "${pid}" 2>/dev/null || true
             fi
         done
-        
+
         # Wait for all to stop
         sleep 2
         pids=$(pgrep -f "${name}" 2>/dev/null || true)
@@ -231,7 +231,7 @@ trap 'cleanup 0' EXIT
 
 validate_required_binaries() {
     log_info "Validating required binaries..."
-    
+
     local binaries=(
         "${MEMCACHED_BIN}"
         "${SOGO_BIN}"
@@ -239,7 +239,7 @@ validate_required_binaries() {
         "/usr/bin/curl"
         "/usr/bin/wget"
     )
-    
+
     for binary in "${binaries[@]}"; do
         if [[ ! -x "${binary}" ]]; then
             log_error "Required binary not found or not executable: ${binary}"
@@ -247,14 +247,14 @@ validate_required_binaries() {
         fi
         log_info "  Found: ${binary}"
     done
-    
+
     log_success "All required binaries validated"
     return 0
 }
 
 validate_environment() {
     log_info "Validating environment variables..."
-    
+
     # SOGo configuration
     local sogo_vars=(
         "SOGO_DEBUG"
@@ -265,13 +265,13 @@ validate_environment() {
         "SOGO_DEFAULT_LANGUAGE"
         "SOGO_SQL_DEBUG"
     )
-    
+
     for var in "${sogo_vars[@]}"; do
         if [[ -n "${!var:-}" ]]; then
             log_info "  ${var}=${!var}"
         fi
     done
-    
+
     # Database configuration
     local db_vars=(
         "SOGO_DB_HOST"
@@ -280,7 +280,7 @@ validate_environment() {
         "SOGO_DB_USER"
         "SOGO_DB_TYPE"
     )
-    
+
     local db_configured=true
     for var in "${db_vars[@]}"; do
         if [[ -z "${!var:-}" ]]; then
@@ -290,12 +290,12 @@ validate_environment() {
             log_info "  ${var}=[REDACTED]"
         fi
     done
-    
+
     if ! ${db_configured}; then
         log_error "Database configuration incomplete. Required: SOGO_DB_HOST, SOGO_DB_PORT, SOGO_DB_NAME, SOGO_DB_USER, SOGO_DB_TYPE"
         return 1
     fi
-    
+
     # Memcached configuration
     local memcached_vars=(
         "MEMCACHED_SERVER"
@@ -303,13 +303,13 @@ validate_environment() {
         "MEMCACHED_MAX_CONNECTIONS"
         "MEMCACHED_CACHE_SIZE"
     )
-    
+
     for var in "${memcached_vars[@]}"; do
         if [[ -n "${!var:-}" ]]; then
             log_info "  ${var}=${!var}"
         fi
     done
-    
+
     log_success "Environment validation passed"
     return 0
 }
@@ -320,7 +320,7 @@ validate_environment() {
 
 setup_directories() {
     log_info "Setting up directories..."
-    
+
     local directories=(
         "${LOG_DIR}"
         "/var/run/sogo"
@@ -330,7 +330,7 @@ setup_directories() {
         "/etc/sogo"
         "/etc/GNUstep"
     )
-    
+
     for dir in "${directories[@]}"; do
         if [[ ! -d "${dir}" ]]; then
             mkdir -p "${dir}" && chown sogo:sogo "${dir}" && chmod 755 "${dir}"
@@ -341,7 +341,7 @@ setup_directories() {
             log_info "  Exists: ${dir}"
         fi
     done
-    
+
     # Create required files
     local files=(
         "${SOGO_CONF}"
@@ -352,7 +352,7 @@ setup_directories() {
         "${LOG_DIR}/error.log"
         "${MEMCACHED_LOG}"
     )
-    
+
     for file in "${files[@]}"; do
         local dirname=$(dirname "${file}")
         if [[ ! -d "${dirname}" ]]; then
@@ -366,18 +366,18 @@ setup_directories() {
             log_info "  Exists: ${file}"
         fi
     done
-    
+
     # Setup log rotation for SOGo
     setup_log_rotation
-    
+
     log_success "Directory and file setup complete"
     return 0
 }
 
 setup_log_rotation() {
     log_info "Setting up log rotation..."
-    
-    cat > /etc/logrotate.d/sogo << 'EOF'
+
+    cat >/etc/logrotate.d/sogo <<'EOF'
 /var/log/sogo/*.log {
     compress
     copytruncate
@@ -395,12 +395,12 @@ setup_log_rotation() {
     endscript
 }
 EOF
-    
+
     if [[ -f "/etc/logrotate.d/sogo" ]]; then
         chmod 644 "/etc/logrotate.d/sogo"
         log_info "Log rotation configuration created"
     fi
-    
+
     return 0
 }
 
@@ -410,24 +410,24 @@ EOF
 
 process_sogo_configuration() {
     log_info "Processing SOGo configuration..."
-    
+
     # Check if configuration template exists
     if [[ ! -f "${SOGO_CONF}" ]]; then
         log_error "SOGo configuration file not found: ${SOGO_CONF}"
         return 1
     fi
-    
+
     # Check if template needs processing (contains ${...} variables)
     if grep -q '\${' "${SOGO_CONF}" 2>/dev/null; then
         log_info "  Processing environment variables in SOGo config..."
-        
+
         # Use envsubst to replace environment variables in template
         if command -v envsubst &>/dev/null; then
             envsubst '${SOGO_DB_HOST} ${SOGO_DB_PORT} ${SOGO_DB_NAME} ${SOGO_DB_USER} ${SOGO_DB_PASSWORD} ${SOGO_DB_TYPE}' \
-                < "${SOGO_CONF}" > "${SOGO_CONF}.tmp" && \
-            mv "${SOGO_CONF}.tmp" "${SOGO_CONF}" && \
-            chown sogo:sogo "${SOGO_CONF}" && \
-            chmod 600 "${SOGO_CONF}" || {
+                <"${SOGO_CONF}" >"${SOGO_CONF}.tmp" &&
+                mv "${SOGO_CONF}.tmp" "${SOGO_CONF}" &&
+                chown sogo:sogo "${SOGO_CONF}" &&
+                chmod 600 "${SOGO_CONF}" || {
                 log_error "Failed to process SOGo configuration template"
                 return 1
             }
@@ -442,7 +442,7 @@ process_sogo_configuration() {
                 "SOGO_DB_PASSWORD"
                 "SOGO_DB_TYPE"
             )
-            
+
             cp "${SOGO_CONF}" "${SOGO_CONF}.tmp"
             for var in "${vars[@]}"; do
                 local value="${!var:-}"
@@ -455,32 +455,32 @@ process_sogo_configuration() {
             chmod 600 "${SOGO_CONF}"
         fi
     fi
-    
+
     # Validate configuration file
     if ! validate_sogo_config; then
         log_error "SOGo configuration validation failed"
         return 1
     fi
-    
+
     log_success "SOGo configuration processed"
     return 0
 }
 
 process_memcached_configuration() {
     log_info "Processing Memcached configuration..."
-    
+
     # Default memcached port
     local memcached_port="${MEMCACHED_PORT:-11211}"
     local memcached_threads="${MEMCACHED_THREADS:-4}"
     local memcached_connections="${MEMCACHED_MAX_CONNECTIONS:-1024}"
     local memcached_memory="${MEMCACHED_CACHE_SIZE:-512}"
-    
+
     # Check if custom config exists
     if [[ -f "${MEMCACHED_CONF}" ]]; then
         log_info "  Using existing Memcached configuration"
     else
         # Create default configuration
-        cat > "${MEMCACHED_CONF}" << EOF
+        cat >"${MEMCACHED_CONF}" <<EOF
 # Memcached Configuration for SOGo
 # Automatically generated by container entrypoint
 
@@ -514,29 +514,29 @@ process_memcached_configuration() {
 # PID file
 -P ${MEMCACHED_PID_FILE}
 EOF
-        
+
         chown sogo:sogo "${MEMCACHED_CONF}"
         chmod 644 "${MEMCACHED_CONF}"
         log_info "  Created default Memcached configuration"
     fi
-    
+
     # Validate the port is available
     if ss -tlnp 2>/dev/null | grep -q ":${memcached_port} "; then
         log_error "Port ${memcached_port} is already in use"
         return 1
     fi
-    
+
     log_success "Memcached configuration processed"
     return 0
 }
 
 process_gnustep_configuration() {
     log_info "Processing GNUstep configuration..."
-    
+
     # Check if GNUstep configuration exists
     if [[ ! -f "${GNUSTEP_CONF}" ]]; then
         # Create default GNUstep configuration
-        cat > "${GNUSTEP_CONF}" << 'EOF'
+        cat >"${GNUSTEP_CONF}" <<'EOF'
 # GNUstep Configuration for SOGo
 # Automatically generated by container entrypoint
 
@@ -555,42 +555,42 @@ GNUSTEP_LOCAL_ROOT = /usr/lib/GNUstep/Local
 # User defaults database
 NSUserDefaultsDatabase = /var/lib/sogo/defaults
 EOF
-        
+
         chmod 644 "${GNUSTEP_CONF}"
         log_info "  Created default GNUstep configuration"
     fi
-    
+
     return 0
 }
 
 validate_sogo_config() {
     log_info "Validating SOGo configuration..."
-    
+
     # Basic syntax check - ensure file is readable YAML/INI
     if ! sogo-check-conf "${SOGO_CONF}" 2>/dev/null; then
         log_error "SOGo configuration syntax error"
         return 1
     fi
-    
+
     # Check for required sections
     local required_sections=(
         "sogod"
         "OCSURLs"
         "SOGoSuperUsernames"
     )
-    
+
     for section in "${required_sections[@]}"; do
         if ! grep -q "${section}" "${SOGO_CONF}" 2>/dev/null; then
             log_error "Missing required section in SOGo config: ${section}"
             return 1
         fi
     done
-    
+
     # Check database configuration
     if ! grep -q "x PostgreSQL\|x MySQL\|x MariaDB" "${SOGO_CONF}" 2>/dev/null; then
         log_warn "No database driver specified in SOGo configuration"
     fi
-    
+
     log_success "SOGo configuration validated"
     return 0
 }
@@ -598,19 +598,19 @@ validate_sogo_config() {
 # Command substitution helper for sogo-check-conf
 sogo-check-conf() {
     if ! command -v sogod &>/dev/null; then
-        return 0  # Can't validate without sogod, assume ok
+        return 0 # Can't validate without sogod, assume ok
     fi
-    
+
     # Try to validate config
     if sogod --validate-config "$1" 2>/dev/null; then
         return 0
     fi
-    
+
     # Try alternative validation
     if sogod --help 2>&1 | grep -q "validate"; then
         sogod --validate-config "$1" 2>/dev/null || return 1
     fi
-    
+
     # Fallback: just check file is readable
     [[ -r "$1" ]]
 }
@@ -621,27 +621,27 @@ sogo-check-conf() {
 
 start_memcached() {
     log_info "Starting Memcached..."
-    
+
     # Use configuration file if it exists
     local config_flag=""
     if [[ -f "${MEMCACHED_CONF}" ]]; then
         config_flag="-c ${MEMCACHED_CONF}"
     fi
-    
+
     # Start memcached in the background
     ${MEMCACHED_BIN} ${config_flag} &
     MEMCACHED_PID=$!
-    
+
     # Save PID
-    echo "${MEMCACHED_PID}" > "${MEMCACHED_PID_FILE}"
-    
+    echo "${MEMCACHED_PID}" >"${MEMCACHED_PID_FILE}"
+
     # Wait for startup
     local count=0
     while ! ss -tlnp 2>/dev/null | grep -q "${MEMCACHED_BIN}" && [[ ${count} -lt ${MEMCACHED_STARTUP_TIMEOUT} ]]; do
         sleep 1
         count=$((count + 1))
     done
-    
+
     # Verify it's running
     if kill -0 "${MEMCACHED_PID}" 2>/dev/null; then
         log_success "Memcached started (PID: ${MEMCACHED_PID})"
@@ -655,20 +655,20 @@ start_memcached() {
 
 start_sogo() {
     log_info "Starting SOGo..."
-    
+
     # Check if database is reachable
     if ! wait_for_database; then
         log_error "Database not available, cannot start SOGo"
         return 1
     fi
-    
+
     # Start SOGo in the background
     exec ${SOGO_BIN} &
     SOGO_PID=$!
-    
+
     # Save PID
-    echo "${SOGO_PID}" > "${SOGO_PID_FILE}"
-    
+    echo "${SOGO_PID}" >"${SOGO_PID_FILE}"
+
     # Wait for startup
     local count=0
     while [[ ${count} -lt ${SOGO_STARTUP_TIMEOUT} ]]; do
@@ -682,7 +682,7 @@ start_sogo() {
         sleep 1
         count=$((count + 1))
     done
-    
+
     # Check if it's still running
     if kill -0 "${SOGO_PID}" 2>/dev/null; then
         log_warn "SOGo started but may not be fully ready (PID: ${SOGO_PID})"
@@ -695,20 +695,20 @@ start_sogo() {
 
 start_health_server() {
     log_info "Starting health server..."
-    
+
     # Check if health check script exists
     if [[ ! -x "${HEALTH_SCRIPT}" ]]; then
         log_warn "Health check script not found or not executable, skipping"
         return 0
     fi
-    
+
     # Start health check server
     ${HEALTH_SCRIPT} server &
     HEALTH_PID=$!
-    
+
     # Save PID
-    echo "${HEALTH_PID}" > "${HEALTH_PID_FILE}"
-    
+    echo "${HEALTH_PID}" >"${HEALTH_PID_FILE}"
+
     # Wait for it to start
     local count=0
     while [[ ${count} -lt 10 ]]; do
@@ -719,7 +719,7 @@ start_health_server() {
         sleep 1
         count=$((count + 1))
     done
-    
+
     log_error "Health server failed to start"
     return 1
 }
@@ -734,21 +734,21 @@ wait_for_database() {
     local db_type="${SOGO_DB_TYPE:-PostgreSQL}"
     local max_retries=60
     local retry_delay=5
-    
+
     log_info "Waiting for database (${db_type} at ${db_host}:${db_port})..."
-    
+
     local retry_count=0
     while [[ ${retry_count} -lt ${max_retries} ]]; do
         if check_database_connection; then
             log_success "Database connection established"
             return 0
         fi
-        
+
         retry_count=$((retry_count + 1))
         log_info "Database not available (attempt ${retry_count}/${max_retries}), retrying in ${retry_delay}s..."
         sleep ${retry_delay}
     done
-    
+
     log_error "Failed to connect to database after ${max_retries} attempts"
     return 1
 }
@@ -760,37 +760,37 @@ check_database_connection() {
     local db_name="${SOGO_DB_NAME:-sogo}"
     local db_user="${SOGO_DB_USER:-sogo}"
     local db_password="${SOGO_DB_PASSWORD:-}"
-    
+
     case "${db_type,,}" in
-        postgresql|pgsql)
-            if command -v pg_isready &>/dev/null; then
-                # Use pg_isready for PostgreSQL
-                PGPASSWORD="${db_password}" pg_isready -h "${db_host}" -p "${db_port}" -U "${db_user}" -d "${db_name}" 2>/dev/null
-            else
-                # Fallback to direct connection
-                if echo "\\q" | nc -w 2 "${db_host}" "${db_port}" 2>/dev/null; then
-                    return 0
-                fi
+    postgresql | pgsql)
+        if command -v pg_isready &>/dev/null; then
+            # Use pg_isready for PostgreSQL
+            PGPASSWORD="${db_password}" pg_isready -h "${db_host}" -p "${db_port}" -U "${db_user}" -d "${db_name}" 2>/dev/null
+        else
+            # Fallback to direct connection
+            if echo "\\q" | nc -w 2 "${db_host}" "${db_port}" 2>/dev/null; then
+                return 0
             fi
-            ;;
-        mysql|mariadb)
-            if command -v mysql &>/dev/null; then
-                MYSQL_PWD="${db_password}" mysql -h "${db_host}" -P "${db_port}" -u "${db_user}" "${db_name}" -e "SELECT 1;" 2>/dev/null || true
-            else
-                # Try with nc
-                if echo "" | nc -w 2 "${db_host}" "${db_port}" 2>/dev/null; then
-                    return 0
-                fi
-            fi
-            ;;
-        *)
-            # Generic check
+        fi
+        ;;
+    mysql | mariadb)
+        if command -v mysql &>/dev/null; then
+            MYSQL_PWD="${db_password}" mysql -h "${db_host}" -P "${db_port}" -u "${db_user}" "${db_name}" -e "SELECT 1;" 2>/dev/null || true
+        else
+            # Try with nc
             if echo "" | nc -w 2 "${db_host}" "${db_port}" 2>/dev/null; then
                 return 0
             fi
-            ;;
+        fi
+        ;;
+    *)
+        # Generic check
+        if echo "" | nc -w 2 "${db_host}" "${db_port}" 2>/dev/null; then
+            return 0
+        fi
+        ;;
     esac
-    
+
     return 1
 }
 
@@ -801,102 +801,102 @@ check_database_connection() {
 main() {
     local target="${1:-all}"
     shift || true
-    
+
     # Parse command line
     case "${target}" in
-        --version|-v)
-            echo "SOGo 5 Entrypoint v2.0.0"
-            echo "SOGo Version: $(sogod --version 2>/dev/null | head -1)"
-            exit 0
-            ;;
-        --help|-h)
-            echo "Usage: ${SCRIPT_NAME} [TARGET]"
-            echo ""
-            echo "Targets:"
-            echo "  all         Start all services (default)"
-            echo "  sogod       Start only SOGo"
-            echo "  memcached   Start only Memcached"
-            echo "  health      Start only health server"
-            echo ""
-            echo "Options:"
-            echo "  --version, -v   Show version"
-            echo "  --help, -h      Show this help"
-            exit 0
-            ;;
+    --version | -v)
+        echo "SOGo 5 Entrypoint v2.0.0"
+        echo "SOGo Version: $(sogod --version 2>/dev/null | head -1)"
+        exit 0
+        ;;
+    --help | -h)
+        echo "Usage: ${SCRIPT_NAME} [TARGET]"
+        echo ""
+        echo "Targets:"
+        echo "  all         Start all services (default)"
+        echo "  sogod       Start only SOGo"
+        echo "  memcached   Start only Memcached"
+        echo "  health      Start only health server"
+        echo ""
+        echo "Options:"
+        echo "  --version, -v   Show version"
+        echo "  --help, -h      Show this help"
+        exit 0
+        ;;
     esac
-    
+
     # ======================
     # STARTUP SEQUENCE
     # ======================
-    
+
     log_info "========================================"
     log_info "  SOGo 5 Container Entrypoint"
     log_info "  Starting container..."
     log_info "========================================"
-    
+
     # Step 1: Validate environment and binaries
     if ! validate_required_binaries; then
         log_error "Binary validation failed"
         exit 1
     fi
-    
+
     # Step 2: Validate environment variables
     if ! validate_environment; then
         log_error "Environment validation failed"
         exit 1
     fi
-    
+
     # Step 3: Setup directories and files
     if ! setup_directories; then
         log_error "Directory setup failed"
         exit 1
     fi
-    
+
     # Step 4: Process configurations
     if ! process_memcached_configuration; then
         log_error "Memcached configuration failed"
         exit 1
     fi
-    
+
     if ! process_gnustep_configuration; then
         log_error "GNUstep configuration failed"
         exit 1
     fi
-    
+
     if ! process_sogo_configuration; then
         log_error "SOGo configuration failed"
         exit 1
     fi
-    
+
     # ======================
     # START SERVICES
     # ======================
-    
+
     # Determine what to start
     case "${target}" in
-        memcached)
-            start_memcached || exit 1
-            ;;
-        sogod|sogo)
-            start_sogo || exit 1
-            ;;
-        health)
-            start_health_server || exit 1
-            ;;
-        *)
-            # Start all services in order: memcached -> sogo -> health
-            log_info "Starting all services..."
-            
-            start_memcached || exit 1
-            start_sogo || exit 1
-            start_health_server || exit 1
-            ;;
+    memcached)
+        start_memcached || exit 1
+        ;;
+    sogod | sogo)
+        start_sogo || exit 1
+        ;;
+    health)
+        start_health_server || exit 1
+        ;;
+    *)
+        # Start all services in order: memcached -> sogo -> health
+        log_info "Starting all services..."
+
+        start_memcached || exit 1
+        start_sogo || exit 1
+        start_health_server || exit 1
+        ;;
     esac
-    
+
     # ======================
     # MONITOR SERVICES
     # ======================
-    
+
     log_success "All services started successfully!"
     log_info "========================================"
     log_info "  Services Running"
@@ -911,7 +911,7 @@ main() {
     fi
     log_info "========================================"
     log_info "Container is ready for requests"
-    
+
     # Wait forever, handling signals via our traps
     while true; do
         # Simple service monitoring - restart if any process dies unexpectedly
@@ -920,19 +920,19 @@ main() {
             MEMCACHED_PID=""
             start_memcached || log_error "Failed to restart Memcached"
         fi
-        
+
         if [[ -n "${SOGO_PID}" && ! -f "/proc/${SOGO_PID}/status" ]]; then
             log_error "SOGo crashed, attempting to restart..."
             SOGO_PID=""
             start_sogo || log_error "Failed to restart SOGo"
         fi
-        
+
         if [[ -n "${HEALTH_PID}" && ! -f "/proc/${HEALTH_PID}/status" ]]; then
             log_warn "Health server crashed, attempting to restart..."
             HEALTH_PID=""
             start_health_server || log_error "Failed to restart health server"
         fi
-        
+
         sleep 10
     done
 }

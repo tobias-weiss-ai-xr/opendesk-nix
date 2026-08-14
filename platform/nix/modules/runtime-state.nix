@@ -10,10 +10,17 @@
 # - Prometheus alert rules
 # - Kyverno policies
 
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
-let cfg = config.services.runtimeState;
-in {
+let
+  cfg = config.services.runtimeState;
+in
+{
   meta.maintainers = [ "opendesk-edu" ];
 
   ###### interface
@@ -127,7 +134,7 @@ in {
 
     # Generate Keycloak realm configuration
     environment.etc."keycloak/realm.json".text = lib.generators.toPretty { } {
-      realm = cfg.keycloak.realm;
+      inherit (cfg.keycloak) realm;
       enabled = true;
 
       users = lib.mapAttrsToList (name: user: {
@@ -170,16 +177,16 @@ in {
         enable = true;
 
         datasources = lib.mapAttrsToList (name: ds: {
-          name = name;
-          type = ds.type;
-          url = ds.url;
+          inherit name;
+          inherit (ds) type;
+          inherit (ds) url;
           access = "proxy";
           isDefault = ds.default or false;
         }) cfg.grafana.datasources;
 
         dashboards = lib.mapAttrsToList (name: dashboard: {
           title = dashboard.title or name;
-          path = dashboard.path;
+          inherit (dashboard) path;
         }) cfg.grafana.dashboards;
       };
     };
@@ -195,13 +202,13 @@ in {
 
       scrapeConfigs = lib.mapAttrsToList (name: sc: {
         job_name = name;
-        static_configs = [{ targets = sc.targets or [ ]; }];
+        static_configs = [ { targets = sc.targets or [ ]; } ];
         scrape_interval = sc.interval or "15s";
       }) cfg.prometheus.scrapeConfigs;
 
       alertingConfig = lib.mapAttrsToList (_name: rule: {
-        alert = rule.alert;
-        expr = rule.expr;
+        inherit (rule) alert;
+        inherit (rule) expr;
         for = rule.for or "5m";
         labels = rule.labels or { };
         annotations = rule.annotations or { };
@@ -213,18 +220,17 @@ in {
 
     # Generate Kyverno policies
     environment.etc."kyverno/policies".source =
-      pkgs.runCommand "kyverno-policies" { buildInputs = [ pkgs.yq ]; } ''
-        mkdir -p $out
-        ${pkgs.writeScript "generate-policies" ''
-          #!/usr/bin/env bash
-          set -eu
-          for policy in ${toString (lib.attrNames cfg.kyverno.policies)}; do
-            yq eval '.' <<< '${
-              builtins.toJSON cfg.kyverno.policies.${policy}
-            }' > "$out/${policy}.yaml"
-          done
-        ''}
-      '';
+      pkgs.runCommand "kyverno-policies" { buildInputs = [ pkgs.yq ]; }
+        ''
+          mkdir -p $out
+          ${pkgs.writeScript "generate-policies" ''
+            #!/usr/bin/env bash
+            set -eu
+            for policy in ${toString (lib.attrNames cfg.kyverno.policies)}; do
+              yq eval '.' <<< '${builtins.toJSON cfg.kyverno.policies.${policy}}' > "$out/${policy}.yaml"
+            done
+          ''}
+        '';
 
     # State sync timer
     systemd.services.opendesk-state-sync = {

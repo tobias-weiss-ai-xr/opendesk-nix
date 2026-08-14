@@ -5,7 +5,11 @@
 # Uses shared Galera cluster for database (instead of embedded SQLite)
 # Image: docker.io/matrixdotorg/synapse:latest
 
-{ lib, env ? import ../environments/scs/default.nix { inherit lib; }, ... }:
+{
+  lib,
+  env ? import ../environments/scs/default.nix { inherit lib; },
+  ...
+}:
 
 let
   name = "synapse";
@@ -37,8 +41,12 @@ let
     runAsUser = 991;
     runAsGroup = 991;
     readOnlyRootFilesystem = false;
-    capabilities = { drop = [ "ALL" ]; };
-    seccompProfile = { type = "RuntimeDefault"; };
+    capabilities = {
+      drop = [ "ALL" ];
+    };
+    seccompProfile = {
+      type = "RuntimeDefault";
+    };
   };
 
   podSecurityContext = {
@@ -130,15 +138,23 @@ let
     }
   ];
 
-in [
+in
+[
   (lib.deployment {
-    inherit name image tag port resources labels;
+    inherit
+      name
+      image
+      tag
+      port
+      resources
+      labels
+      ;
     env = containerEnv;
-    securityContext = securityContext;
-    podSecurityContext = podSecurityContext;
+    inherit securityContext;
+    inherit podSecurityContext;
     liveness = livenessProbe;
     readiness = readinessProbe;
-    namespace = env.namespace;
+    inherit (env) namespace;
     replicas = env.replicas.default;
 
     volumeMounts = [
@@ -162,48 +178,56 @@ in [
     volumes = [
       {
         name = "config";
-        configMap = { name = "${name}-config"; };
+        configMap = {
+          name = "${name}-config";
+        };
       }
       {
         name = "log-config";
         configMap = {
           name = "${name}-config";
-          items = [{
-            key = "log.config";
-            path = "log.config";
-          }];
+          items = [
+            {
+              key = "log.config";
+              path = "log.config";
+            }
+          ];
         };
       }
       {
         name = "data";
-        persistentVolumeClaim = { claimName = "${name}-data"; };
+        persistentVolumeClaim = {
+          claimName = "${name}-data";
+        };
       }
     ];
 
-    annotations = { "checksum/config" = "synapse-config-v1"; };
+    annotations = {
+      "checksum/config" = "synapse-config-v1";
+    };
   })
 
   (lib.service {
     inherit name port labels;
-    namespace = env.namespace;
+    inherit (env) namespace;
   })
 
   (lib.ingressWithCert {
     inherit name;
     host = env.hosts.matrix;
-    port = port;
-    className = env.ingress.className;
+    inherit port;
+    inherit (env.ingress) className;
     tlsSecretName = env.tls.secretName;
     annotations = env.ingress.annotations // {
       "haproxy-ingress.github.io/timeout-server" = "600s";
     };
-    namespace = env.namespace;
+    inherit (env) namespace;
   })
 
   (lib.configMap {
     name = "${name}-config";
-    namespace = env.namespace;
-    labels = labels;
+    inherit (env) namespace;
+    inherit labels;
     data = {
       "homeserver.yaml" = homeserverConfig;
       "log.config" = logConfig;
@@ -215,14 +239,16 @@ in [
     size = "10Gi";
     storageClass = env.storage.rwo;
     accessModes = [ "ReadWriteOnce" ];
-    namespace = env.namespace;
-    labels = labels;
+    inherit (env) namespace;
+    inherit labels;
   })
 
   (lib.secret {
     name = "${name}-db";
-    namespace = env.namespace;
-    labels = labels;
-    stringData = { "db-password" = db.synapse.password; };
+    inherit (env) namespace;
+    inherit labels;
+    stringData = {
+      "db-password" = db.synapse.password;
+    };
   })
 ]

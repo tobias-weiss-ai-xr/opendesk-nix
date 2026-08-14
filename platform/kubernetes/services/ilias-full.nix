@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
 
 { 
   lib,
@@ -8,14 +8,14 @@
   types ? import ../../lib/types.nix { },
   sbom ? import ../../lib/sbom.nix { },
   pkgs ? import <nixpkgs> { }
-  env ? import ../environments/hrz/default.nix { lib = lib; },
+  env ? import ../environments/hrz/default.nix { inherit lib; },
 }:
 
 let
 
   # OCI Labels (OpenSpec Compliance - FR-IMAGE-007)
   ociLabels = lib.mkOCILabels {
-    name = name;
+    inherit name;
     version = tag;
     description = "ilias-full service for openDesk";
     serviceType = "web";
@@ -34,7 +34,7 @@ let
       { name = "ILIAS_DB_HOST"; value = "ilias-mariadb"; }
       { name = "ILIAS_DB_USER"; value = "ilias"; }
       { name = "ILIAS_DB_NAME"; value = "ilias"; }
-      { name = "ILIAS_HOST_NAME"; value = "lms.opendesk.hrz.uni-marburg.de"; }
+      { name = "ILIAS_HOST_NAME"; value = "lms.opendesk.internal"; }
     ];
     envFrom = [
       (lib.mkEnvFromSecret { name = "ilias-database-credentials"; })
@@ -69,4 +69,4 @@ let
 
 in
 
-  [ dep svc ] ++ (lib.ingressWithCert { inherit name; host = "lms.opendesk.hrz.uni-marburg.de"; port = 80; })
+  [ dep svc ] ++ (lib.ingressWithCert { inherit name; host = "lms.opendesk.internal"; port = 80; })

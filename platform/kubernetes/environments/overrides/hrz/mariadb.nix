@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
 
 """
-HRZ-specific overrides for MariaDB
+SCS-specific overrides for MariaDB
 
 This override increases resources for MariaDB in production,
 using faster storage and more CPU/memory.

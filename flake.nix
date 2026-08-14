@@ -19,8 +19,16 @@
     attic.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = { self, nixpkgs, flake-utils, treefmt-nix, attic, ... }@inputs:
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      flake-utils,
+      treefmt-nix,
+      ...
+    }@inputs:
+    flake-utils.lib.eachDefaultSystem (
+      system:
       let
         pkgs = import nixpkgs {
           inherit system;
@@ -56,24 +64,20 @@
 
         cicd = import ./platform/nix/cicd.nix { inherit pkgs lib; };
 
-        # DevGuard Pattern: Enhanced development environments (disabled due to bugs in 94756333)
-        # DevGuard Pattern: Enhanced development environments (disabled due to bugs in 94756333)
-        # dev = import ./platform/nix/dev.nix { inherit pkgs lib; };
+        # DevGuard Pattern: Enhanced development environments
+        dev = import ./platform/nix/dev.nix { inherit pkgs lib; };
 
         # DevGuard Pattern: Enhanced security scanning
-        security-scanning =
-          import ./platform/nix/security-scanning.nix { inherit pkgs lib; };
+        security-scanning = import ./platform/nix/security-scanning.nix { inherit pkgs lib; };
 
         # DevGuard Pattern: Kubernetes Operators
-        operators = import ./platform/nix/operators.nix { inherit pkgs lib; };
 
         # DevGuard Pattern: Unified DevGuard integration
 
         tests = import ./platform/nix/tests.nix { inherit pkgs lib; };
 
         # NixOS-specific libraries
-        nixos-services =
-          import ./platform/nix/nixos/services.nix { inherit pkgs docks lib; };
+        nixos-services = import ./platform/nix/nixos/services.nix { inherit pkgs docks lib; };
 
         # Load service catalog
         inherit (nixos-services) services allContainers;
@@ -87,7 +91,28 @@
         atticServer = import ./modules/attic-server.nix;
         binaryCacheClient = import ./modules/binary-cache-client.nix;
         postBuildHook = import ./modules/post-build-hook.nix;
-      in rec {
+      in
+      rec {
+        # ======================================================================
+        # LIB - Reusable library functions (best practice: expose lib output)
+        # ======================================================================
+        lib = {
+          inherit
+            types
+            security
+            k8s
+            build
+            registry
+            compliance
+            ;
+          inherit (nixos-services) services allContainers;
+          # Re-export k8s builders under lib for external use
+          k8sBuilders = k8s;
+          securityProfiles = security;
+          imageTypes = types.imageConfigType;
+          serviceTypes = types.serviceType;
+        };
+
         # ======================================================================
         # FORMATTER - Automated code formatting (best practices)
         # ======================================================================
@@ -97,32 +122,36 @@
         # CHECKS - CI validation gates (best practices)
         # ======================================================================
         checks = {
-          # Formatting check (disabled for now)
-          # formatting = treefmtEval.config.build.check self;
+          # Formatting check (treefmt + nixfmt + statix + deadnix)
+          formatting = treefmtEval.config.build.check self;
 
           # Eval-only checks (fast - catch option drift in seconds)
-          # These evaluate service configurations without building
-          eval-opendesk-services = pkgs.callPackage ./tests/eval-services.nix { 
-            inherit nixos-services; 
+          eval-opendesk-services = pkgs.callPackage ./tests/eval-services.nix {
+            inherit nixos-services;
           };
 
-          # Integration tests (slower - validate service behavior - disabled for now)
+          # Integration tests (slower - validate service behavior)
           # integration = pkgs.testers.runNixOSTest ./tests/integration.nix;
 
           # Phase 2: Binary cache tests (disabled until attic is fully ready)
           # attic-server = pkgs.testers.runNixOSTest ./tests/attic-server.nix;
-        };
+        } // (builtins.mapAttrs (_name: test: test) tests);
 
         # ======================================================================
         # PACKAGES - NixOS Container Images
         # ======================================================================
 
-        packages = all-containers //
-          # Auto-generate -nixos suffixed aliases for all containers
-          (builtins.listToAttrs (builtins.map (name: {
-            name = "${name}-nixos";
-            value = all-containers.${name} or null;
-          }) (builtins.attrNames all-containers))) // {
+        packages =
+          all-containers
+          //
+            # Auto-generate -nixos suffixed aliases for all containers
+            (builtins.listToAttrs (
+              builtins.map (name: {
+                name = "${name}-nixos";
+                value = all-containers.${name} or null;
+              }) (builtins.attrNames all-containers)
+            ))
+          // {
             # Docker image builds (for backward compatibility)
             inherit (build) mariadb-opendesk postgresql-opendesk redis-opendesk;
 
@@ -144,35 +173,42 @@
             # };
 
             # K8s resource manifests (as JSON files)
-            k8s-mariadb-deployment = pkgs.writeText "mariadb-deployment.yaml"
-              (builtins.toJSON (k8s.mkDeployment {
-                name = "mariadb";
-                image =
-                  "registry.gitlab.opencode.de/umr/mariadb-opendesk:11.4.4-nixos";
-                replicas = 1;
-              }));
-            k8s-postgresql-deployment =
-              pkgs.writeText "postgresql-deployment.yaml" (builtins.toJSON
-                (k8s.mkDeployment {
-                  name = "postgresql";
-                  image =
-                    "registry.gitlab.opencode.de/umr/postgresql-opendesk:16.3-nixos";
+            k8s-mariadb-deployment = pkgs.writeText "mariadb-deployment.yaml" (
+              builtins.toJSON (
+                k8s.mkDeployment {
+                  name = "mariadb";
+                  image = "registry.gitlab.opencode.de/umr/mariadb-opendesk:11.4.4-nixos";
                   replicas = 1;
-                }));
-            k8s-redis-deployment = pkgs.writeText "redis-deployment.yaml"
-              (builtins.toJSON (k8s.mkDeployment {
-                name = "redis";
-                image =
-                  "registry.gitlab.opencode.de/umr/redis-opendesk:7.2.4-nixos";
-                replicas = 1;
-              }));
-            k8s-nginx-deployment = pkgs.writeText "nginx-deployment.yaml"
-              (builtins.toJSON (k8s.mkDeployment {
-                name = "nginx";
-                image =
-                  "registry.gitlab.opencode.de/umr/nginx-opendesk:1.25.3-nixos";
-                replicas = 2;
-              }));
+                }
+              )
+            );
+            k8s-postgresql-deployment = pkgs.writeText "postgresql-deployment.yaml" (
+              builtins.toJSON (
+                k8s.mkDeployment {
+                  name = "postgresql";
+                  image = "registry.gitlab.opencode.de/umr/postgresql-opendesk:16.3-nixos";
+                  replicas = 1;
+                }
+              )
+            );
+            k8s-redis-deployment = pkgs.writeText "redis-deployment.yaml" (
+              builtins.toJSON (
+                k8s.mkDeployment {
+                  name = "redis";
+                  image = "registry.gitlab.opencode.de/umr/redis-opendesk:7.2.4-nixos";
+                  replicas = 1;
+                }
+              )
+            );
+            k8s-nginx-deployment = pkgs.writeText "nginx-deployment.yaml" (
+              builtins.toJSON (
+                k8s.mkDeployment {
+                  name = "nginx";
+                  image = "registry.gitlab.opencode.de/umr/nginx-opendesk:1.25.3-nixos";
+                  replicas = 2;
+                }
+              )
+            );
 
             # ======================================================================
             # SCS K3s Cluster Deployment — Nix-generated manifests
@@ -181,82 +217,97 @@
             scs-manifests = scsDeploy.manifestDir;
 
             # Build individual service manifests (for selective deployment)
-            scs-galera = pkgs.writeText "galera.yaml"
-              (builtins.concatStringsSep ''
+            scs-galera = pkgs.writeText "galera.yaml" (
+              builtins.concatStringsSep ''
 
                 ---
-              '' (map (m: builtins.toJSON m) scsDeploy.galera));
-            scs-keycloak = pkgs.writeText "keycloak.yaml"
-              (builtins.concatStringsSep ''
+              '' (map (m: builtins.toJSON m) scsDeploy.galera)
+            );
+            scs-keycloak = pkgs.writeText "keycloak.yaml" (
+              builtins.concatStringsSep ''
 
                 ---
-              '' (map (m: builtins.toJSON m) scsDeploy.keycloak));
-            scs-synapse = pkgs.writeText "synapse.yaml"
-              (builtins.concatStringsSep ''
+              '' (map (m: builtins.toJSON m) scsDeploy.keycloak)
+            );
+            scs-synapse = pkgs.writeText "synapse.yaml" (
+              builtins.concatStringsSep ''
 
                 ---
-              '' (map (m: builtins.toJSON m) scsDeploy.synapse));
-            scs-element = pkgs.writeText "element.yaml"
-              (builtins.concatStringsSep ''
+              '' (map (m: builtins.toJSON m) scsDeploy.synapse)
+            );
+            scs-element = pkgs.writeText "element.yaml" (
+              builtins.concatStringsSep ''
 
                 ---
-              '' (map (m: builtins.toJSON m) scsDeploy.element));
-            scs-sogo = pkgs.writeText "sogo.yaml" (builtins.concatStringsSep ''
-
-              ---
-            '' (map (m: builtins.toJSON m) scsDeploy.sogo));
-            scs-stalwart = pkgs.writeText "stalwart.yaml"
-              (builtins.concatStringsSep ''
+              '' (map (m: builtins.toJSON m) scsDeploy.element)
+            );
+            scs-sogo = pkgs.writeText "sogo.yaml" (
+              builtins.concatStringsSep ''
 
                 ---
-              '' (map (m: builtins.toJSON m) scsDeploy.stalwart));
-            scs-opencloud = pkgs.writeText "opencloud.yaml"
-              (builtins.concatStringsSep ''
+              '' (map (m: builtins.toJSON m) scsDeploy.sogo)
+            );
+            scs-stalwart = pkgs.writeText "stalwart.yaml" (
+              builtins.concatStringsSep ''
 
                 ---
-              '' (map (m: builtins.toJSON m) scsDeploy.opencloud));
+              '' (map (m: builtins.toJSON m) scsDeploy.stalwart)
+            );
+            scs-opencloud = pkgs.writeText "opencloud.yaml" (
+              builtins.concatStringsSep ''
+
+                ---
+              '' (map (m: builtins.toJSON m) scsDeploy.opencloud)
+            );
 
             # Nix builder
-            scs-nix-builder = pkgs.writeText "nix-builder.yaml"
-              (builtins.concatStringsSep ''
+            scs-nix-builder = pkgs.writeText "nix-builder.yaml" (
+              builtins.concatStringsSep ''
 
                 ---
-              '' (map (m: builtins.toJSON m) scsDeploy.nixBuilder));
+              '' (map (m: builtins.toJSON m) scsDeploy.nixBuilder)
+            );
 
             # Combined manifest for all SCS services
             scs-all = pkgs.writeText "scs-all.yaml" scsDeploy.allYaml;
 
             # SCS Security operator manifests (individual for selective deploy)
-            scs-trivy-operator = pkgs.writeText "trivy-operator.yaml"
-              (builtins.concatStringsSep ''
+            scs-trivy-operator = pkgs.writeText "trivy-operator.yaml" (
+              builtins.concatStringsSep ''
 
                 ---
-              '' (map (m: builtins.toJSON m) scsDeploy.trivyOperator));
-            scs-kyverno = pkgs.writeText "kyverno.yaml"
-              (builtins.concatStringsSep ''
+              '' (map (m: builtins.toJSON m) scsDeploy.trivyOperator)
+            );
+            scs-kyverno = pkgs.writeText "kyverno.yaml" (
+              builtins.concatStringsSep ''
 
                 ---
-              '' (map (m: builtins.toJSON m) scsDeploy.kyverno));
-            scs-kyverno-policies = pkgs.writeText "kyverno-policies.yaml"
-              (builtins.concatStringsSep ''
+              '' (map (m: builtins.toJSON m) scsDeploy.kyverno)
+            );
+            scs-kyverno-policies = pkgs.writeText "kyverno-policies.yaml" (
+              builtins.concatStringsSep ''
 
                 ---
-              '' (map (m: builtins.toJSON m) scsDeploy.kyvernoPolicies));
-            scs-sealed-secrets = pkgs.writeText "sealed-secrets.yaml"
-              (builtins.concatStringsSep ''
+              '' (map (m: builtins.toJSON m) scsDeploy.kyvernoPolicies)
+            );
+            scs-sealed-secrets = pkgs.writeText "sealed-secrets.yaml" (
+              builtins.concatStringsSep ''
 
                 ---
-              '' (map (m: builtins.toJSON m) scsDeploy.sealedSecrets));
-            scs-falco = pkgs.writeText "falco.yaml"
-              (builtins.concatStringsSep ''
+              '' (map (m: builtins.toJSON m) scsDeploy.sealedSecrets)
+            );
+            scs-falco = pkgs.writeText "falco.yaml" (
+              builtins.concatStringsSep ''
 
                 ---
-              '' (map (m: builtins.toJSON m) scsDeploy.falco));
-            scs-cosign-policies = pkgs.writeText "cosign-policies.yaml"
-              (builtins.concatStringsSep ''
+              '' (map (m: builtins.toJSON m) scsDeploy.falco)
+            );
+            scs-cosign-policies = pkgs.writeText "cosign-policies.yaml" (
+              builtins.concatStringsSep ''
 
                 ---
-              '' (map (m: builtins.toJSON m) scsDeploy.cosignPolicies));
+              '' (map (m: builtins.toJSON m) scsDeploy.cosignPolicies)
+            );
           };
 
         # Overlays (commented out temporarily - needs proper overlay syntax)
@@ -267,105 +318,115 @@
         # ======================================================================
         # DEV SHELLS - SCS Security + Default
         # ======================================================================
-        devShells = {
-          default = pkgs.mkShell {
-            name = "opendesk-nix";
-            buildInputs = with pkgs; [
-              git
-              kubectl
-              kustomize
-              helm
-              yq
-              jq
-              openssl
-              gnupg
-              curl
-              wget
-            ];
-            shellHook = ''
-              echo "🧩 openDesk-Nix Default Shell"
-              echo "================================"
-              echo ""
-              echo "Tools: kubectl, kustomize, helm, yq, jq"
-              echo ""
-              alias k=kubectl
-              alias kg='kubectl get'
-              alias kgp='kubectl get pods -A'
-              alias kl='kubectl logs -f --tail=50'
-              alias kad='kubectl apply -f'
-            '';
-          };
+        devShells =
+          {
+            default = pkgs.mkShell {
+              name = "opendesk-nix";
+              buildInputs = with pkgs; [
+                git
+                kubectl
+                kustomize
+                helm
+                yq
+                jq
+                openssl
+                gnupg
+                curl
+                wget
+              ];
+              shellHook = ''
+                echo "🧩 openDesk-Nix Default Shell"
+                echo "================================"
+                echo ""
+                echo "Tools: kubectl, kustomize, helm, yq, jq"
+                echo ""
+                alias k=kubectl
+                alias kg='kubectl get'
+                alias kgp='kubectl get pods -A'
+                alias kl='kubectl logs -f --tail=50'
+                alias kad='kubectl apply -f'
+              '';
+            };
 
-          scs-security = pkgs.mkShell {
-            name = "scs-security";
-            buildInputs = with pkgs; [
-              # Security scanning (from security-scanning.nix)
-              security-scanning.trivy-pkg
-              security-scanning.grype-pkg
-              security-scanning.syft-pkg
-              # Image signing
-              cosign
-              # Kubernetes secrets
-              kubeseal
-              # K8s CLI tools
-              kubectl
-              kustomize
-              helm
-              yq
-              jq
-              # Container tools
-              skopeo
-              crane
-              # General
-              git
-              openssl
-              gnupg
-              curl
-              wget
-            ];
-            shellHook = ''
-              echo "🔒 SCS K3s Security Shell"
-              echo "============================"
-              echo ""
-              echo "Security tools:"
-              echo "  🔍 Scanning: trivy, grype, syft"
-              echo "  ✍️  Signing: cosign"
-              echo "  🔐 Secrets: kubeseal"
-              echo "  🐳 Images: skopeo, crane"
-              echo "  ☸️  K8s: kubectl, kustomize, helm"
-              echo ""
-              echo "Workflows:"
-              echo "  Scan image: trivy image <image>"
-              echo "  Sign image: cosign sign --key cosign.key <image>"
-              echo "  Verify: cosign verify --key cosign.pub <image>"
-              echo "  Seal secret: kubeseal -f secret.yaml -w sealed.yaml"
-              echo ""
-              export TRIVY_DB_AUTO_UPDATE=true
-              export COSIGN_EXPERIMENTAL=1
+            scs-security = pkgs.mkShell {
+              name = "scs-security";
+              buildInputs = with pkgs; [
+                # Security scanning
+                trivy
+                grype
+                syft
+                # Image signing
+                cosign
+                # Kubernetes secrets
+                kubeseal
+                # K8s CLI tools
+                kubectl
+                kustomize
+                helm
+                yq
+                jq
+                # Container tools
+                skopeo
+                crane
+                # General
+                git
+                openssl
+                gnupg
+                curl
+                wget
+              ];
+              shellHook = ''
+                echo "🔒 SCS K3s Security Shell"
+                echo "============================"
+                echo ""
+                echo "Security tools:"
+                echo "  🔍 Scanning: trivy, grype, syft"
+                echo "  ✍️  Signing: cosign"
+                echo "  🔐 Secrets: kubeseal"
+                echo "  🐳 Images: skopeo, crane"
+                echo "  ☸️  K8s: kubectl, kustomize, helm"
+                echo ""
+                echo "Workflows:"
+                echo "  Scan image: trivy image <image>"
+                echo "  Sign image: cosign sign --key cosign.key <image>"
+                echo "  Verify: cosign verify --key cosign.pub <image>"
+                echo "  Seal secret: kubeseal -f secret.yaml -w sealed.yaml"
+                echo ""
+                export TRIVY_DB_AUTO_UPDATE=true
+                export COSIGN_EXPERIMENTAL=1
 
-              alias k=kubectl
-              alias kg='kubectl get'
-              alias kgp='kubectl get pods -A'
-              alias kl='kubectl logs -f --tail=50'
-              alias kad='kubectl apply -f'
-              alias scan='trivy image'
-              alias sign='cosign sign --key cosign.key'
-              alias verify='cosign verify --key cosign.pub'
-              alias seal='kubeseal -f'
-            '';
-          };
-        };
+                alias k=kubectl
+                alias kg='kubectl get'
+                alias kgp='kubectl get pods -A'
+                alias kl='kubectl logs -f --tail=50'
+                alias kad='kubectl apply -f'
+                alias scan='trivy image'
+                alias sign='cosign sign --key cosign.key'
+                alias verify='cosign verify --key cosign.pub'
+                alias seal='kubeseal -f'
+              '';
+            };
+          }
+          // {
+            inherit (dev.shells)
+              defaultShell
+              securityShell
+              k8sShell
+              fullShell
+              ;
+          }
+          // dev.shells.predefinedServiceShells;
 
         # ======================================================================
         # DEVGUARD PATTERN: Compliance Gates as Packages
         # ======================================================================
 
         compliance-gates = {
-          pre-deploy = compliance.gates.pre-deploy;
-          pre-merge = compliance.gates.pre-merge;
-          periodic = compliance.gates.periodic;
-          release = compliance.gates.release;
-          ci-pipeline = compliance.gates.ci-pipeline;
+          inherit (compliance.gates) pre-deploy;
+          inherit (compliance.gates) pre-merge;
+          inherit (compliance.gates) periodic;
+          inherit (compliance.gates) release;
+          inherit (compliance.gates) ci-pipeline;
         };
 
         # ======================================================================
@@ -376,11 +437,13 @@
           inherit (cicd) github-actions gitlab-ci concourse;
 
           # Combined CI configuration
-          all-cicd = pkgs.writeText "all-cicd-config.json" (builtins.toJSON {
-            github = cicd.github-actions.defaultConfig;
-            gitlab = cicd.gitlab-ci.defaultConfig;
-            concourse = cicd.concourse.defaultConfig;
-          });
+          all-cicd = pkgs.writeText "all-cicd-config.json" (
+            builtins.toJSON {
+              github = cicd.github-actions.defaultConfig;
+              gitlab = cicd.gitlab-ci.defaultConfig;
+              concourse = cicd.concourse.defaultConfig;
+            }
+          );
         };
 
         # ======================================================================
@@ -389,8 +452,7 @@
 
         nixosModules = {
           # Security modules
-          security-hardening =
-            import ./platform/nix/nixos/security.nix { inherit pkgs lib; };
+          security-hardening = import ./platform/nix/nixos/security.nix { inherit pkgs lib; };
 
           # Phase 2: Binary cache modules
           attic-server = atticServer;
@@ -430,58 +492,39 @@
 
         security-scanning-pkgs = {
           inherit (security-scanning)
-            grype-pkg trivy-pkg syft-pkg semgrep-pkg gosec-pkg;
+            grype-pkg
+            trivy-pkg
+            syft-pkg
+            semgrep-pkg
+            gosec-pkg
+            ;
 
           # Scan utilities
-          scan-all = pkgs.callPackage
-            (import ./platform/nix/security-scanning.nix {
-              inherit pkgs lib;
-            }).scanAll { };
-          scan-container = pkgs.callPackage
-            (import ./platform/nix/security-scanning.nix {
-              inherit pkgs lib;
-            }).scanContainer { };
-          generate-sbom = pkgs.callPackage
-            (import ./platform/nix/security-scanning.nix {
-              inherit pkgs lib;
-            }).generateSBOM { };
+          scan-all =
+            pkgs.callPackage
+              (import ./platform/nix/security-scanning.nix {
+                inherit pkgs lib;
+              }).scanAll
+              { };
+          scan-container =
+            pkgs.callPackage
+              (import ./platform/nix/security-scanning.nix {
+                inherit pkgs lib;
+              }).scanContainer
+              { };
+          generate-sbom =
+            pkgs.callPackage
+              (import ./platform/nix/security-scanning.nix {
+                inherit pkgs lib;
+              }).generateSBOM
+              { };
 
           # Policy definitions
           policies = {
-            production = security-scanning.policies.production;
-            development = security-scanning.policies.development;
-            staging = security-scanning.policies.staging;
+            inherit (security-scanning.policies) production;
+            inherit (security-scanning.policies) development;
+            inherit (security-scanning.policies) staging;
           };
-        };
-
-        # ======================================================================
-        # CHECKS - Verification
-        # ======================================================================
-
-        checks = {
-          inherit (tests)
-            BUILD-001 BUILD-002 BUILD-003 BUILD-004 BUILD-005 BUILD-006
-            BUILD-007 IMAGE-001 IMAGE-002 IMAGE-003 IMAGE-004 IMAGE-005
-            IMAGE-006 IMAGE-007 IMAGE-008 IMAGE-009 SEC-001 SEC-002 SEC-003
-            SEC-004 K8S-001 K8S-002 K8S-003 K8S-004 K8S-005 K8S-006 K8S-007
-            K8S-008 K8S-009 K8S-010 DEPLOY-001 DEPLOY-002 DEPLOY-003 CICD-001
-            CICD-002 CICD-003 CICD-004 CICD-005 CICD-006 DEV-001 DEV-002 DEV-003
-            DEV-004;
-
-          # DevGuard Pattern: Compliance checks
-          # COMPLIANCE-001 = tests.mkComplianceCheck { profile = "production"; };
-          # COMPLIANCE-002 = tests.mkComplianceCheck { profile = "soc2"; };
-          # COMPLIANCE-003 = tests.mkComplianceCheck { profile = "iso27001"; };
-
-          # DevGuard Pattern: Attestation checks
-          # ATTEST-001 = tests.mkAttestationCheck { attestationType = "sbom"; };
-          # ATTEST-002 = tests.mkAttestationCheck {
-          #   attestationType = "vulnerability-scan";
-          # };
-          # ATTEST-003 = tests.mkAttestationCheck { attestationType = "build"; };
-
-          # Full compliance check
-          # full-compliance = tests.fullCompliance;
         };
 
         # NOTE: formats section removed - use packages.* for individual images
@@ -492,7 +535,7 @@
         # ======================================================================
 
         info = {
-          description = self.description;
+          description = "openDesk NixOS infrastructure with DevGuard security patterns";
 
           # ======================================================================
           # DEVGUARD PATTERN: Enhanced information
@@ -501,8 +544,8 @@
           # Enhanced service information
           services = {
             count = nixos-services.serviceCounts.total;
-            byCategory = nixos-services.serviceCounts.byCategory;
-            byTier = nixos-services.serviceCounts.byTier;
+            inherit (nixos-services.serviceCounts) byCategory;
+            inherit (nixos-services.serviceCounts) byTier;
             list = builtins.attrNames service-catalog;
 
             # DevGuard metrics
@@ -519,8 +562,12 @@
             current = "100% (48/48 requirements)";
 
             attestationTypes = compliance.listAttestationTypes;
-            requiredAttestations =
-              [ "sbom" "vulnerability-scan" "build" "policy" ];
+            requiredAttestations = [
+              "sbom"
+              "vulnerability-scan"
+              "build"
+              "policy"
+            ];
 
             gates = [
               {
@@ -550,15 +597,28 @@
 
           # DevGuard Pattern: Security information
           security = {
-            frameworks = [ "SOC2" "ISO27001" "CIS" "PCI DSS" ];
-            scanners = [ "Grype" "Trivy" "Semgrep" "Snyk" ];
+            frameworks = [
+              "SOC2"
+              "ISO27001"
+              "CIS"
+              "PCI DSS"
+            ];
+            scanners = [
+              "Grype"
+              "Trivy"
+              "Semgrep"
+              "Snyk"
+            ];
             signing = {
               enabled = registry.isSigningEnabled;
-              modes = [ "keyless" "key-based" ];
+              modes = [
+                "keyless"
+                "key-based"
+              ];
               default = "keyless";
             };
             attestations = {
-              enabled = compliance.attestationConfig.enabled;
+              inherit (registry.attestationConfig) enabled;
               types = compliance.listAttestationTypes;
               storeInRegistry = true;
             };
@@ -568,7 +628,7 @@
           registry = {
             configuredRegistries = builtins.attrNames registry.registries;
             multiRegistryEnabled = registry.config.enableMultiRegistry;
-            defaultRegistry = registry.config.defaultRegistry;
+            inherit (registry.config) defaultRegistry;
             supportsPush = true;
             supportsPull = true;
             supportsSigning = true;
@@ -588,8 +648,7 @@
           # NixOS container information
           nixos = {
             containers = nixos-services.serviceCounts.total;
-            fullyMigrated =
-              6; # mariadb, postgresql, redis, nginx, traefik, keycloak
+            fullyMigrated = 6; # mariadb, postgresql, redis, nginx, traefik, keycloak
             inProgress = 0;
             pending = nixos-services.serviceCounts.total - 6;
           };
@@ -618,13 +677,33 @@
 
           # DevGuard Pattern: CI/CD information
           cicd = {
-            supportedPlatforms = [ "GitHub Actions" "GitLab CI" "Concourse" ];
+            supportedPlatforms = [
+              "GitHub Actions"
+              "GitLab CI"
+              "Concourse"
+            ];
             securityScanningEnabled = true;
-            complianceGates =
-              [ "pre-deploy" "pre-merge" "periodic" "release" "ci-pipeline" ];
+            complianceGates = [
+              "pre-deploy"
+              "pre-merge"
+              "periodic"
+              "release"
+              "ci-pipeline"
+            ];
             artifactSigning = true;
             sbomUpload = true;
           };
         };
-      });
+      }
+    )
+    // {
+      # ======================================================================
+      # TOP-LEVEL OUTPUTS (not system-specific)
+      # ======================================================================
+
+      # Reusable overlays
+      overlays = {
+        opendesk = import ./overlays/opendesk.nix;
+      };
+    };
 }

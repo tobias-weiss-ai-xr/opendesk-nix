@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
 
 { 
   lib,
@@ -8,14 +8,14 @@
   types ? import ../../lib/types.nix { },
   sbom ? import ../../lib/sbom.nix { },
   pkgs ? import <nixpkgs> { }
-  env ? import ../environments/hrz/default.nix { lib = lib; },
+  env ? import ../environments/hrz/default.nix { inherit lib; },
 }:
 
 let
 
   # OCI Labels (OpenSpec Compliance - FR-IMAGE-007)
   ociLabels = lib.mkOCILabels {
-    name = name;
+    inherit name;
     version = tag;
     description = "promtail service for openDesk";
     serviceType = "web";
@@ -48,11 +48,11 @@ in
 [
   # Promtail DaemonSet - runs on ALL nodes including masters
   (lib.daemonSet {
-    name = name;
+    inherit name;
     image = "docker.io/grafana/promtail:2.10.0";
     labels = { app = name; };
     selector = { app = name; };
-    namespace = namespace;
+    inherit namespace;
     ports = [ { name = "http-metrics"; containerPort = port; } ];
     resources = { 
       limits = { cpu = "200m"; memory = "200Mi"; }; 
@@ -67,9 +67,9 @@ in
 
   # Promtail Service
   (lib.service {
-    name = name;
-    port = port;
+    inherit name;
+    inherit port;
     selector = { app = name; };
-    namespace = namespace;
+    inherit namespace;
   })
 ]

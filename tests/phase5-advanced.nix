@@ -7,7 +7,7 @@
   name = "phase5-advanced";
 
   nodes = {
-    builder = { ... }: { };
+    builder = _: { };
 
     node = pkgs.nixosTest {
       name = "advanced-features-node";
@@ -17,15 +17,20 @@
           enable = true;
           connectTimeout = 30;
           buildTimeout = 3600;
-          nodes = [{
-            name = "builder-1";
-            endpoint = "nix-builder-1@10.0.0.10";
-            sshKey = /etc/nix/builders/ssh-key;
-            system = "x86_64-linux";
-            maxJobs = 4;
-            speedFactor = 2;
-            supportedFeatures = [ "kvm" "bigparallel" ];
-          }];
+          nodes = [
+            {
+              name = "builder-1";
+              endpoint = "nix-builder-1@10.0.0.10";
+              sshKey = /etc/nix/builders/ssh-key;
+              system = "x86_64-linux";
+              maxJobs = 4;
+              speedFactor = 2;
+              supportedFeatures = [
+                "kvm"
+                "bigparallel"
+              ];
+            }
+          ];
         };
 
         # Secure Boot configuration
@@ -66,7 +71,9 @@
                 alert = "HighCPUUsage";
                 expr = "node_cpu_usage > 80";
                 for = "5m";
-                labels = { severity = "warning"; };
+                labels = {
+                  severity = "warning";
+                };
               };
             };
           };
@@ -78,7 +85,7 @@
     };
   };
 
-  testScript = { ... }: ''
+  testScript = _: ''
     # Start the node
     node.start()
     node.wait_for_unit("multi-user.target")

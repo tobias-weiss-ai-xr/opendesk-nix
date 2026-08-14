@@ -9,7 +9,11 @@
 # Storage: ceph-rbd (RWO, one PV per replica via volumeClaimTemplates)
 # Topology: 3 replicas (one per K3s node: clrz14-06, clrz14-07, clrz14-08)
 
-{ lib, env ? import ../environments/scs/default.nix { inherit lib; }, ... }:
+{
+  lib,
+  env ? import ../environments/scs/default.nix { inherit lib; },
+  ...
+}:
 
 let
   name = "galera";
@@ -28,9 +32,13 @@ let
 
   # Galera configuration
   wsrepClusterName = "opendesk-galera";
-  wsrepClusterAddress = "gcomm://galera-0.galera-headless." + env.namespace
-    + ".svc.cluster.local:4567,galera-1.galera-headless." + env.namespace
-    + ".svc.cluster.local:4567,galera-2.galera-headless." + env.namespace
+  wsrepClusterAddress =
+    "gcomm://galera-0.galera-headless."
+    + env.namespace
+    + ".svc.cluster.local:4567,galera-1.galera-headless."
+    + env.namespace
+    + ".svc.cluster.local:4567,galera-2.galera-headless."
+    + env.namespace
     + ".svc.cluster.local:4567";
 
   # Database init SQL — creates databases and users for all services
@@ -154,8 +162,7 @@ let
 
   livenessProbe = lib.mkProbe {
     type = "exec";
-    path =
-      "mariadb-admin ping -h localhost -u root -p'ChangeMeGalera123!' 2>/dev/null || exit 1";
+    path = "mariadb-admin ping -h localhost -u root -p'ChangeMeGalera123!' 2>/dev/null || exit 1";
     initialDelaySeconds = 180;
     periodSeconds = 15;
     failureThreshold = 10;
@@ -163,8 +170,7 @@ let
 
   readinessProbe = lib.mkProbe {
     type = "exec";
-    path =
-      "mariadb -h localhost -u root -p'ChangeMeGalera123!' -e 'SELECT 1' 2>/dev/null || exit 1";
+    path = "mariadb -h localhost -u root -p'ChangeMeGalera123!' -e 'SELECT 1' 2>/dev/null || exit 1";
     initialDelaySeconds = 30;
     periodSeconds = 10;
     failureThreshold = 6;
@@ -173,26 +179,39 @@ let
   # Pod anti-affinity: one Galera pod per node
   podAntiAffinity = {
     podAntiAffinity = {
-      requiredDuringSchedulingIgnoredDuringExecution = [{
-        labelSelector = { matchLabels = { app = name; }; };
-        topologyKey = "kubernetes.io/hostname";
-      }];
+      requiredDuringSchedulingIgnoredDuringExecution = [
+        {
+          labelSelector = {
+            matchLabels = {
+              app = name;
+            };
+          };
+          topologyKey = "kubernetes.io/hostname";
+        }
+      ];
     };
   };
 
-in [
+in
+[
   # ===================================================================
   # StatefulSet (3 replicas, one per node)
   # ===================================================================
   (lib.statefulset {
-    inherit name image tag port resources;
-    replicas = replicas;
+    inherit
+      name
+      image
+      tag
+      port
+      resources
+      ;
+    inherit replicas;
     securityContext = dbSecurityContext;
     podSecurityContext = dbPodSecurityContext;
     liveness = livenessProbe;
     readiness = readinessProbe;
-    labels = labels;
-    namespace = env.namespace;
+    inherit labels;
+    inherit (env) namespace;
     serviceName = "${name}-headless";
     affinity = podAntiAffinity;
 
@@ -234,7 +253,10 @@ in [
       }
     ];
 
-    command = [ "/bin/bash" "/scripts/bootstrap.sh" ];
+    command = [
+      "/bin/bash"
+      "/scripts/bootstrap.sh"
+    ];
 
     volumeMounts = [
       {
@@ -261,11 +283,15 @@ in [
     volumes = [
       {
         name = "config";
-        configMap = { name = "${name}-config"; };
+        configMap = {
+          name = "${name}-config";
+        };
       }
       {
         name = "initdb";
-        configMap = { name = "${name}-initdb"; };
+        configMap = {
+          name = "${name}-initdb";
+        };
       }
       {
         name = "scripts";
@@ -277,14 +303,22 @@ in [
     ];
 
     # Per-pod PVC via volumeClaimTemplates
-    volumeClaims = [{
-      metadata = { name = "data"; };
-      spec = {
-        accessModes = [ "ReadWriteOnce" ];
-        storageClassName = storageClass;
-        resources = { requests = { storage = storageSize; }; };
-      };
-    }];
+    volumeClaims = [
+      {
+        metadata = {
+          name = "data";
+        };
+        spec = {
+          accessModes = [ "ReadWriteOnce" ];
+          storageClassName = storageClass;
+          resources = {
+            requests = {
+              storage = storageSize;
+            };
+          };
+        };
+      }
+    ];
 
     terminationGracePeriodSeconds = 300;
     podManagementPolicy = "OrderedReady";
@@ -296,8 +330,8 @@ in [
   (lib.headlessService {
     inherit name;
     port = 3306;
-    labels = labels;
-    namespace = env.namespace;
+    inherit labels;
+    inherit (env) namespace;
     ports = [
       {
         port = 3306;
@@ -332,8 +366,8 @@ in [
   (lib.service {
     inherit name;
     port = 3306;
-    labels = labels;
-    namespace = env.namespace;
+    inherit labels;
+    inherit (env) namespace;
     type = "ClusterIP";
   })
 
@@ -342,9 +376,11 @@ in [
   # ===================================================================
   (lib.configMap {
     name = "${name}-config";
-    namespace = env.namespace;
-    labels = labels;
-    data = { "galera.cnf" = galeraConfig; };
+    inherit (env) namespace;
+    inherit labels;
+    data = {
+      "galera.cnf" = galeraConfig;
+    };
   })
 
   # ===================================================================
@@ -352,9 +388,11 @@ in [
   # ===================================================================
   (lib.configMap {
     name = "${name}-initdb";
-    namespace = env.namespace;
-    labels = labels;
-    data = { "01-init-databases.sql" = initSql; };
+    inherit (env) namespace;
+    inherit labels;
+    data = {
+      "01-init-databases.sql" = initSql;
+    };
   })
 
   # ===================================================================
@@ -362,9 +400,11 @@ in [
   # ===================================================================
   (lib.configMap {
     name = "${name}-bootstrap";
-    namespace = env.namespace;
-    labels = labels;
-    data = { "bootstrap.sh" = bootstrapScript; };
+    inherit (env) namespace;
+    inherit labels;
+    data = {
+      "bootstrap.sh" = bootstrapScript;
+    };
   })
 
   # ===================================================================
@@ -372,8 +412,8 @@ in [
   # ===================================================================
   (lib.secret {
     name = "${name}-secrets";
-    namespace = env.namespace;
-    labels = labels;
+    inherit (env) namespace;
+    inherit labels;
     stringData = {
       "mysql-root-password" = "ChangeMeGalera123!";
       "mariadb-root-password" = "ChangeMeGalera123!";
@@ -385,11 +425,13 @@ in [
   # PodDisruptionBudget (ensure quorum)
   # ===================================================================
   (lib.pdb {
-    name = name;
-    namespace = env.namespace;
-    labels = labels;
+    inherit name;
+    inherit (env) namespace;
+    inherit labels;
     minAvailable = 2;
-    selector = { app = name; };
+    selector = {
+      app = name;
+    };
   })
 
   # ===================================================================
@@ -397,41 +439,49 @@ in [
   # ===================================================================
   (lib.networkPolicy {
     name = "${name}-allow-opendesk";
-    namespace = env.namespace;
-    labels = labels;
-    podSelector = { app = name; };
+    inherit (env) namespace;
+    inherit labels;
+    podSelector = {
+      app = name;
+    };
     policyTypes = [ "Ingress" ];
-    ingress = [{
-      from = [
-        {
-          namespaceSelector = {
-            matchLabels = { "kubernetes.io/metadata.name" = env.namespace; };
-          };
-        }
-        {
-          namespaceSelector = {
-            matchLabels = { "kubernetes.io/metadata.name" = env.namespaceEdu; };
-          };
-        }
-      ];
-      ports = [
-        {
-          protocol = "TCP";
-          port = 3306;
-        }
-        {
-          protocol = "TCP";
-          port = 4567;
-        }
-        {
-          protocol = "TCP";
-          port = 4568;
-        }
-        {
-          protocol = "TCP";
-          port = 4569;
-        }
-      ];
-    }];
+    ingress = [
+      {
+        from = [
+          {
+            namespaceSelector = {
+              matchLabels = {
+                "kubernetes.io/metadata.name" = env.namespace;
+              };
+            };
+          }
+          {
+            namespaceSelector = {
+              matchLabels = {
+                "kubernetes.io/metadata.name" = env.namespaceEdu;
+              };
+            };
+          }
+        ];
+        ports = [
+          {
+            protocol = "TCP";
+            port = 3306;
+          }
+          {
+            protocol = "TCP";
+            port = 4567;
+          }
+          {
+            protocol = "TCP";
+            port = 4568;
+          }
+          {
+            protocol = "TCP";
+            port = 4569;
+          }
+        ];
+      }
+    ];
   })
 ]

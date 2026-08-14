@@ -54,12 +54,12 @@ echo ""
 echo -e "${GREEN}=== Step 2/4: Creating Kubernetes pull secret ===${NC}"
 if [ "$KUBECTL_AVAILABLE" = true ]; then
     kubectl create secret docker-registry gitlab-registry-opencode \
-      --docker-server=registry.gitlab.opencode.de \
-      --docker-username=weiss \
-      --docker-password=$OPENCODE_TOKEN \
-      --docker-email=tobias.weiss@hrz.uni-marburg.de \
-      --dry-run=client -o yaml > /tmp/gitlab-registry-secret.yaml 2>/dev/null
-    
+        --docker-server=registry.gitlab.opencode.de \
+        --docker-username=weiss \
+        --docker-password=$OPENCODE_TOKEN \
+        --docker-email=tobias.weiss@hrz.uni-marburg.de \
+        --dry-run=client -o yaml >/tmp/gitlab-registry-secret.yaml 2>/dev/null
+
     if [ -f /tmp/gitlab-registry-secret.yaml ]; then
         echo -e "${GREEN}✓ Pull secret YAML created at /tmp/gitlab-registry-secret.yaml${NC}"
         echo "  Apply with: kubectl apply -f /tmp/gitlab-registry-secret.yaml"
@@ -80,9 +80,9 @@ push_image() {
     local build_cmd=$2
     local dockerfile=$3
     local context=$4
-    
+
     echo -e "${BLUE}--- Pushing $image_name ---${NC}"
-    
+
     if [ -n "$build_cmd" ]; then
         echo -e "  Building with custom command..."
         if ! eval "$build_cmd"; then
@@ -105,7 +105,7 @@ push_image() {
         fi
         cd - >/dev/null
     fi
-    
+
     echo -e "  Pushing $REGISTRY/$image_name:latest..."
     if docker push $REGISTRY/$image_name:latest; then
         echo -e "  ${GREEN}✓ $image_name pushed successfully${NC}"

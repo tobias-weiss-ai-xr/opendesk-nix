@@ -40,45 +40,45 @@ log() {
     local level=$1
     local message=$2
     local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    
+
     case $level in
-        "INFO")
-            echo -e "${GREEN}[$timestamp] [INFO]${NC} $message"
-            ;;
-        "WARN")
-            echo -e "${YELLOW}[$timestamp] [WARN]${NC} $message"
-            ;;
-        "ERROR")
-            echo -e "${RED}[$timestamp] [ERROR]${NC} $message"
-            ;;
+    "INFO")
+        echo -e "${GREEN}[$timestamp] [INFO]${NC} $message"
+        ;;
+    "WARN")
+        echo -e "${YELLOW}[$timestamp] [WARN]${NC} $message"
+        ;;
+    "ERROR")
+        echo -e "${RED}[$timestamp] [ERROR]${NC} $message"
+        ;;
     esac
 }
 
 # Check prerequisites
 check_prerequisites() {
     log "INFO" "Checking prerequisites..."
-    
-    if ! command -v kubectl &> /dev/null; then
+
+    if ! command -v kubectl &>/dev/null; then
         log "ERROR" "kubectl is not installed"
         exit 1
     fi
-    
-    if ! kubectl cluster-info &> /dev/null; then
+
+    if ! kubectl cluster-info &>/dev/null; then
         log "ERROR" "Cannot connect to Kubernetes cluster"
         exit 1
     fi
-    
-    if [ "$DRY_RUN" = false ] && ! kubectl get namespace "$NAMESPACE" &> /dev/null; then
+
+    if [ "$DRY_RUN" = false ] && ! kubectl get namespace "$NAMESPACE" &>/dev/null; then
         log "INFO" "Creating namespace $NAMESPACE..."
         kubectl create namespace "$NAMESPACE"
     fi
-    
+
     log "INFO" "Prerequisites check passed"
 }
 
 # Show usage
 usage() {
-    cat << EOF
+    cat <<EOF
 Deploy OpenDesk Edu Operators to Kubernetes Cluster
 
 Usage: $0 [OPTIONS]
@@ -102,39 +102,39 @@ EOF
 # Parse arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --namespace)
-            NAMESPACE="$2"
-            shift 2
-            ;;
-        --dry-run)
-            DRY_RUN=true
-            shift
-            ;;
-        --skip-crd)
-            SKIP_CRD=true
-            shift
-            ;;
-        --skip-rbac)
-            SKIP_RBAC=true
-            shift
-            ;;
-        --wait)
-            WAIT=true
-            shift
-            ;;
-        --timeout)
-            TIMEOUT="$2"
-            shift 2
-            ;;
-        --help)
-            usage
-            exit 0
-            ;;
-        *)
-            echo "Unknown option: $1"
-            usage
-            exit 1
-            ;;
+    --namespace)
+        NAMESPACE="$2"
+        shift 2
+        ;;
+    --dry-run)
+        DRY_RUN=true
+        shift
+        ;;
+    --skip-crd)
+        SKIP_CRD=true
+        shift
+        ;;
+    --skip-rbac)
+        SKIP_RBAC=true
+        shift
+        ;;
+    --wait)
+        WAIT=true
+        shift
+        ;;
+    --timeout)
+        TIMEOUT="$2"
+        shift 2
+        ;;
+    --help)
+        usage
+        exit 0
+        ;;
+    *)
+        echo "Unknown option: $1"
+        usage
+        exit 1
+        ;;
     esac
 done
 
@@ -151,11 +151,11 @@ fi
 
 if [ "$SKIP_CRD" = false ]; then
     log "INFO" "=== Deploying Custom Resource Definitions ==="
-    
+
     # Compliance Operator CRD
     log "INFO" "Deploying Compliance Operator CRD..."
     if [ "$DRY_RUN" = true ]; then
-        cat << EOF
+        cat <<EOF
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -205,7 +205,7 @@ spec:
       - comp
 EOF
     else
-        kubectl apply -f - << EOF
+        kubectl apply -f - <<EOF
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
@@ -254,11 +254,11 @@ spec:
       - comp
 EOF
     fi
-    
+
     # Image Builder Operator CRD
     log "INFO" "Deploying Image Builder Operator CRD..."
     if [ "$DRY_RUN" = true ]; then
-        cat << EOF
+        cat <<EOF
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -305,7 +305,7 @@ spec:
       - ib
 EOF
     else
-        kubectl apply -f - << EOF
+        kubectl apply -f - <<EOF
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
@@ -351,7 +351,7 @@ spec:
       - ib
 EOF
     fi
-    
+
     log "INFO" "CRDs deployed successfully"
 fi
 
@@ -361,11 +361,11 @@ fi
 
 if [ "$SKIP_RBAC" = false ]; then
     log "INFO" "=== Deploying RBAC Configurations ==="
-    
+
     # Compliance Operator ServiceAccount
     log "INFO" "Creating Compliance Operator ServiceAccount..."
     if [ "$DRY_RUN" = true ]; then
-        cat << EOF
+        cat <<EOF
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -374,7 +374,7 @@ metadata:
   namespace: $NAMESPACE
 EOF
     else
-        kubectl apply -f - << EOF
+        kubectl apply -f - <<EOF
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -382,11 +382,11 @@ metadata:
   namespace: $NAMESPACE
 EOF
     fi
-    
+
     # Image Builder Operator ServiceAccount
     log "INFO" "Creating Image Builder Operator ServiceAccount..."
     if [ "$DRY_RUN" = true ]; then
-        cat << EOF
+        cat <<EOF
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -395,7 +395,7 @@ metadata:
   namespace: $NAMESPACE
 EOF
     else
-        kubectl apply -f - << EOF
+        kubectl apply -f - <<EOF
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -403,11 +403,11 @@ metadata:
   namespace: $NAMESPACE
 EOF
     fi
-    
+
     # Compliance Operator ClusterRole
     log "INFO" "Creating Compliance Operator ClusterRole..."
     if [ "$DRY_RUN" = true ]; then
-        cat << EOF
+        cat <<EOF
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -434,7 +434,7 @@ rules:
     verbs: ["get", "list", "watch"]
 EOF
     else
-        kubectl apply -f - << EOF
+        kubectl apply -f - <<EOF
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -460,11 +460,11 @@ rules:
     verbs: ["get", "list", "watch"]
 EOF
     fi
-    
+
     # Image Builder Operator ClusterRole
     log "INFO" "Creating Image Builder Operator ClusterRole..."
     if [ "$DRY_RUN" = true ]; then
-        cat << EOF
+        cat <<EOF
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -485,7 +485,7 @@ rules:
     verbs: ["get", "list", "watch", "create", "update", "delete"]
 EOF
     else
-        kubectl apply -f - << EOF
+        kubectl apply -f - <<EOF
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -505,11 +505,11 @@ rules:
     verbs: ["get", "list", "watch", "create", "update", "delete"]
 EOF
     fi
-    
+
     # Compliance Operator ClusterRoleBinding
     log "INFO" "Creating Compliance Operator ClusterRoleBinding..."
     if [ "$DRY_RUN" = true ]; then
-        cat << EOF
+        cat <<EOF
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -525,7 +525,7 @@ subjects:
     namespace: $NAMESPACE
 EOF
     else
-        kubectl apply -f - << EOF
+        kubectl apply -f - <<EOF
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -540,11 +540,11 @@ subjects:
     namespace: $NAMESPACE
 EOF
     fi
-    
+
     # Image Builder Operator ClusterRoleBinding
     log "INFO" "Creating Image Builder Operator ClusterRoleBinding..."
     if [ "$DRY_RUN" = true ]; then
-        cat << EOF
+        cat <<EOF
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -560,7 +560,7 @@ subjects:
     namespace: $NAMESPACE
 EOF
     else
-        kubectl apply -f - << EOF
+        kubectl apply -f - <<EOF
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -575,7 +575,7 @@ subjects:
     namespace: $NAMESPACE
 EOF
     fi
-    
+
     log "INFO" "RBAC configurations deployed successfully"
 fi
 
@@ -588,7 +588,7 @@ log "INFO" "=== Deploying Operators ==="
 # Compliance Operator Deployment
 log "INFO" "Deploying Compliance Operator..."
 if [ "$DRY_RUN" = true ]; then
-    cat << EOF
+    cat <<EOF
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -640,7 +640,7 @@ spec:
             fsGroup: 1000
 EOF
 else
-    kubectl apply -f - << EOF
+    kubectl apply -f - <<EOF
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -695,7 +695,7 @@ fi
 # Image Builder Operator Deployment
 log "INFO" "Deploying Image Builder Operator..."
 if [ "$DRY_RUN" = true ]; then
-    cat << EOF
+    cat <<EOF
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -751,7 +751,7 @@ spec:
             fsGroup: 1000
 EOF
 else
-    kubectl apply -f - << EOF
+    kubectl apply -f - <<EOF
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -815,21 +815,21 @@ log "INFO" "Operators deployed successfully"
 
 if [ "$WAIT" = true ]; then
     log "INFO" "=== Waiting for Deployments ==="
-    
+
     log "INFO" "Waiting for Compliance Operator to be ready..."
     kubectl rollout status deployment/compliance-operator -n "$NAMESPACE" --timeout="${TIMEOUT}s" || {
         log "ERROR" "Compliance Operator deployment failed"
         kubectl describe deployment/compliance-operator -n "$NAMESPACE"
         exit 1
     }
-    
+
     log "INFO" "Waiting for Image Builder Operator to be ready..."
     kubectl rollout status deployment/image-builder-operator -n "$NAMESPACE" --timeout="${TIMEOUT}s" || {
         log "ERROR" "Image Builder Operator deployment failed"
         kubectl describe deployment/image-builder-operator -n "$NAMESPACE"
         exit 1
     }
-    
+
     log "INFO" "All deployments are ready"
 fi
 

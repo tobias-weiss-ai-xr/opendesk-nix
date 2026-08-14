@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
 
 { 
   lib,
@@ -8,14 +8,14 @@
   types ? import ../../lib/types.nix { },
   sbom ? import ../../lib/sbom.nix { },
   pkgs ? import <nixpkgs> { }
-  env ? import ../environments/hrz/default.nix { lib = lib; },
+  env ? import ../environments/hrz/default.nix { inherit lib; },
 }:
 
 let
 
   # OCI Labels (OpenSpec Compliance - FR-IMAGE-007)
   ociLabels = lib.mkOCILabels {
-    name = name;
+    inherit name;
     version = tag;
     description = "filebeat service for openDesk";
     serviceType = "web";
@@ -47,11 +47,11 @@ in
 [
   # Filebeat DaemonSet - runs on ALL nodes including masters
   (lib.daemonSet {
-    name = name;
+    inherit name;
     image = "docker.elastic.co/beats/filebeat:8.13.0";
     labels = { app = name; };
     selector = { app = name; };
-    namespace = namespace;
+    inherit namespace;
     resources = { 
       limits = { cpu = "100m"; memory = "200Mi"; }; 
       requests = { cpu = "100m"; memory = "100Mi"; }; 
@@ -66,8 +66,8 @@ in
 
   # Filebeat Service Account
   (lib.serviceAccount {
-    name = name;
-    namespace = namespace;
+    inherit name;
+    inherit namespace;
   })
 
   # Note: Filebeat config is managed separately via configMap in production

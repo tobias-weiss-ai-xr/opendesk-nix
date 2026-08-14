@@ -67,7 +67,7 @@ scan_image() {
     # Pull image if requested
     if [ "$do_pull" = "true" ]; then
         echo "    Pulling image..."
-        if ! docker pull "$image_ref" > "$log_file" 2>&1; then
+        if ! docker pull "$image_ref" >"$log_file" 2>&1; then
             echo "    Failed to pull image"
             return 1
         fi
@@ -75,64 +75,64 @@ scan_image() {
 
     # Run scanner
     case "$scanner" in
-        grype)
-            local cmd="grype"
-            case "$format" in
-                json) cmd+=" -o json" ;;
-                sarif) cmd+=" -o sarif" ;;
-                table) cmd+=" -o table" ;;
-                text) cmd+=" -o text" ;;
-            esac
-            cmd+=" \"$image_ref\""
-            if eval "$cmd > $report_file 2>> $log_file"; then
-                echo "    Grype scan completed: $report_file"
-                return 0
-            else
-                echo "    Grype scan failed"
-                return 1
-            fi
-            ;;
-        trivy)
-            local cmd="trivy image"
-            case "$format" in
-                json) cmd+=" -f json" ;;
-                sarif) cmd+=" -f sarif" ;;
-                table) cmd+=" -f table" ;;
-                text) cmd+=" -f text" ;;
-            esac
-            cmd+=" \"$image_ref\""
-            if eval "$cmd > $report_file 2>> $log_file"; then
-                echo "    Trivy scan completed: $report_file"
-                return 0
-            else
-                echo "    Trivy scan failed"
-                return 1
-            fi
-            ;;
-        snyk)
-            if [ -z "${SNYK_TOKEN:-}" ]; then
-                echo "    SNYK_TOKEN not set"
-                return 1
-            fi
-            local cmd="snyk container test"
-            case "$format" in
-                json) cmd+=" --json" ;;
-                sarif) cmd+=" --sarif" ;;
-                *);;
-            esac
-            cmd+=" \"$image_ref\""
-            if eval "$cmd > $report_file 2>> $log_file"; then
-                echo "    Snyk scan completed: $report_file"
-                return 0
-            else
-                echo "    Snyk scan failed"
-                return 1
-            fi
-            ;;
-        *)
-            echo "    Unknown scanner: ${scanner}"
+    grype)
+        local cmd="grype"
+        case "$format" in
+        json) cmd+=" -o json" ;;
+        sarif) cmd+=" -o sarif" ;;
+        table) cmd+=" -o table" ;;
+        text) cmd+=" -o text" ;;
+        esac
+        cmd+=" \"$image_ref\""
+        if eval "$cmd > $report_file 2>> $log_file"; then
+            echo "    Grype scan completed: $report_file"
+            return 0
+        else
+            echo "    Grype scan failed"
             return 1
-            ;;
+        fi
+        ;;
+    trivy)
+        local cmd="trivy image"
+        case "$format" in
+        json) cmd+=" -f json" ;;
+        sarif) cmd+=" -f sarif" ;;
+        table) cmd+=" -f table" ;;
+        text) cmd+=" -f text" ;;
+        esac
+        cmd+=" \"$image_ref\""
+        if eval "$cmd > $report_file 2>> $log_file"; then
+            echo "    Trivy scan completed: $report_file"
+            return 0
+        else
+            echo "    Trivy scan failed"
+            return 1
+        fi
+        ;;
+    snyk)
+        if [ -z "${SNYK_TOKEN:-}" ]; then
+            echo "    SNYK_TOKEN not set"
+            return 1
+        fi
+        local cmd="snyk container test"
+        case "$format" in
+        json) cmd+=" --json" ;;
+        sarif) cmd+=" --sarif" ;;
+        *) ;;
+        esac
+        cmd+=" \"$image_ref\""
+        if eval "$cmd > $report_file 2>> $log_file"; then
+            echo "    Snyk scan completed: $report_file"
+            return 0
+        else
+            echo "    Snyk scan failed"
+            return 1
+        fi
+        ;;
+    *)
+        echo "    Unknown scanner: ${scanner}"
+        return 1
+        ;;
     esac
 }
 
@@ -150,19 +150,60 @@ main() {
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            --services) services_arg="$2"; shift 2 ;;
-            --scanners) scanners_arg="$2"; shift 2 ;;
-            --severity) severity_arg="$2"; shift 2 ;;
-            --format) format_arg="$2"; shift 2 ;;
-            --fail-on) fail_on="$2"; shift 2 ;;
-            --output-dir) custom_output_dir="$2"; shift 2 ;;
-            --do-not-pull) do_pull=false; shift ;;
-            --pull) do_pull=true; shift ;;
-            --registry) custom_registry="$2"; shift 2 ;;
-            --dry-run) dry_run=true; shift ;;
-            --help|-h) usage; exit 0 ;;
-            -*) echo "Unknown option: $1"; usage; exit 1 ;;
-            *) echo "Unexpected argument: $1"; usage; exit 1 ;;
+        --services)
+            services_arg="$2"
+            shift 2
+            ;;
+        --scanners)
+            scanners_arg="$2"
+            shift 2
+            ;;
+        --severity)
+            severity_arg="$2"
+            shift 2
+            ;;
+        --format)
+            format_arg="$2"
+            shift 2
+            ;;
+        --fail-on)
+            fail_on="$2"
+            shift 2
+            ;;
+        --output-dir)
+            custom_output_dir="$2"
+            shift 2
+            ;;
+        --do-not-pull)
+            do_pull=false
+            shift
+            ;;
+        --pull)
+            do_pull=true
+            shift
+            ;;
+        --registry)
+            custom_registry="$2"
+            shift 2
+            ;;
+        --dry-run)
+            dry_run=true
+            shift
+            ;;
+        --help | -h)
+            usage
+            exit 0
+            ;;
+        -*)
+            echo "Unknown option: $1"
+            usage
+            exit 1
+            ;;
+        *)
+            echo "Unexpected argument: $1"
+            usage
+            exit 1
+            ;;
         esac
     done
 
@@ -179,14 +220,14 @@ main() {
     # Get services
     local services=()
     if [ -n "$services_arg" ]; then
-        IFS=',' read -ra services <<< "$services_arg"
+        IFS=',' read -ra services <<<"$services_arg"
     else
         local all_services=($(get_all_services | tr ',' '\n'))
         services=("${all_services[@]}")
     fi
 
     local scanners=()
-    IFS=',' read -ra scanners <<< "$scanners_arg"
+    IFS=',' read -ra scanners <<<"$scanners_arg"
 
     echo "========================================"
     echo " container.gov.de Vulnerability Scanner"

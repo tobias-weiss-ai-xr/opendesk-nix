@@ -5,20 +5,20 @@
 
 #"""
 # Security hardening presets and utilities for openDesk container images and deployments.
-# 
+#
 # This library provides:
 # - Security profiles for different service types
 # - Hardened base images
 # - Security context builders
 # - CIS compliance helpers
 # - OpenDesk security standards
-# 
+#
 # Usage:
 #   security = import ./security.nix { inherit pkgs lib; };
-#   
+#
 #   # Apply security to a container
 #   security.applySecurity { package = myPackage; profile = "database"; }
-#   
+#
 #   # Get default security context
 #   security.defaultContext
 #"""
@@ -39,11 +39,21 @@ let
   # - AppArmor profile
   # - SELinux context
 
-  securityProfile = { name, user, group, fsGroup ? null
-    , dropCapabilities ? [ "ALL" ], addCapabilities ? [ ], readOnlyRootFS ? true
-    , allowPrivilegeEscalation ? false, runAsNonRoot ? true
-    , seccompProfile ? "runtime/default", selinuxContext ? null }: {
-      name = name;
+  securityProfile =
+    {
+      name,
+      user,
+      group,
+      fsGroup ? null,
+      dropCapabilities ? [ "ALL" ],
+      addCapabilities ? [ ],
+      readOnlyRootFS ? true,
+      allowPrivilegeEscalation ? false,
+      runAsNonRoot ? true,
+      seccompProfile ? "runtime/default",
+    }:
+    {
+      inherit name;
       inherit user group fsGroup;
       securityContext = {
         inherit runAsNonRoot allowPrivilegeEscalation seccompProfile;
@@ -75,8 +85,7 @@ let
     group = 1000;
     fsGroup = 1000;
     dropCapabilities = [ "ALL" ];
-    addCapabilities =
-      [ "NET_BIND_SERVICE" ]; # Needed for binding to ports < 1024
+    addCapabilities = [ "NET_BIND_SERVICE" ]; # Needed for binding to ports < 1024
     readOnlyRootFS = true;
     allowPrivilegeEscalation = false;
   };
@@ -123,7 +132,7 @@ let
       "DAC_OVERRIDE"
       "SYS_ADMIN" # Sometimes needed for filesystem operations
     ];
-    readOnlyRootFilesystem = false;
+    readOnlyRootFS = false;
     allowPrivilegeEscalation = false;
   };
 
@@ -149,7 +158,10 @@ let
     group = 33;
     fsGroup = 33;
     dropCapabilities = [ "ALL" ];
-    addCapabilities = [ "DAC_OVERRIDE" "NET_BIND_SERVICE" ];
+    addCapabilities = [
+      "DAC_OVERRIDE"
+      "NET_BIND_SERVICE"
+    ];
     readOnlyRootFS = false; # Needs to write user data
     allowPrivilegeEscalation = false;
   };
@@ -173,7 +185,10 @@ let
     group = 1000;
     fsGroup = 1000;
     dropCapabilities = [ "ALL" ];
-    addCapabilities = [ "DAC_OVERRIDE" "NET_BIND_SERVICE" ];
+    addCapabilities = [
+      "DAC_OVERRIDE"
+      "NET_BIND_SERVICE"
+    ];
     readOnlyRootFS = false; # Needs to write logs
     allowPrivilegeEscalation = false;
   };
@@ -182,56 +197,88 @@ let
   # SECURITY PROFILE SELECTOR
   # =============================================================================
 
-  getProfile = profileName:
-    if builtins.elem profileName [ "default" "stateless" "app" ] then
+  getProfile =
+    profileName:
+    if
+      builtins.elem profileName [
+        "default"
+        "stateless"
+        "app"
+      ]
+    then
       defaultProfile
-    else if builtins.elem profileName [ "web" "frontend" "backend" "api" ] then
+    else if
+      builtins.elem profileName [
+        "web"
+        "frontend"
+        "backend"
+        "api"
+      ]
+    then
       webProfile
-    else if builtins.elem profileName [
-      "database"
-      "db"
-      "mariadb"
-      "postgresql"
-      "mysql"
-    ] then
+    else if
+      builtins.elem profileName [
+        "database"
+        "db"
+        "mariadb"
+        "postgresql"
+        "mysql"
+      ]
+    then
       databaseProfile
-    else if builtins.elem profileName [ "cache" "redis" "memcached" ] then
+    else if
+      builtins.elem profileName [
+        "cache"
+        "redis"
+        "memcached"
+      ]
+    then
       cacheProfile
-    else if builtins.elem profileName [
-      "storage"
-      "minio"
-      "seaweedfs"
-      "object-storage"
-    ] then
+    else if
+      builtins.elem profileName [
+        "storage"
+        "minio"
+        "seaweedfs"
+        "object-storage"
+      ]
+    then
       storageProfile
-    else if builtins.elem profileName [
-      "lms"
-      "moodle"
-      "ilias"
-      "jupyterhub"
-    ] then
+    else if
+      builtins.elem profileName [
+        "lms"
+        "moodle"
+        "ilias"
+        "jupyterhub"
+      ]
+    then
       lmsProfile
-    else if builtins.elem profileName [
-      "collaboration"
-      "nextcloud"
-      "collabora"
-      "element"
-      "jitsi"
-    ] then
+    else if
+      builtins.elem profileName [
+        "collaboration"
+        "nextcloud"
+        "collabora"
+        "element"
+        "jitsi"
+      ]
+    then
       collaborationProfile
-    else if builtins.elem profileName [
-      "monitoring"
-      "prometheus"
-      "grafana"
-    ] then
+    else if
+      builtins.elem profileName [
+        "monitoring"
+        "prometheus"
+        "grafana"
+      ]
+    then
       monitoringProfile
-    else if builtins.elem profileName [
-      "logging"
-      "loki"
-      "elastic"
-      "kibana"
-      "filebeat"
-    ] then
+    else if
+      builtins.elem profileName [
+        "logging"
+        "loki"
+        "elastic"
+        "kibana"
+        "filebeat"
+      ]
+    then
       loggingProfile
     else
       defaultProfile;
@@ -241,19 +288,23 @@ let
   # =============================================================================
 
   # Apply security hardening to a Docker image build
-  hardenContainer = { pkg, profile ? "default", extraArgs ? { } }:
+  hardenContainer =
+    {
+      pkg,
+      profile ? "default",
+    }:
     let
       prof = getProfile profile;
-      securityFlags = [ "--no-new-privileges" "--cap-drop=ALL" ]
-        ++ map (cap: "--cap-add=${cap}") prof.securityContext.capabilities.add;
+      securityFlags = [
+        "--no-new-privileges"
+        "--cap-drop=ALL"
+      ] ++ map (cap: "--cap-add=${cap}") prof.securityContext.capabilities.add;
 
-      runFlags =
-        [ "--user=${prof.securityContext.User}:${prof.securityContext.Group}" ]
-        ++ (if prof.securityContext.readOnlyRootFilesystem then
-          [ "--read-only" ]
-        else
-          [ ]);
-    in pkg.overrideAttrs (oldAttrs: rec {
+      runFlags = [
+        "--user=${prof.securityContext.User}:${prof.securityContext.Group}"
+      ] ++ (if prof.securityContext.readOnlyRootFilesystem then [ "--read-only" ] else [ ]);
+    in
+    pkg.overrideAttrs (oldAttrs: rec {
       inherit (oldAttrs) pname version;
 
       # Add security labels
@@ -278,13 +329,13 @@ let
       # Add environment variables
       configEnv = (oldAttrs.configEnv or { }) // {
         HOME = "/home/appuser";
-        PATH =
-          "${pkgs.coreutils}/bin:${pkgs.bash}/bin:${pkgs.findutils}/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin";
+        PATH = "${pkgs.coreutils}/bin:${pkgs.bash}/bin:${pkgs.findutils}/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin";
       };
     });
 
   # Apply minimal security to an existing package
-  minimalHardening = pkg:
+  minimalHardening =
+    pkg:
     pkg.overrideAttrs (oldAttrs: {
       config = (oldAttrs.config or { }) // {
         User = "1000:1000";
@@ -347,7 +398,10 @@ let
     none = [ ];
     minimal = [ ];
     basic = [ capabilities.NET_BIND_SERVICE ];
-    writeable = [ capabilities.DAC_OVERRIDE capabilities.NET_BIND_SERVICE ];
+    writeable = [
+      capabilities.DAC_OVERRIDE
+      capabilities.NET_BIND_SERVICE
+    ];
     database = [
       capabilities.DAC_OVERRIDE
       capabilities.SYS_NICE
@@ -383,32 +437,50 @@ let
   # =============================================================================
 
   # Build a security context for a Kubernetes pod
-  mkPodSecurityContext = { profile ? "default", extra ? { } }:
-    let prof = getProfile profile;
-    in {
+  mkPodSecurityContext =
+    {
+      profile ? "default",
+      extra ? { },
+    }:
+    let
+      prof = getProfile profile;
+    in
+    {
       runAsNonRoot = true;
       runAsUser = prof.user;
       runAsGroup = prof.group;
       fsGroup = prof.fsGroup or prof.group;
       fsGroupChangePolicy = "OnRootMismatch";
-      seccompProfile = { type = "RuntimeDefault"; };
-    } // extra;
+      seccompProfile = {
+        type = "RuntimeDefault";
+      };
+    }
+    // extra;
 
   # Build a security context for a Kubernetes container
-  mkContainerSecurityContext = { profile ? "default", extra ? { } }:
-    let prof = getProfile profile;
-    in {
+  mkContainerSecurityContext =
+    {
+      profile ? "default",
+      extra ? { },
+    }:
+    let
+      prof = getProfile profile;
+    in
+    {
       allowPrivilegeEscalation = false;
       runAsNonRoot = true;
       runAsUser = prof.user;
       runAsGroup = prof.group;
-      readOnlyRootFilesystem = prof.securityContext.readOnlyRootFilesystem;
+      inherit (prof.securityContext) readOnlyRootFilesystem;
       capabilities = {
         drop = [ "ALL" ];
-        add = prof.securityContext.capabilities.add;
+        inherit (prof.securityContext.capabilities) add;
       };
-      seccompProfile = { type = "RuntimeDefault"; };
-    } // extra;
+      seccompProfile = {
+        type = "RuntimeDefault";
+      };
+    }
+    // extra;
 
   # =============================================================================
   # CIS COMPLIANCE HELPERS
@@ -423,7 +495,9 @@ let
     allowPrivilegeEscalation = false;
     runAsNonRoot = true;
     readOnlyRootFilesystem = true;
-    capabilities = { drop = [ "ALL" ]; };
+    capabilities = {
+      drop = [ "ALL" ];
+    };
   };
 
   # CIS 5.3.x - Pod Security Context
@@ -440,49 +514,50 @@ let
     runAsNonRoot = true;
     runAsUser = 1000;
     readOnlyRootFilesystem = true;
-    capabilities = { drop = [ "ALL" ]; };
+    capabilities = {
+      drop = [ "ALL" ];
+    };
     privileged = false;
-    seccompProfile = { type = "RuntimeDefault"; };
+    seccompProfile = {
+      type = "RuntimeDefault";
+    };
   };
 
   # Validate against CIS benchmark
-  validateCIS = config:
+  validateCIS =
+    config:
     let
       issues = [
-        (if config.privileged == true then
-          "CIS 5.2.1: Container should not run as privileged"
-        else
-          null)
-        (if config.allowPrivilegeEscalation == true then
-          "CIS 5.2.2: Container should disable privilege escalation"
-        else
-          null)
-        (if config.runAsNonRoot == false then
-          "CIS 5.2.3: Container should run as non-root"
-        else
-          null)
-        (if config.readOnlyRootFilesystem == false then
-          "CIS 5.2.4: Root filesystem should be read-only"
-        else
-          null)
-        (if !builtins.elem "ALL" config.capabilities.drop then
-          "CIS 5.2.5: All capabilities should be dropped"
-        else
-          null)
-        (if config.seccompProfile != "RuntimeDefault" then
-          "CIS 5.2.10: Seccomp profile should be RuntimeDefault"
-        else
-          null)
+        (if config.privileged then "CIS 5.2.1: Container should not run as privileged" else null)
+        (
+          if config.allowPrivilegeEscalation then
+            "CIS 5.2.2: Container should disable privilege escalation"
+          else
+            null
+        )
+        (if !config.runAsNonRoot then "CIS 5.2.3: Container should run as non-root" else null)
+        (if !config.readOnlyRootFilesystem then "CIS 5.2.4: Root filesystem should be read-only" else null)
+        (
+          if !builtins.elem "ALL" config.capabilities.drop then
+            "CIS 5.2.5: All capabilities should be dropped"
+          else
+            null
+        )
+        (
+          if config.seccompProfile != "RuntimeDefault" then
+            "CIS 5.2.10: Seccomp profile should be RuntimeDefault"
+          else
+            null
+        )
       ];
       cisIssues = builtins.filter (x: x != null) issues;
-    in let compliantVal = builtins.length cisIssues == 0;
-    in {
+
+      compliantVal = builtins.length cisIssues == 0;
+    in
+    {
       compliant = compliantVal;
       issues = cisIssues;
-      warnings = if compliantVal then
-        [ ]
-      else
-        [ "Container does not meet CIS benchmark standards" ];
+      warnings = if compliantVal then [ ] else [ "Container does not meet CIS benchmark standards" ];
     };
 
   # =============================================================================
@@ -504,8 +579,7 @@ let
     };
     high = {
       disabledCapabilities = [ "ALL" ];
-      enabledCapabilities =
-        [ "NET_BIND_SERVICE" ]; # Allows binding to ports < 1024
+      enabledCapabilities = [ "NET_BIND_SERVICE" ]; # Allows binding to ports < 1024
       runAsNonRoot = true;
       readOnlyRootFS = true;
       allowPrivilegeEscalation = false;
@@ -516,8 +590,10 @@ let
     };
     medium = {
       disabledCapabilities = [ "ALL" ];
-      enabledCapabilities =
-        [ "DAC_OVERRIDE" "NET_BIND_SERVICE" ]; # Allows writing files
+      enabledCapabilities = [
+        "DAC_OVERRIDE"
+        "NET_BIND_SERVICE"
+      ]; # Allows writing files
       runAsNonRoot = true;
       readOnlyRootFS = false; # Some apps need to write
       allowPrivilegeEscalation = false;
@@ -528,8 +604,12 @@ let
     };
     low = {
       disabledCapabilities = [ "ALL" ];
-      enabledCapabilities =
-        [ "DAC_OVERRIDE" "NET_BIND_SERVICE" "SYS_NICE" "SYS_ADMIN" ];
+      enabledCapabilities = [
+        "DAC_OVERRIDE"
+        "NET_BIND_SERVICE"
+        "SYS_NICE"
+        "SYS_ADMIN"
+      ];
       runAsNonRoot = true;
       readOnlyRootFS = false;
       allowPrivilegeEscalation = false;
@@ -541,7 +621,8 @@ let
   };
 
   # Get security standard by criticality
-  getSecurityStandard = criticality:
+  getSecurityStandard =
+    criticality:
     if criticality == "critical" then
       opendeskSecurityStandards.critical
     else if criticality == "high" then
@@ -558,16 +639,25 @@ let
   # =============================================================================
 
   # Deny all ingress by default (zero-trust)
-  denyAllIngress = { name, selector ? null, instance ? name }:
+  denyAllIngress =
+    {
+      name,
+      selector ? null,
+      instance ? name,
+    }:
     let
-      defaultSelector = if selector == null then {
-        matchLabels = {
-          "app.kubernetes.io/name" = name;
-          "app.kubernetes.io/instance" = instance;
-        };
-      } else
-        selector;
-    in {
+      defaultSelector =
+        if selector == null then
+          {
+            matchLabels = {
+              "app.kubernetes.io/name" = name;
+              "app.kubernetes.io/instance" = instance;
+            };
+          }
+        else
+          selector;
+    in
+    {
       apiVersion = "networking.k8s.io/v1";
       kind = "NetworkPolicy";
       metadata = { inherit name; };
@@ -579,49 +669,79 @@ let
     };
 
   # Allow ingress only from specific namespaces
-  allowIngressFrom = { name, fromNamespaces, ports ? [ 80 443 ], selector ? null
-    , instance ? name }:
+  allowIngressFrom =
+    {
+      name,
+      fromNamespaces,
+      ports ? [
+        80
+        443
+      ],
+      selector ? null,
+      instance ? name,
+    }:
     let
-      defaultSelector = if selector == null then {
-        matchLabels = {
-          "app.kubernetes.io/name" = name;
-          "app.kubernetes.io/instance" = instance;
-        };
-      } else
-        selector;
-    in {
+      defaultSelector =
+        if selector == null then
+          {
+            matchLabels = {
+              "app.kubernetes.io/name" = name;
+              "app.kubernetes.io/instance" = instance;
+            };
+          }
+        else
+          selector;
+    in
+    {
       apiVersion = "networking.k8s.io/v1";
       kind = "NetworkPolicy";
       metadata = { inherit name; };
       spec = {
         podSelector = defaultSelector;
         policyTypes = [ "Ingress" ];
-        ingress = [{
-          from = map (ns: {
-            namespaceSelector = {
-              matchLabels = { "kubernetes.io/metadata.name" = ns; };
-            };
-          }) fromNamespaces;
-          ports = map (p: {
-            protocol = "TCP";
-            port = p;
-          }) ports;
-        }];
+        ingress = [
+          {
+            from = map (ns: {
+              namespaceSelector = {
+                matchLabels = {
+                  "kubernetes.io/metadata.name" = ns;
+                };
+              };
+            }) fromNamespaces;
+            ports = map (p: {
+              protocol = "TCP";
+              port = p;
+            }) ports;
+          }
+        ];
       };
     };
 
   # Allow egress to DNS only
-  allowDNSEgressOnly = { name, dnsServers ? [ "10.43.0.10" "8.8.8.8" "1.1.1.1" ]
-    , selector ? null, instance ? name }:
+  allowDNSEgressOnly =
+    {
+      name,
+      dnsServers ? [
+        "10.43.0.10"
+        "8.8.8.8"
+        "1.1.1.1"
+      ],
+      selector ? null,
+      instance ? name,
+    }:
     let
-      defaultSelector = if selector == null then {
-        matchLabels = {
-          "app.kubernetes.io/name" = name;
-          "app.kubernetes.io/instance" = instance;
-        };
-      } else
-        selector;
-    in {
+      defaultSelector =
+        if selector == null then
+          {
+            matchLabels = {
+              "app.kubernetes.io/name" = name;
+              "app.kubernetes.io/instance" = instance;
+            };
+          }
+        else
+          selector;
+    in
+    {
       apiVersion = "networking.k8s.io/v1";
       kind = "NetworkPolicy";
       metadata = { inherit name; };
@@ -630,7 +750,13 @@ let
         policyTypes = [ "Egress" ];
         egress = [
           {
-            to = [{ ipBlock = { cidr = "0.0.0.0/0"; }; }];
+            to = [
+              {
+                ipBlock = {
+                  cidr = "0.0.0.0/0";
+                };
+              }
+            ];
             ports = [
               {
                 protocol = "UDP";
@@ -643,7 +769,11 @@ let
             ];
           }
           {
-            to = map (ip: { ipBlock = { cidr = "${ip}/32"; }; }) dnsServers;
+            to = map (ip: {
+              ipBlock = {
+                cidr = "${ip}/32";
+              };
+            }) dnsServers;
             ports = [
               {
                 protocol = "UDP";
@@ -687,36 +817,55 @@ let
   # EXPORT ALL
   # =============================================================================
 
-in {
+in
+{
   inherit
-  # Profiles
-    defaultProfile webProfile databaseProfile cacheProfile storageProfile
-    lmsProfile collaborationProfile monitoringProfile loggingProfile
+    # Profiles
+    defaultProfile
+    webProfile
+    databaseProfile
+    cacheProfile
+    storageProfile
+    lmsProfile
+    collaborationProfile
+    monitoringProfile
+    loggingProfile
 
     # Profile utilities
-    securityProfile getProfile
+    securityProfile
+    getProfile
 
     # Container hardening
-    hardenContainer minimalHardening
+    hardenContainer
+    minimalHardening
 
     # Capabilities
-    capabilities capabilitySets
+    capabilities
+    capabilitySets
 
     # Seccomp profiles
     seccompProfiles
 
     # Kubernetes security contexts
-    mkPodSecurityContext mkContainerSecurityContext
+    mkPodSecurityContext
+    mkContainerSecurityContext
 
     # CIS compliance
-    cisPodSecurity cisPodSecurityContext cisContainerSecurityContext validateCIS
+    cisPodSecurity
+    cisPodSecurityContext
+    cisContainerSecurityContext
+    validateCIS
 
     # openDesk standards
-    opendeskSecurityStandards getSecurityStandard
+    opendeskSecurityStandards
+    getSecurityStandard
 
     # Network policy helpers
-    denyAllIngress allowIngressFrom allowDNSEgressOnly
+    denyAllIngress
+    allowIngressFrom
+    allowDNSEgressOnly
 
     # Pod Security Admission
-    psaLabels;
+    psaLabels
+    ;
 }

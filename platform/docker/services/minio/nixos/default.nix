@@ -1,19 +1,23 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
 
-# 
+#
 # minio NixOS Container Image
 # Version: latest
 # OpenSpec: FR-BUILD-001 through FR-BUILD-007
-# 
+#
 
-{ pkgs ? import <nixpkgs> { system = "x86_64-linux"; }
-, docks ? import ../../../../../opendesk-nix/lib/docks.nix { inherit pkgs; }
-, ... }:
+{
+  pkgs ? import <nixpkgs> { system = "x86_64-linux"; },
+  docks ? import ../../../../../opendesk-nix/lib/docks.nix { inherit pkgs; },
+  ...
+}:
 
-let lib = pkgs.lib;
+let
+  inherit (pkgs) lib;
 
-in docks.mkImage {
+in
+docks.mkImage {
   name = "minio-opendesk";
   tag = "latest-nixos";
 
@@ -22,7 +26,9 @@ in docks.mkImage {
 
   # Container configuration
   containerConfig = {
-    ExposedPorts = { "8080/tcp" = { }; };
+    ExposedPorts = {
+      "8080/tcp" = { };
+    };
 
     Volumes = {
       "/var/lib/minio" = { };
@@ -38,7 +44,10 @@ in docks.mkImage {
     ];
 
     HealthCheck = {
-      Test = [ "CMD-SHELL" "exit 0" ];
+      Test = [
+        "CMD-SHELL"
+        "exit 0"
+      ];
       Interval = 30000000000; # 30s
       Timeout = 10000000000; # 10s
       Retries = 3;
@@ -48,27 +57,35 @@ in docks.mkImage {
     User = "minio";
     WorkingDir = "/var/lib/minio";
 
-    Cmd = [ "/usr/bin/env" "bash" "-c" "echo Service minio ready" ];
+    Cmd = [
+      "/usr/bin/env"
+      "bash"
+      "-c"
+      "echo Service minio ready"
+    ];
 
     StopSignal = "SIGTERM";
     StopTimeout = 30;
   };
 
   # Additional packages for runtime
-  extraPackages = p: with p; [ openssl curl procps coreutils ];
+  extraPackages =
+    p: with p; [
+      openssl
+      curl
+      procps
+      coreutils
+    ];
 
   # OCI Labels for OpenSpec compliance
   ociLabels = {
     "org.opencontainers.image.title" = "minio-opendesk";
-    "org.opencontainers.image.description" =
-      "minio latest for openDesk Edu with NixOS";
+    "org.opencontainers.image.description" = "minio latest for openDesk Edu with NixOS";
     "org.opencontainers.image.version" = "latest-nixos";
     "org.opencontainers.image.authors" = "openDesk Edu Team";
-    "org.opencontainers.image.url" = "https://opendesk.hrz.uni-marburg.de";
-    "org.opencontainers.image.documentation" =
-      "https://github.com/opendesk-edu/opendesk-nix";
-    "org.opencontainers.image.source" =
-      "https://github.com/opendesk-edu/opendesk-nix";
+    "org.opencontainers.image.url" = "https://opendesk.internal";
+    "org.opencontainers.image.documentation" = "https://github.com/opendesk-edu/opendesk-nix";
+    "org.opencontainers.image.source" = "https://github.com/opendesk-edu/opendesk-nix";
     "org.opencontainers.image.licenses" = "Apache-2.0";
     "com.opendesk.service" = "minio";
     "com.opendesk.environment" = "production";

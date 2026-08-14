@@ -8,8 +8,10 @@
 
 { config, lib, ... }:
 
-let cfg = config.nix.binaryCache;
-in {
+let
+  cfg = config.nix.binaryCache;
+in
+{
   meta.maintainers = [ "opendesk-edu" ];
 
   ###### interface

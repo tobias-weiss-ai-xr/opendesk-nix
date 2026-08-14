@@ -76,15 +76,15 @@ SHUTDOWN_REQUESTED=false
 # Cleanup function for graceful shutdown
 cleanup() {
     local exit_code=${1:-0}
-    
+
     if ${SHUTDOWN_REQUESTED}; then
         log_info "Already handling shutdown, ignoring additional signals"
         return
     fi
-    
+
     SHUTDOWN_REQUESTED=true
     log_info "Received shutdown signal, performing graceful shutdown..."
-    
+
     # Stop health check server first
     if [[ -n "${HEALTH_PID}" && -d "/proc/${HEALTH_PID}" ]]; then
         log_info "Stopping health check server (PID: ${HEALTH_PID})..."
@@ -105,7 +105,7 @@ cleanup() {
         fi
         HEALTH_PID=""
     fi
-    
+
     # Stop operator
     if [[ -n "${OPERATOR_PID}" && -d "/proc/${OPERATOR_PID}" ]]; then
         log_info "Stopping operator (PID: ${OPERATOR_PID})..."
@@ -126,7 +126,7 @@ cleanup() {
         fi
         OPERATOR_PID=""
     fi
-    
+
     log_info "All processes stopped, exiting with code ${exit_code}"
     exit ${exit_code}
 }
@@ -140,24 +140,24 @@ trap 'cleanup' TERM INT QUIT HUP
 validate_binary() {
     local binary="$1"
     local name="$2"
-    
+
     if [[ ! -x "${binary}" ]]; then
         log_error "${name} binary not found or not executable at: ${binary}"
         return 1
     fi
-    
+
     if ! file "${binary}" | grep -q "ELF 64-bit"; then
         log_error "${name} binary is not a 64-bit ELF executable: ${binary}"
         return 1
     fi
-    
+
     log_info "Found ${name} binary: $(file "${binary}")"
     return 0
 }
 
 validate_environment() {
     log_info "Validating environment..."
-    
+
     # Required environment variables
     local required_vars=("OPERATOR_NAME" "OPERATOR_NAMESPACE")
     for var in "${required_vars[@]}"; do
@@ -167,12 +167,12 @@ validate_environment() {
         fi
         log_info "  ${var}=${!var}"
     done
-    
+
     # Validate operator binary
     if ! validate_binary "${OPERATOR_BIN}" "Operator"; then
         return 1
     fi
-    
+
     # Validate health check script
     if [[ -f "${HEALTH_SCRIPT}" ]]; then
         if ! validate_binary "${HEALTH_SCRIPT}" "Health check script"; then
@@ -181,7 +181,7 @@ validate_environment() {
     else
         log_warn "Health check script not found at: ${HEALTH_SCRIPT}"
     fi
-    
+
     log_success "Environment validation passed"
     return 0
 }
@@ -191,7 +191,7 @@ validate_environment() {
 # =============================================================================
 setup_directories() {
     log_info "Setting up directories..."
-    
+
     # Create directories with proper permissions
     local dirs=(
         "${CONFIG_DIR}"
@@ -201,7 +201,7 @@ setup_directories() {
         "${HOME_DIR}/logs"
         "/tmp"
     )
-    
+
     for dir in "${dirs[@]}"; do
         if [[ ! -d "${dir}" ]]; then
             mkdir -p "${dir}" && chmod 755 "${dir}" && chown opendesk:opendesk "${dir}"
@@ -210,7 +210,7 @@ setup_directories() {
             log_info "  Directory exists: ${dir}"
         fi
     done
-    
+
     # Create log files if they don't exist
     local log_files=(
         "${LOG_DIR}/operator.log"
@@ -218,14 +218,14 @@ setup_directories() {
         "${LOG_DIR}/repair.log"
         "${HOME_DIR}/logs/operator.log"
     )
-    
+
     for log_file in "${log_files[@]}"; do
         if [[ ! -f "${log_file}" ]]; then
             touch "${log_file}" && chown opendesk:opendesk "${log_file}" && chmod 644 "${log_file}"
             log_info "  Created log file: ${log_file}"
         fi
     done
-    
+
     log_success "Directory setup complete"
     return 0
 }
@@ -235,7 +235,7 @@ setup_directories() {
 # =============================================================================
 setup_configuration() {
     log_info "Setting up configuration..."
-    
+
     # Check if custom config exists
     if [[ -f "${CONFIG_DIR}/custom-config.yaml" ]]; then
         log_info "Using custom configuration: ${CONFIG_DIR}/custom-config.yaml"
@@ -246,7 +246,7 @@ setup_configuration() {
         log_error "No configuration file found in: ${CONFIG_DIR}"
         return 1
     fi
-    
+
     # Validate configuration file
     if ! yq e '.' "${CONFIG_DIR}/config.yaml" >/dev/null 2>&1; then
         # yq may not be available, try basic YAML validation
@@ -254,7 +254,7 @@ setup_configuration() {
             log_warn "Cannot validate YAML configuration (no python3 or yq available)"
         fi
     fi
-    
+
     log_success "Configuration setup complete"
     return 0
 }
@@ -265,46 +265,46 @@ setup_configuration() {
 apply_cluster_optimizations() {
     local cluster_type="${K8S_CLUSTER_TYPE:-k3s}"
     log_info "Applying optimizations for cluster type: ${cluster_type}"
-    
+
     case "${cluster_type,,}" in
-        k3s)
-            # K3s-specific optimizations
-            log_info "  K3s optimizations applied"
-            # K3s uses a simplified API server, increase timeouts
-            export OPERATOR_METRICS_BIND_ADDRESS="0.0.0.0:8080"
-            export OPERATOR_HEALTH_PROBE_BIND_ADDRESS="0.0.0.0:8081"
-            ;;
-        minikube)
-            log_info "  Minikube optimizations applied"
-            # Minikube has limited resources
-            ;;
-        kind)
-            log_info "  KIND optimizations applied"
-            # KIND runs in containers, ensure proper DNS
-            ;;
-        docker-desktop)
-            log_info "  Docker Desktop optimizations applied"
-            ;;
-        gke|google-kubernetes-engine)
-            log_info "  GKE optimizations applied"
-            ;;
-        eks|elastic-kubernetes-service)
-            log_info "  EKS optimizations applied"
-            ;;
-        aks|azure-kubernetes-service)
-            log_info "  AKS optimizations applied"
-            ;;
-        openshift|ocp)
-            log_info "  OpenShift optimizations applied"
-            ;;
-        rancher)
-            log_info "  Rancher optimizations applied"
-            ;;
-        *)
-            log_warn "Unknown cluster type: ${cluster_type}, no specific optimizations applied"
-            ;;
+    k3s)
+        # K3s-specific optimizations
+        log_info "  K3s optimizations applied"
+        # K3s uses a simplified API server, increase timeouts
+        export OPERATOR_METRICS_BIND_ADDRESS="0.0.0.0:8080"
+        export OPERATOR_HEALTH_PROBE_BIND_ADDRESS="0.0.0.0:8081"
+        ;;
+    minikube)
+        log_info "  Minikube optimizations applied"
+        # Minikube has limited resources
+        ;;
+    kind)
+        log_info "  KIND optimizations applied"
+        # KIND runs in containers, ensure proper DNS
+        ;;
+    docker-desktop)
+        log_info "  Docker Desktop optimizations applied"
+        ;;
+    gke | google-kubernetes-engine)
+        log_info "  GKE optimizations applied"
+        ;;
+    eks | elastic-kubernetes-service)
+        log_info "  EKS optimizations applied"
+        ;;
+    aks | azure-kubernetes-service)
+        log_info "  AKS optimizations applied"
+        ;;
+    openshift | ocp)
+        log_info "  OpenShift optimizations applied"
+        ;;
+    rancher)
+        log_info "  Rancher optimizations applied"
+        ;;
+    *)
+        log_warn "Unknown cluster type: ${cluster_type}, no specific optimizations applied"
+        ;;
     esac
-    
+
     return 0
 }
 
@@ -313,17 +313,17 @@ apply_cluster_optimizations() {
 # =============================================================================
 start_health_server() {
     log_info "Starting health check server..."
-    
+
     # Check if health check script exists and is executable
     if [[ ! -x "${HEALTH_SCRIPT}" ]]; then
         log_warn "Health check script not found or not executable: ${HEALTH_SCRIPT}"
         return 0
     fi
-    
+
     # Start health check server in background
     "${HEALTH_SCRIPT}" server &
     HEALTH_PID=$!
-    
+
     # Wait for server to start
     for i in $(seq 1 10); do
         if kill -0 "${HEALTH_PID}" 2>/dev/null; then
@@ -337,7 +337,7 @@ start_health_server() {
         fi
         sleep 1
     done
-    
+
     return 0
 }
 
@@ -346,10 +346,10 @@ start_health_server() {
 # =============================================================================
 start_operator() {
     log_info "Starting operator..."
-    
+
     # Build operator arguments
     local operator_args=()
-    
+
     # Always include these flags
     operator_args+=(
         --zap-log-level="${OPERATOR_ZAP_LOG_LEVEL:-info}"
@@ -358,13 +358,13 @@ start_operator() {
         --metrics-addr="${OPERATOR_METRICS_BIND_ADDRESS:-0.0.0.0:8080}"
         --health-probe-addr="${OPERATOR_HEALTH_PROBE_BIND_ADDRESS:-0.0.0.0:8081}"
     )
-    
+
     # Debug mode
     if [[ "${OPERATOR_DEBUG:-false}" == "true" ]]; then
         operator_args+=(--debug)
         log_info "  Debug mode enabled"
     fi
-    
+
     # Disable PI Memory (default in production)
     if [[ "${OPERATOR_DISABLE_PI_MEMORY:-true}" == "true" ]]; then
         operator_args+=(--disable-pi-memory)
@@ -372,10 +372,10 @@ start_operator() {
     else
         log_info "  PI Memory integration enabled"
     fi
-    
+
     # Watch namespaces
     if [[ -n "${OPERATOR_WATCH_NAMESPACES:-}" ]]; then
-        IFS=',' read -ra namespaces <<< "${OPERATOR_WATCH_NAMESPACES}"
+        IFS=',' read -ra namespaces <<<"${OPERATOR_WATCH_NAMESPACES}"
         for ns in "${namespaces[@]}"; do
             operator_args+=(--watch-namespace="${ns}")
         done
@@ -385,19 +385,19 @@ start_operator() {
         operator_args+=(--watch-namespace=opendesk --watch-namespace=opendesk-edu --watch-namespace=default)
         log_info "  Watching default namespaces: opendesk, opendesk-edu, default"
     fi
-    
+
     # Operator name
     if [[ -n "${OPERATOR_NAME:-}" ]]; then
         operator_args+=(--operator-name="${OPERATOR_NAME}")
     fi
-    
+
     # Display final args
     log_info "Operator arguments: ${operator_args[*]}"
-    
+
     # Start operator in background
     exec "${OPERATOR_BIN}" "${operator_args[@]}" &
     OPERATOR_PID=$!
-    
+
     log_success "Operator started (PID: ${OPERATOR_PID})"
     return 0
 }
@@ -409,83 +409,83 @@ main() {
     # Parse command line arguments
     if [[ "$#" -gt 0 ]]; then
         case "$1" in
-            --version|-v)
-                echo "Dev Agent Operator Entrypoint v2.0.0"
-                echo "Operator Version: ${OPERATOR_VERSION:-1.2.0}"
-                echo "Build Date: ${BUILD_DATE:-unknown}"
-                echo "Git Commit: ${GIT_COMMIT:-unknown}"
-                exit 0
-                ;;
-            --help|-h)
-                echo "Usage: ${SCRIPT_NAME} [OPTION]"
-                echo ""
-                echo "Options:"
-                echo "  --version, -v    Show version information"
-                echo "  --help, -h       Show this help message"
-                echo ""
-                echo "Environment Variables:"
-                echo "  OPERATOR_NAME             Operator name (default: opendesk-dev-agent)"
-                echo "  OPERATOR_NAMESPACE        Operator namespace"
-                echo "  OPERATOR_VERSION          Operator version"
-                echo "  OPERATOR_LOG_LEVEL        Log level (debug, info, warn, error)"
-                echo "  OPERATOR_DEBUG            Enable debug mode (true/false)"
-                echo "  OPERATOR_WATCH_NAMESPACES Comma-separated list of namespaces to watch"
-                echo "  K8S_CLUSTER_TYPE          Kubernetes cluster type (k3s, gke, eks, aks, etc.)"
-                exit 0
-                ;;
-            *)
-                log_error "Unknown argument: $1"
-                exit 1
-                ;;
+        --version | -v)
+            echo "Dev Agent Operator Entrypoint v2.0.0"
+            echo "Operator Version: ${OPERATOR_VERSION:-1.2.0}"
+            echo "Build Date: ${BUILD_DATE:-unknown}"
+            echo "Git Commit: ${GIT_COMMIT:-unknown}"
+            exit 0
+            ;;
+        --help | -h)
+            echo "Usage: ${SCRIPT_NAME} [OPTION]"
+            echo ""
+            echo "Options:"
+            echo "  --version, -v    Show version information"
+            echo "  --help, -h       Show this help message"
+            echo ""
+            echo "Environment Variables:"
+            echo "  OPERATOR_NAME             Operator name (default: opendesk-dev-agent)"
+            echo "  OPERATOR_NAMESPACE        Operator namespace"
+            echo "  OPERATOR_VERSION          Operator version"
+            echo "  OPERATOR_LOG_LEVEL        Log level (debug, info, warn, error)"
+            echo "  OPERATOR_DEBUG            Enable debug mode (true/false)"
+            echo "  OPERATOR_WATCH_NAMESPACES Comma-separated list of namespaces to watch"
+            echo "  K8S_CLUSTER_TYPE          Kubernetes cluster type (k3s, gke, eks, aks, etc.)"
+            exit 0
+            ;;
+        *)
+            log_error "Unknown argument: $1"
+            exit 1
+            ;;
         esac
     fi
-    
+
     # Setup log file
     LOG_FILE="${OPERATOR_LOG_FILE:-/var/log/opendesk/operator.log}"
-    
+
     # ======================
     # STARTUP SEQUENCE
     # ======================
-    
+
     log_info "========================================"
     log_info "  Dev Agent Operator Entrypoint"
     log_info "  Version: 2.0.0"
     log_info "  Starting container..."
     log_info "========================================"
-    
+
     # Step 1: Validate environment
     if ! validate_environment; then
         log_error "Environment validation failed"
         cleanup 1
     fi
-    
+
     # Step 2: Setup directories
     if ! setup_directories; then
         log_error "Directory setup failed"
         cleanup 1
     fi
-    
+
     # Step 3: Setup configuration
     if ! setup_configuration; then
         log_error "Configuration setup failed"
         cleanup 1
     fi
-    
+
     # Step 4: Apply cluster-specific optimizations
     apply_cluster_optimizations
-    
+
     # Step 5: Start health check server
     if ! start_health_server; then
         log_error "Failed to start health check server"
         cleanup 1
     fi
-    
+
     # Step 6: Start operator
     if ! start_operator; then
         log_error "Failed to start operator"
         cleanup 1
     fi
-    
+
     # ======================
     # MAIN LOOP
     # ======================
@@ -497,7 +497,7 @@ main() {
     log_info "  Neural Engine: Disabled"
     log_info "  Watch Namespaces: ${OPERATOR_WATCH_NAMESPACES:-opendesk,opendesk-edu,default}"
     log_info "========================================"
-    
+
     # Wait for all background processes
     # Using a loop to periodically check process status
     while true; do
@@ -516,7 +516,7 @@ main() {
                 cleanup 1
             fi
         fi
-        
+
         # Check if health server is still running
         if [[ -n "${HEALTH_PID}" ]]; then
             if ! kill -0 "${HEALTH_PID}" 2>/dev/null; then
@@ -526,7 +526,7 @@ main() {
                 fi
             fi
         fi
-        
+
         # Sleep for a while before checking again
         sleep 10
     done

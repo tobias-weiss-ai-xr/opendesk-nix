@@ -10,14 +10,11 @@
 let
   # Simply evaluate all service configurations to catch errors
   # This is fast (seconds) vs integration tests (minutes)
-  evaluatedServices = map (name: (nixos-services.${name} or {}).config or null) 
-    (builtins.attrNames nixos-services);
 
   # Generate a simple text output
   outputText = builtins.concatStringsSep "\n" (
-    map (name: "✓ Service '${name}' evaluated successfully") 
-    (builtins.attrNames nixos-services)
+    map (name: "✓ Service '${name}' evaluated successfully") (builtins.attrNames nixos-services)
   );
 
 in
-  pkgs.writeText "eval-services-check" outputText
+pkgs.writeText "eval-services-check" outputText

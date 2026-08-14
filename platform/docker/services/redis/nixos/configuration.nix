@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
 
-# 
+#
 # redis NixOS Configuration for openDesk
 # Version: latest
 # OpenSpec: Full compliance (FR-IMAGE-001 through FR-IMAGE-009)
-# 
+#
 
 { pkgs, lib, ... }:
 
@@ -30,7 +30,9 @@
     description = "redis Service User";
   };
 
-  users.groups.redis = { gid = 1000; };
+  users.groups.redis = {
+    gid = 1000;
+  };
 
   # Setup directories
   system.activationScripts.setupredis = lib.mkAfter ''

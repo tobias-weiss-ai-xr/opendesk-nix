@@ -12,9 +12,14 @@
 
 { config, lib, ... }:
 
-let cfg = config.services.k3s;
-in {
+let
+  cfg = config.services.k3s;
+in
+{
   meta.maintainers = [ "opendesk-edu" ];
+
+  # Import binary cache client
+  imports = [ ./../modules/binary-cache-client.nix ];
 
   ###### interface
 
@@ -23,7 +28,10 @@ in {
       enable = lib.mkEnableOption "K3s Kubernetes";
 
       role = lib.mkOption {
-        type = lib.types.enum [ "server" "agent" ];
+        type = lib.types.enum [
+          "server"
+          "agent"
+        ];
         default = "server";
         description = "K3s node role";
       };
@@ -62,26 +70,22 @@ in {
   ###### implementation
 
   config = lib.mkIf cfg.enable {
-    # Import binary cache client
-    imports = [ ./../modules/binary-cache-client.nix ];
-
     # K3s configuration
     services.k3s = {
       enable = true;
-      role = cfg.role;
-      clusterToken = cfg.clusterToken;
-      extraFlags =
-        lib.mapAttrsToList (name: value: "--${name}=${value}") cfg.extraOptions;
+      inherit (cfg) role;
+      inherit (cfg) clusterToken;
+      extraFlags = lib.mapAttrsToList (name: value: "--${name}=${value}") cfg.extraOptions;
     };
 
     # Ceph CSI configuration
-    services.ceph = lib.mkIf cfg.ceph.enable {
+    services.ceph = lib.mkIf config.services.ceph.enable {
       enable = true;
-      monEndpoints = cfg.ceph.monEndpoints;
+      inherit (config.services.ceph) monEndpoints;
     };
 
     # HAProxy ingress configuration
-    services.haproxy = lib.mkIf cfg.haproxy.enable {
+    services.haproxy = lib.mkIf config.services.haproxy.enable {
       enable = true;
       listenAddresses = [
         {
@@ -119,7 +123,10 @@ in {
 
     # Nix configuration
     nix.settings = {
-      trusted-users = [ "root" "k3s" ];
+      trusted-users = [
+        "root"
+        "k3s"
+      ];
       builders-use-substitutes = true;
     };
   };

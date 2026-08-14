@@ -380,7 +380,7 @@ let
           profileName = profileName;
           signingMode = signingMode;
         }
-      ) (builtins.isList images ? images : [ images ]);
+      ) (if builtins.isList images then images else [ images ]);
       
       # Aggregate statistics
       stats = {
@@ -527,11 +527,11 @@ name: ${name}
 on:
 ${if builtins.hasAttr "push" triggers then ''
   push:
-    branches: ${builtins.concatStringsSep ", " (builtins.map (b: "[ "${b}" ]") triggers.push)}
+    branches: ${builtins.concatStringsSep ", " (builtins.map (b: ''[ "${b}" ]'') triggers.push)}
 '' else ''''}
 ${if builtins.hasAttr "pull_request" triggers then ''
   pull_request:
-    branches: ${builtins.concatStringsSep ", " (builtins.map (b: "[ "${b}" ]") triggers.pull_request)}
+    branches: ${builtins.concatStringsSep ", " (builtins.map (b: ''[ "${b}" ]'') triggers.pull_request)}
 '' else ''''}
 
 jobs:
@@ -561,8 +561,8 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ github.token }}
+          username: ''${{ github.actor }}
+          password: ''${{ github.token }}
       
       - name: Log in to GitLab Container Registry
         if: github.event_name != 'pull_request' && env.OPENCODE_TOKEN != ''
@@ -570,20 +570,20 @@ jobs:
         with:
           registry: registry.gitlab.com
           username: token
-          password: ${{ secrets.OPENCODE_TOKEN }}
+          password: ''${{ secrets.OPENCODE_TOKEN }}
       
       - name: Run DevGuard Security Pipeline
         run: |
           nix develop -c opendesk-nix#full --command bash -c "
             ${if config.sbom.enabled then ''
             echo 'Generating SBOM...'
-            security-nix.syftScan \${{ steps.meta.outputs.tags }}
+            security-nix.syftScan ''''${{ steps.meta.outputs.tags }}
             '' else ''''}
             
             ${if config.scanners.grype.enabled || config.scanners.trivy.enabled then ''
             echo 'Running vulnerability scans...'
-            ${if config.scanners.grype.enabled then ''security-nix.grypeScan \${{ steps.meta.outputs.tags }}'' else ''''}
-            ${if config.scanners.trivy.enabled then ''security-nix.trivyScan \${{ steps.meta.outputs.tags }}'' else ''''}
+            ${if config.scanners.grype.enabled then ''security-nix.grypeScan ''''${{ steps.meta.outputs.tags }}'' else ''''}
+            ${if config.scanners.trivy.enabled then ''security-nix.trivyScan ''''${{ steps.meta.outputs.tags }}'' else ''''}
             '' else ''''}
             
             ${if config.compliance.enabled then ''
@@ -593,22 +593,22 @@ jobs:
             
             ${if config.signing.enabled then ''
             echo 'Signing images...'
-            cosign sign \${{ steps.meta.outputs.tags }} --yes
+            cosign sign ''''${{ steps.meta.outputs.tags }} --yes
             '' else ''''}
           "
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OPENCODE_TOKEN: ${{ secrets.OPENCODE_TOKEN }}
+          GITHUB_TOKEN: ''${{ secrets.GITHUB_TOKEN }}
+          OPENCODE_TOKEN: ''${{ secrets.OPENCODE_TOKEN }}
           COSIGN_EXPERIMENTAL: "1"
       
       - name: Push to registries
         if: github.event_name != 'pull_request'
         run: |
-          nix run .#registry-nix.pushToAll \${{ steps.meta.outputs.tags }}
+          nix run .#registry-nix.pushToAll ''''${{ steps.meta.outputs.tags }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OPENCODE_TOKEN: ${{ secrets.OPENCODE_TOKEN }}
-          ZOT_TOKEN: ${{ secrets.ZOT_TOKEN }}
+          GITHUB_TOKEN: ''${{ secrets.GITHUB_TOKEN }}
+          OPENCODE_TOKEN: ''${{ secrets.OPENCODE_TOKEN }}
+          ZOT_TOKEN: ''${{ secrets.ZOT_TOKEN }}
       
       - name: Upload reports
         uses: actions/upload-artifact@v4

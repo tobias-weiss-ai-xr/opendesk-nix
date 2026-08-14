@@ -14,16 +14,18 @@
   name = "opendesk-mariadb-integration";
 
   nodes = {
-    server = { ... }: {
+    server = _: {
       services.mysql = {
         enable = true;
         package = pkgs.mariadb;
-        initialDatabases = [{ name = "opendesk"; }];
+        initialDatabases = [ { name = "opendesk"; } ];
       };
       networking.firewall.allowedTCPPorts = [ 3306 ];
     };
 
-    client = { ... }: { environment.systemPackages = [ pkgs.mariadb ]; };
+    client = _: {
+      environment.systemPackages = [ pkgs.mariadb ];
+    };
   };
 
   testScript = ''

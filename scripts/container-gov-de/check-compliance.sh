@@ -67,25 +67,25 @@ get_services() {
 check_service() {
     local service="$1"
     local quiet="$2"
-    
+
     cd "$PROJECT_ROOT"
-    
+
     if [ ! -z "$quiet" ]; then
         echo "Checking ${service}..."
     fi
-    
+
     # Build the compliance check derivation
     local build_output
     if build_output=$(nix build -f "$NIX_FILE" -A "complianceCheck" --argstr "service" "$service" 2>&1); then
         local result_file=$(echo "$build_output" | grep -oE '/nix/store/[^ ]+')
-        
+
         if [ -f "$result_file" ]; then
             # Parse the result (it's a JSON file)
             local compliance_level=$(jq -r '.complianceLevel' "$result_file" 2>/dev/null || echo "UNKNOWN")
             local passed=$(jq -r '.passed' "$result_file" 2>/dev/null || echo "0")
             local total=$(jq -r '.total' "$result_file" 2>/dev/null || echo "0")
             local percentage=$(jq -r '.passedPercentage' "$result_file" 2>/dev/null || echo "0")
-            
+
             if [ "$compliance_level" = "FULLY COMPLIANT" ]; then
                 echo -e "${GREEN}✓ ${service}: FULLY COMPLIANT (${passed}/${total} checks, ${percentage}%)${NC}"
             elif [ "$compliance_level" = "HIGH COMPLIANCE" ]; then
@@ -93,16 +93,16 @@ check_service() {
             else
                 echo -e "${RED}✗ ${service}: ${compliance_level} (${passed}/${total} checks, ${percentage}%)${NC}"
             fi
-            
+
             # Output details if not quiet
             if [ -z "$quiet" ]; then
                 jq '.' "$result_file" 2>/dev/null || true
                 echo ""
             fi
-            
+
             # Clean up
             rm -f "$result_file"
-            
+
             return 0
         fi
     else
@@ -121,26 +121,26 @@ check_all_services() {
     local total_services=${#services[@]}
     local compliant_count=0
     local failed_count=0
-    
+
     echo -e "${BLUE}Checking container.gov.de compliance for ${total_services} services...${NC}"
     echo "============================================"
-    
+
     for service in "${services[@]}"; do
         if [ -z "$service" ]; then
             continue
         fi
-        
+
         local result
         if result=$(check_service "$service" "quiet" 2>&1); then
             json_output=$(echo "$json_output" | jq --arg s "$service" --arg r "$result" '. + [$s + " - " + $r]')
-            
+
             # Count compliant services
             if echo "$result" | grep -q "FULLY COMPLIANT"; then
                 ((compliant_count++))
             elif echo "$result" | grep -q "✗"; then
                 ((failed_count++))
             fi
-            
+
             echo "$result"
         else
             echo -e "${RED}✗ ${service}: Error${NC}"
@@ -148,18 +148,18 @@ check_all_services() {
             ((failed_count++))
         fi
     done
-    
+
     echo "============================================"
     echo -e "${BLUE}Summary:${NC}"
     echo -e "  Total services:  ${total_services}"
     echo -e "  Fully compliant: ${GREEN}${compliant_count}${NC}"
     echo -e "  Failed:           ${RED}${failed_count}${NC}"
     echo -e "  Compliance rate: ${GREEN}$((compliant_count * 100 / total_services))%${NC}"
-    
+
     if [ "$1" = "--json" ]; then
         echo "$json_output" | jq '.'
     fi
-    
+
     if [ "$1" = "--html" ]; then
         generate_html_report "$json_output"
     fi
@@ -169,10 +169,10 @@ check_all_services() {
 generate_html_report() {
     local json_data="$1"
     local output_file="$REPORT_DIR/compliance-report-$(date +%Y%m%d-%H%M%S).html"
-    
+
     mkdir -p "$REPORT_DIR"
-    
-    cat > "$output_file" << 'HTML'
+
+    cat >"$output_file" <<'HTML'
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -283,11 +283,11 @@ generate_html_report() {
 </body>
 </html>
 HTML
-    
+
     # Replace placeholders
     sed -i "s|DESCRIPTION|$(date)|" "$output_file"
     sed -i "s|DATA|$(echo "$json_data" | jq -c .)|" "$output_file"
-    
+
     echo -e "${GREEN}HTML report generated: $output_file${NC}"
 }
 
@@ -298,56 +298,56 @@ main() {
     local output_json=false
     local output_html=false
     local quiet=false
-    
+
     # Parse arguments
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            --all)
-                do_all=true
-                shift
-                ;;
-            --json)
-                output_json=true
-                shift
-                ;;
-            --html)
-                output_html=true
-                shift
-                ;;
-            --quiet)
-                quiet=true
-                shift
-                ;;
-            --help|-h)
-                usage
-                exit 0
-                ;;
-            -*)
-                echo -e "${RED}Unknown option: $1${NC}"
+        --all)
+            do_all=true
+            shift
+            ;;
+        --json)
+            output_json=true
+            shift
+            ;;
+        --html)
+            output_html=true
+            shift
+            ;;
+        --quiet)
+            quiet=true
+            shift
+            ;;
+        --help | -h)
+            usage
+            exit 0
+            ;;
+        -*)
+            echo -e "${RED}Unknown option: $1${NC}"
+            usage
+            exit 1
+            ;;
+        *)
+            if [ -z "$service" ]; then
+                service="$1"
+            else
+                echo -e "${RED}Multiple services specified: $service and $1${NC}"
                 usage
                 exit 1
-                ;;
-            *)
-                if [ -z "$service" ]; then
-                    service="$1"
-                else
-                    echo -e "${RED}Multiple services specified: $service and $1${NC}"
-                    usage
-                    exit 1
-                fi
-                shift
-                ;;
+            fi
+            shift
+            ;;
         esac
     done
-    
+
     cd "$PROJECT_ROOT"
-    
+
     # Check if we're in a Nix flake directory
     if [ ! -f "flake.nix" ]; then
         echo -e "${RED}Error: Not in a Nix flake directory${NC}"
         exit 1
     fi
-    
+
     if [ "$do_all" = true ]; then
         # Check all services
         local output_format=""

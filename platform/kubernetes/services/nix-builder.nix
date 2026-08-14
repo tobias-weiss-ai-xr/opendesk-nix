@@ -12,7 +12,11 @@
 #   nix build .#nix-builder
 #   kubectl apply -f result/
 
-{ lib, env ? import ../environments/scs/default.nix { inherit lib; }, ... }:
+{
+  lib,
+  env ? import ../environments/scs/default.nix { inherit lib; },
+  ...
+}:
 
 let
   name = "nix-builder";
@@ -129,28 +133,6 @@ let
   };
 
   # Init container: copy nix store to PVC on first run
-  initContainer = {
-    name = "init-nix-store";
-    image = "nixos/nix:latest";
-    imagePullPolicy = "IfNotPresent";
-    command = [
-      "sh"
-      "-c"
-      ''
-        set -e
-        if [ ! -d /nix-pvc/store ] || [ -z "$(ls -A /nix-pvc/store 2>/dev/null)" ]; then
-          echo "Initializing nix store on PVC (copying from image)..."
-          cp -a /nix/* /nix-pvc/
-          echo "Nix store initialized ($(du -sh /nix-pvc 2>/dev/null | cut -f1))"
-        else
-          echo "Nix store already exists on PVC ($(du -sh /nix-pvc 2>/dev/null | cut -f1))"
-        fi
-      ''
-    ];
-    volumeMounts = [
-      { name = "nix-store"; mountPath = "/nix-pvc"; }
-    ];
-  };
 
   # Main container
   nixContainer = {
@@ -178,27 +160,60 @@ let
       ''
     ];
     env = [
-      { name = "NIX_PATH"; value = "/nix/var/nix/profiles/per-user/root/channels:/root/.nix-defexpr/channels"; }
-      { name = "NIX_SSL_CERT_FILE"; value = "/nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt"; }
-      { name = "SSL_CERT_FILE"; value = "/nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt"; }
-      { name = "GIT_SSL_CAINFO"; value = "/nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt"; }
-      { name = "REGISTRY"; value = env.registry.url or "172.17.0.6:5001"; }
+      {
+        name = "NIX_PATH";
+        value = "/nix/var/nix/profiles/per-user/root/channels:/root/.nix-defexpr/channels";
+      }
+      {
+        name = "NIX_SSL_CERT_FILE";
+        value = "/nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt";
+      }
+      {
+        name = "SSL_CERT_FILE";
+        value = "/nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt";
+      }
+      {
+        name = "GIT_SSL_CAINFO";
+        value = "/nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt";
+      }
+      {
+        name = "REGISTRY";
+        value = env.registry.url or "172.17.0.6:5001";
+      }
     ];
     resources = {
-      requests = { cpu = "2"; memory = "4Gi"; };
-      limits = { cpu = "8"; memory = "16Gi"; };
+      requests = {
+        cpu = "2";
+        memory = "4Gi";
+      };
+      limits = {
+        cpu = "8";
+        memory = "16Gi";
+      };
     };
     volumeMounts = [
-      { name = "nix-store"; mountPath = "/nix"; }
-      { name = "workspace"; mountPath = "/workspace"; }
-      { name = "scripts"; mountPath = "/scripts"; readOnly = true; }
+      {
+        name = "nix-store";
+        mountPath = "/nix";
+      }
+      {
+        name = "workspace";
+        mountPath = "/workspace";
+      }
+      {
+        name = "scripts";
+        mountPath = "/scripts";
+        readOnly = true;
+      }
     ];
   };
 
   volumes = [
     {
       name = "workspace";
-      persistentVolumeClaim = { claimName = "nix-workspace"; };
+      persistentVolumeClaim = {
+        claimName = "nix-workspace";
+      };
     }
     {
       name = "scripts";
@@ -215,12 +230,17 @@ let
       spec = {
         accessModes = [ "ReadWriteOnce" ];
         storageClassName = env.storage.rwo;
-        resources = { requests = { storage = "50Gi"; }; };
+        resources = {
+          requests = {
+            storage = "50Gi";
+          };
+        };
       };
     }
   ];
 
-in [
+in
+[
   # Namespace
   (lib.namespace {
     inherit name;
@@ -237,7 +257,7 @@ in [
     storageClass = env.storage.rwx;
     accessModes = [ "ReadWriteMany" ];
     inherit namespace;
-    labels = labels;
+    inherit labels;
   })
 
   # ConfigMap with build scripts
@@ -249,20 +269,28 @@ in [
 
   # StatefulSet
   (lib.statefulset {
-    inherit name namespace labels volumes volumeClaims;
+    inherit
+      name
+      namespace
+      labels
+      volumes
+      volumeClaims
+      ;
     image = "nixos/nix";
     tag = "latest";
     port = null;
     probes = false;
     replicas = 1;
-    command = nixContainer.command;
-    env = nixContainer.env;
-    resources = nixContainer.resources;
+    inherit (nixContainer) command;
+    inherit (nixContainer) env;
+    inherit (nixContainer) resources;
     securityContext = {
       allowPrivilegeEscalation = false;
       runAsNonRoot = false;
       readOnlyRootFilesystem = false;
-      capabilities = { drop = [ ]; };
+      capabilities = {
+        drop = [ ];
+      };
     };
     podSecurityContext = {
       runAsNonRoot = false;
@@ -273,7 +301,11 @@ in [
       "node-role.kubernetes.io/control-plane" = "true";
     };
     tolerations = [
-      { key = "node-role.kubernetes.io/master"; operator = "Exists"; effect = "NoSchedule"; }
+      {
+        key = "node-role.kubernetes.io/master";
+        operator = "Exists";
+        effect = "NoSchedule";
+      }
     ];
   })
 
@@ -281,7 +313,11 @@ in [
   (lib.networkPolicy {
     name = "default-deny-ingress";
     inherit namespace;
-    podSelector = { matchLabels = { app = "nix-builder"; }; };
+    podSelector = {
+      matchLabels = {
+        app = "nix-builder";
+      };
+    };
     policyTypes = [ "Ingress" ];
     ingress = [ ];
   })
@@ -289,7 +325,11 @@ in [
   (lib.networkPolicy {
     name = "allow-same-namespace";
     inherit namespace;
-    podSelector = { matchLabels = { app = "nix-builder"; }; };
+    podSelector = {
+      matchLabels = {
+        app = "nix-builder";
+      };
+    };
     policyTypes = [ "Ingress" ];
     ingress = [
       {

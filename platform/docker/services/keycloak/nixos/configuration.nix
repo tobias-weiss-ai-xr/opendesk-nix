@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
 
-# 
+#
 # keycloak NixOS Configuration for openDesk
 # Version: latest
 # OpenSpec: Full compliance (FR-IMAGE-001 through FR-IMAGE-009)
-# 
+#
 
 { pkgs, lib, ... }:
 
@@ -30,7 +30,9 @@
     description = "keycloak Service User";
   };
 
-  users.groups.keycloak = { gid = 1000; };
+  users.groups.keycloak = {
+    gid = 1000;
+  };
 
   # Setup directories
   system.activationScripts.setupkeycloak = lib.mkAfter ''

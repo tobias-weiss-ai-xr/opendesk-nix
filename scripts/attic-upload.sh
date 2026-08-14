@@ -12,8 +12,8 @@ ATTIC_KEY="${ATTIC_KEY:-/etc/attic/signing.key}"
 STORE_PATH="${NIX_STORE_PATH:-$1}"
 
 if [[ -z "$STORE_PATH" ]]; then
-  echo "Error: No store path provided"
-  exit 1
+    echo "Error: No store path provided"
+    exit 1
 fi
 
 echo "Uploading $STORE_PATH to $ATTIC_URL"

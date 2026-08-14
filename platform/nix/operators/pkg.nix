@@ -1,4 +1,4 @@
-{ lib, pkgs, ... }:
+{ pkgs, ... }:
 
 {
   # Operator runtime dependencies
@@ -28,7 +28,7 @@
     git
   ];
 
-  # Operator build dependencies  
+  # Operator build dependencies
   buildDeps = with pkgs; [
     # Go for operator development
     go
@@ -49,6 +49,11 @@
   ];
 
   # Operator test dependencies
-  testDeps = with pkgs; [ golangci-lint gotest kubeval conftest ];
+  testDeps = with pkgs; [
+    golangci-lint
+    gotest
+    kubeval
+    conftest
+  ];
 
 }

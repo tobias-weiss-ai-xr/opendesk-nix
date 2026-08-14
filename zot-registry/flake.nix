@@ -21,8 +21,7 @@
 #
 # ==============================================================================
 {
-  description =
-    "Hardened Zot Registry Container Image - OCI-compliant registry server";
+  description = "Hardened Zot Registry Container Image - OCI-compliant registry server";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -33,7 +32,12 @@
     # zot.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      flake-utils,
+    }:
     let
       # System support
 
@@ -68,8 +72,7 @@
           "org.opencontainers.image.license" = "Apache-2.0";
           "org.opencontainers.image.source" =
             "https://github.com/opendesk-edu/opendesk-nix/tree/main/docker/zot-registry";
-          "org.opencontainers.image.documentation" =
-            "https://opendesk-edu.org/docs/zot-registry";
+          "org.opencontainers.image.documentation" = "https://opendesk-edu.org/docs/zot-registry";
 
           "org.opencontainers.image.version" = "${zotVersion}";
           "org.opencontainers.image.architectures" = "amd64,arm64";
@@ -164,7 +167,9 @@
             };
 
             # Bearer token auth
-            bearer = { enabled = true; };
+            bearer = {
+              enabled = true;
+            };
 
             # Anonymous access
             anonymous = {
@@ -191,7 +196,9 @@
           };
 
           # Cosign integration
-          cosign = { enabled = true; };
+          cosign = {
+            enabled = true;
+          };
 
           # SBOM integration
           sbom = {
@@ -215,18 +222,21 @@
           "/var/log/zot"
         ];
       };
-    in {
+    in
+    {
       # ===========================================================================
       # PACKAGES: Zot Registry Docker images
       # ===========================================================================
-      packages = flake-utils.lib.eachDefaultSystem (system:
-        let pkgs = import nixpkgs { inherit system; };
-        in rec {
+      packages = flake-utils.lib.eachDefaultSystem (
+        system:
+        let
+          pkgs = import nixpkgs { inherit system; };
+        in
+        rec {
           # Zot Registry Docker image (build from source)
           zot-registry-image = pkgs.dockerTools.buildLayeredImage {
             name = commonArgs.imageName;
-            tag =
-              "${commonArgs.registry}/${commonArgs.imageName}:${commonArgs.zotVersion}";
+            tag = "${commonArgs.registry}/${commonArgs.imageName}:${commonArgs.zotVersion}";
 
             # Reproducibility
             creationTime = "2026-08-03T12:00:00Z";
@@ -242,17 +252,16 @@
             # OCI Labels
             extraCommands = ''
               mkdir -p /labels
-              ${builtins.concatStringsSep "\n"
-              (map (k: v: ''echo '"${k}=${v}" >> /labels' '')
-                (builtins.attrNames commonArgs.ociLabels))}
+              ${builtins.concatStringsSep "\n" (
+                map (k: v: ''echo '"${k}=${v}" >> /labels' '') (builtins.attrNames commonArgs.ociLabels)
+              )}
             '';
           };
 
           # Zot Registry with Alpine base (for debugging)
           zot-registry-alpine = pkgs.dockerTools.buildLayeredImage {
             name = "${commonArgs.imageName}-alpine";
-            tag =
-              "${commonArgs.registry}/${commonArgs.imageName}-alpine:${commonArgs.zotVersion}";
+            tag = "${commonArgs.registry}/${commonArgs.imageName}-alpine:${commonArgs.zotVersion}";
 
             creationTime = "2026-08-03T12:00:00Z";
             maxLayers = 100;
@@ -265,14 +274,18 @@
           };
 
           default = zot-registry-image;
-        });
+        }
+      );
 
       # ===========================================================================
       # DEV SHELLS: Development environments
       # ===========================================================================
-      devShells = flake-utils.lib.eachDefaultSystem (system:
-        let pkgs = import nixpkgs { inherit system; };
-        in rec {
+      devShells = flake-utils.lib.eachDefaultSystem (
+        system:
+        let
+          pkgs = import nixpkgs { inherit system; };
+        in
+        rec {
           default = pkgs.mkShell {
             packages = with pkgs; [
               # Build tools
@@ -286,7 +299,10 @@
                   url = "https://github.com/project-zot/zot";
                   rev = "v${commonArgs.zotVersion}";
                 };
-                ldflags = [ "-s" "-w" ];
+                ldflags = [
+                  "-s"
+                  "-w"
+                ];
               })
 
               # Docker
@@ -349,9 +365,16 @@
 
           # Minimal shell for CI/CD
           ci = pkgs.mkShell {
-            packages = with pkgs; [ go docker kubectl git jq ];
+            packages = with pkgs; [
+              go
+              docker
+              kubectl
+              git
+              jq
+            ];
           };
-        });
+        }
+      );
 
       # ===========================================================================
       # APPLICATIONS: Run containers directly
@@ -397,8 +420,12 @@
 
           # Static binary for Zot
           zot-static = prev.zot.overrideAttrs (old: {
-            ldflags = old.ldflags or [ ]
-              ++ [ "-linkmode" "external" "-extldflags" "-static" ];
+            ldflags = old.ldflags or [ ] ++ [
+              "-linkmode"
+              "external"
+              "-extldflags"
+              "-static"
+            ];
           });
         };
       };

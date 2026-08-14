@@ -4,10 +4,12 @@
 { pkgs, ... }:
 
 let
-  mkWorkflow = { serviceName, scriptBody }:
-    pkgs.writeText "${serviceName}.yml" scriptBody;
+  mkWorkflow = { serviceName, scriptBody }: pkgs.writeText "${serviceName}.yml" scriptBody;
 
-  buildWorkflow = { serviceName, serviceVersion ? "latest" }:
+  buildWorkflow =
+    {
+      serviceName,
+    }:
     mkWorkflow {
       inherit serviceName;
       scriptBody = ''
@@ -36,7 +38,11 @@ let
       '';
     };
 
-  deployWorkflow = { serviceName, environment ? "production" }:
+  deployWorkflow =
+    {
+      serviceName,
+      environment ? "production",
+    }:
     mkWorkflow {
       inherit serviceName;
       scriptBody = ''
@@ -58,7 +64,8 @@ let
     };
 
   # GitLab CI configuration
-  gitlabBuild = { serviceName }:
+  gitlabBuild =
+    { serviceName }:
     pkgs.writeText ".gitlab-ci-${serviceName}.yml" ''
       image: nixos/nix:latest
       stages:
@@ -74,4 +81,12 @@ let
           - nix flake check
     '';
 
-in { inherit buildWorkflow deployWorkflow mkWorkflow gitlabBuild; }
+in
+{
+  inherit
+    buildWorkflow
+    deployWorkflow
+    mkWorkflow
+    gitlabBuild
+    ;
+}

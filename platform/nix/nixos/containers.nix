@@ -5,7 +5,12 @@
 # Provides standardized container builders using docks.nix
 # OpenSpec: FR-BUILD-001 through FR-BUILD-007
 
-{ pkgs, lib, docks, ... }:
+{
+  pkgs,
+  lib,
+  docks,
+  ...
+}:
 
 let
   # Standard configuration for all openDesk containers
@@ -20,7 +25,10 @@ let
     workingDir = "/";
     user = "nobody";
     healthCheck = {
-      test = [ "CMD-SHELL" "exit 0" ];
+      test = [
+        "CMD-SHELL"
+        "exit 0"
+      ];
       interval = 30000000000; # 30s
       timeout = 5000000000; # 5s
       retries = 3;
@@ -33,15 +41,12 @@ let
   # Standard OCI labels for OpenSpec compliance (FR-IMAGE-007)
   defaultOCILabels = {
     "org.opencontainers.image.title" = "opendesk-service";
-    "org.opencontainers.image.description" =
-      "openDesk service container built with NixOS";
+    "org.opencontainers.image.description" = "openDesk service container built with NixOS";
     "org.opencontainers.image.version" = "latest";
     "org.opencontainers.image.authors" = "openDesk Edu Team";
-    "org.opencontainers.image.url" = "https://opendesk.hrz.uni-marburg.de";
-    "org.opencontainers.image.documentation" =
-      "https://github.com/opendesk-edu/opendesk-nix";
-    "org.opencontainers.image.source" =
-      "https://github.com/opendesk-edu/opendesk-nix";
+    "org.opencontainers.image.url" = "https://opendesk.internal";
+    "org.opencontainers.image.documentation" = "https://github.com/opendesk-edu/opendesk-nix";
+    "org.opencontainers.image.source" = "https://github.com/opendesk-edu/opendesk-nix";
     "org.opencontainers.image.licenses" = "Apache-2.0";
     "com.opendesk.service" = "opendesk-service";
     "com.opendesk.environment" = "production";
@@ -68,23 +73,43 @@ let
     minimal = { };
   };
 
-in rec {
+in
+rec {
 
   # Generic container builder
-  mkContainer = { name, version, type ? "minimal", port ? null, extraPorts ? [ ]
-    , volumes ? standardVolumes.${type} or { }, extraEnv ? [ ], user ? "nobody"
-    , workingDir ? "/"
-    , cmd ? [ "/usr/bin/env" "bash" "-c" "echo Service ${name} ready" ]
-    , entrypoint ? null, healthCheck ? null, extraPackages ? _: [ ]
-    , ociLabels ? { }, ... }:
+  mkContainer =
+    {
+      name,
+      version,
+      type ? "minimal",
+      port ? null,
+      extraPorts ? [ ],
+      volumes ? standardVolumes.${type} or { },
+      extraEnv ? [ ],
+      user ? "nobody",
+      workingDir ? "/",
+      cmd ? [
+        "/usr/bin/env"
+        "bash"
+        "-c"
+        "echo Service ${name} ready"
+      ],
+      entrypoint ? null,
+      healthCheck ? null,
+      extraPackages ? _: [ ],
+      ociLabels ? { },
+      ...
+    }:
 
     let
       # Exposed ports
       allPorts = lib.optional (port != null) port ++ extraPorts;
-      exposedPorts = builtins.listToAttrs (map (p: {
-        name = "${toString p}/tcp";
-        value = { };
-      }) allPorts);
+      exposedPorts = builtins.listToAttrs (
+        map (p: {
+          name = "${toString p}/tcp";
+          value = { };
+        }) allPorts
+      );
 
       # Full configuration merge
       fullContainerConfig = {
@@ -96,143 +121,227 @@ in rec {
         Cmd = cmd;
         StopSignal = defaultContainerConfig.stopSignal;
         StopTimeout = defaultContainerConfig.stopTimeout;
-        HealthCheck = (if healthCheck != null then
-          healthCheck
-        else
-          defaultContainerConfig.healthCheck);
+        HealthCheck = if healthCheck != null then healthCheck else defaultContainerConfig.healthCheck;
       } // (if entrypoint != null then { Entrypoint = entrypoint; } else { });
 
       # Full OCI labels
       fullOCILabels = defaultOCILabels // ociLabels;
 
-    in docks.mkImage {
+    in
+    docks.mkImage {
       name = "${name}-opendesk";
       tag = "${version}-nixos";
       containerConfig = fullContainerConfig;
-      extraPackages = extraPackages;
+      inherit extraPackages;
       ociLabels = fullOCILabels;
     };
 
   # Database container builder (FR-BUILD-001, FR-IMAGE-001)
-  mkDatabaseContainer = { dataDir ? "/var/lib/db", logDir ? "/var/log"
-    , confDir ? "/etc", initDir ? "/docker-entrypoint-initdb.d", healthCheck ? {
-      Test = [ "CMD-SHELL" "pg_isready || mysqladmin ping || exit 1" ];
-      Interval = 10000000000;
-      Timeout = 5000000000;
-      Retries = 5;
-      StartPeriod = 300000000000; # 5 minutes
-    }, extraPackages ? _: [ pkgs.openssl pkgs.procps pkgs.coreutils ], ...
+  mkDatabaseContainer =
+    {
+      dataDir ? "/var/lib/db",
+      logDir ? "/var/log",
+      confDir ? "/etc",
+      initDir ? "/docker-entrypoint-initdb.d",
+      healthCheck ? {
+        Test = [
+          "CMD-SHELL"
+          "pg_isready || mysqladmin ping || exit 1"
+        ];
+        Interval = 10000000000;
+        Timeout = 5000000000;
+        Retries = 5;
+        StartPeriod = 300000000000; # 5 minutes
+      },
+      extraPackages ? _: [
+        pkgs.openssl
+        pkgs.procps
+        pkgs.coreutils
+      ],
+      ...
     }@args:
 
-    mkContainer (args // {
-      type = "database";
-      volumes = {
-        "${dataDir}" = { };
-        "${logDir}" = { };
-        "${confDir}" = { };
-        "${initDir}" = { };
-      };
-      workingDir = dataDir;
-      healthCheck = healthCheck;
-      extraPackages = extraPackages;
-    });
+    mkContainer (
+      args
+      // {
+        type = "database";
+        volumes = {
+          "${dataDir}" = { };
+          "${logDir}" = { };
+          "${confDir}" = { };
+          "${initDir}" = { };
+        };
+        workingDir = dataDir;
+        inherit healthCheck;
+        inherit extraPackages;
+      }
+    );
 
   # Web service container builder
-  mkWebContainer = { httpPort ? 8080, httpsPort ? null, user ? "www-data"
-    , uid ? 1000, gid ? 1000, workingDir ? "/var/www", healthCheck ? {
-      Test = [
-        "CMD-SHELL"
-        "curl -f http://127.0.0.1:${toString httpPort}/ || exit 1"
-      ];
-      Interval = 10000000000;
-      Timeout = 5000000000;
-      Retries = 3;
-    }, extraPackages ? _: [ pkgs.curl pkgs.coreutils ], ... }@args:
+  mkWebContainer =
+    {
+      httpPort ? 8080,
+      httpsPort ? null,
+      user ? "www-data",
+      uid ? 1000,
+      gid ? 1000,
+      workingDir ? "/var/www",
+      healthCheck ? {
+        Test = [
+          "CMD-SHELL"
+          "curl -f http://127.0.0.1:${toString httpPort}/ || exit 1"
+        ];
+        Interval = 10000000000;
+        Timeout = 5000000000;
+        Retries = 3;
+      },
+      extraPackages ? _: [
+        pkgs.curl
+        pkgs.coreutils
+      ],
+      ...
+    }@args:
 
-    let extraPorts = lib.optional (httpsPort != null) httpsPort;
-    in mkContainer (args // {
-      type = "web";
-      port = httpPort;
-      extraPorts = extraPorts;
-      volumes = {
-        "/var/www" = { };
-        "/var/log" = { };
-        "/tmp" = { };
-      };
-      user = user;
-      uid = uid;
-      gid = gid;
-      workingDir = workingDir;
-      healthCheck = healthCheck;
-      extraPackages = extraPackages;
-    });
+    let
+      extraPorts = lib.optional (httpsPort != null) httpsPort;
+    in
+    mkContainer (
+      args
+      // {
+        type = "web";
+        port = httpPort;
+        inherit extraPorts;
+        volumes = {
+          "/var/www" = { };
+          "/var/log" = { };
+          "/tmp" = { };
+        };
+        inherit user;
+        inherit uid;
+        inherit gid;
+        inherit workingDir;
+        inherit healthCheck;
+        inherit extraPackages;
+      }
+    );
 
   # Cache service container builder
-  mkCacheContainer = { name, port ? 6379, dataDir ? "/var/lib"
-    , logDir ? "/var/log", user ? name, uid ? 999, gid ? 999, healthCheck ? {
-      Test = [ "CMD-SHELL" "redis-cli ping | grep PONG || exit 1" ];
-      Interval = 5000000000;
-      Timeout = 3000000000;
-      Retries = 3;
-    }, extraPackages ? _: [ pkgs.coreutils ], ... }@args:
+  mkCacheContainer =
+    {
+      name,
+      port ? 6379,
+      dataDir ? "/var/lib",
+      logDir ? "/var/log",
+      user ? name,
+      uid ? 999,
+      gid ? 999,
+      healthCheck ? {
+        Test = [
+          "CMD-SHELL"
+          "redis-cli ping | grep PONG || exit 1"
+        ];
+        Interval = 5000000000;
+        Timeout = 3000000000;
+        Retries = 3;
+      },
+      extraPackages ? _: [ pkgs.coreutils ],
+      ...
+    }@args:
 
-    mkContainer (args // {
-      type = "cache";
-      port = port;
-      volumes = {
-        "${dataDir}" = { };
-        "${logDir}" = { };
-      };
-      user = user;
-      uid = uid;
-      gid = gid;
-      workingDir = dataDir;
-      healthCheck = healthCheck;
-      extraPackages = extraPackages;
-    });
+    mkContainer (
+      args
+      // {
+        type = "cache";
+        inherit port;
+        volumes = {
+          "${dataDir}" = { };
+          "${logDir}" = { };
+        };
+        inherit user;
+        inherit uid;
+        inherit gid;
+        workingDir = dataDir;
+        inherit healthCheck;
+        inherit extraPackages;
+      }
+    );
 
   # Message queue container builder
-  mkQueueContainer = { name, port ? 5672, managementPort ? null
-    , dataDir ? "/var/lib", logDir ? "/var/log", user ? name, uid ? 999
-    , gid ? 999, healthCheck ? {
-      Test = [ "CMD-SHELL" "rabbitmqctl status || exit 1" ];
-      Interval = 15000000000;
-      Timeout = 10000000000;
-      Retries = 3;
-    }, extraPackages ? _: [ pkgs.coreutils ], ... }@args:
+  mkQueueContainer =
+    {
+      name,
+      port ? 5672,
+      managementPort ? null,
+      dataDir ? "/var/lib",
+      logDir ? "/var/log",
+      user ? name,
+      uid ? 999,
+      gid ? 999,
+      healthCheck ? {
+        Test = [
+          "CMD-SHELL"
+          "rabbitmqctl status || exit 1"
+        ];
+        Interval = 15000000000;
+        Timeout = 10000000000;
+        Retries = 3;
+      },
+      extraPackages ? _: [ pkgs.coreutils ],
+      ...
+    }@args:
 
-    let extraPorts = lib.optional (managementPort != null) managementPort;
-    in mkContainer (args // {
-      type = "cache";
-      port = port;
-      extraPorts = extraPorts;
-      volumes = {
-        "${dataDir}" = { };
-        "${logDir}" = { };
-      };
-      user = user;
-      uid = uid;
-      gid = gid;
-      workingDir = dataDir;
-      healthCheck = healthCheck;
-      extraPackages = extraPackages;
-    });
+    let
+      extraPorts = lib.optional (managementPort != null) managementPort;
+    in
+    mkContainer (
+      args
+      // {
+        type = "cache";
+        inherit port;
+        inherit extraPorts;
+        volumes = {
+          "${dataDir}" = { };
+          "${logDir}" = { };
+        };
+        inherit user;
+        inherit uid;
+        inherit gid;
+        workingDir = dataDir;
+        inherit healthCheck;
+        inherit extraPackages;
+      }
+    );
 
   # Multi-architecture build support (FR-BUILD-003)
   mkMultiArchContainer =
-    { name, systems ? [ "x86_64-linux" "aarch64-linux" ], ... }@args:
+    {
+      name,
+      systems ? [
+        "x86_64-linux"
+        "aarch64-linux"
+      ],
+      ...
+    }@args:
 
-    builtins.listToAttrs (map (system:
-      let
-        systemPkgs = import <nixpkgs> { inherit system; };
-        systemDocks = import ../../../lib/docks.nix { pkgs = systemPkgs; };
-      in {
-        name = "${system}";
-        value = mkContainer (args // {
-          pkgs = systemPkgs;
-          docks = systemDocks;
-        });
-      }) systems);
+    builtins.listToAttrs (
+      map (
+        system:
+        let
+          systemPkgs = import <nixpkgs> { inherit system; };
+          systemDocks = import ../../../lib/docks.nix { pkgs = systemPkgs; };
+        in
+        {
+          name = "${system}";
+          value = mkContainer (
+            args
+            // {
+              pkgs = systemPkgs;
+              docks = systemDocks;
+            }
+          );
+        }
+      ) systems
+    );
 
   # Service catalog for core openDesk services
   # Uses local docks.nix for all builds (no external dependencies)
@@ -252,7 +361,10 @@ in rec {
       user = "postgres";
       dataDir = "/var/lib/postgresql";
       healthCheck = {
-        Test = [ "CMD-SHELL" "pg_isready -U postgres || exit 1" ];
+        Test = [
+          "CMD-SHELL"
+          "pg_isready -U postgres || exit 1"
+        ];
         Interval = 10000000000;
         Timeout = 5000000000;
         Retries = 5;

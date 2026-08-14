@@ -25,7 +25,7 @@ let
         description = "Version/tag of the image";
       };
       baseImage = lib.mkOption {
-        type = lib.types.either lib.types.str (lib.types.attrs);
+        type = lib.types.either lib.types.str lib.types.attrs;
         description = "Base image to use (string or derivation)";
       };
       packages = lib.mkOption {
@@ -39,8 +39,7 @@ let
         description = "Custom build steps (bash script)";
       };
       configFiles = lib.mkOption {
-        type =
-          lib.types.attrsOf (lib.types.either lib.types.str lib.types.path);
+        type = lib.types.attrsOf (lib.types.either lib.types.str lib.types.path);
         default = { };
         description = "Configuration files to copy into the image";
       };
@@ -113,44 +112,51 @@ let
         description = "Security configuration";
       };
       healthcheck = lib.mkOption {
-        type = lib.types.nullOr (lib.types.submodule {
-          options = {
-            type = lib.mkOption {
-              type = lib.types.enum [ "CMD" "CMD-SHELL" "HTTP" "TCP" ];
-              description = "Health check type";
+        type = lib.types.nullOr (
+          lib.types.submodule {
+            options = {
+              type = lib.mkOption {
+                type = lib.types.enum [
+                  "CMD"
+                  "CMD-SHELL"
+                  "HTTP"
+                  "TCP"
+                ];
+                description = "Health check type";
+              };
+              command = lib.mkOption {
+                type = lib.types.listOf lib.types.str;
+                default = [ ];
+                description = "Command for CMD health check";
+              };
+              url = lib.mkOption {
+                type = lib.types.str;
+                default = "/healthz";
+                description = "URL for HTTP health check";
+              };
+              port = lib.mkOption {
+                type = lib.types.int;
+                default = 80;
+                description = "Port for health check";
+              };
+              interval = lib.mkOption {
+                type = lib.types.int;
+                default = 30;
+                description = "Interval between checks (seconds)";
+              };
+              timeout = lib.mkOption {
+                type = lib.types.int;
+                default = 10;
+                description = "Timeout for check (seconds)";
+              };
+              retries = lib.mkOption {
+                type = lib.types.int;
+                default = 3;
+                description = "Number of retries";
+              };
             };
-            command = lib.mkOption {
-              type = lib.types.listOf lib.types.str;
-              default = [ ];
-              description = "Command for CMD health check";
-            };
-            url = lib.mkOption {
-              type = lib.types.str;
-              default = "/healthz";
-              description = "URL for HTTP health check";
-            };
-            port = lib.mkOption {
-              type = lib.types.int;
-              default = 80;
-              description = "Port for health check";
-            };
-            interval = lib.mkOption {
-              type = lib.types.int;
-              default = 30;
-              description = "Interval between checks (seconds)";
-            };
-            timeout = lib.mkOption {
-              type = lib.types.int;
-              default = 10;
-              description = "Timeout for check (seconds)";
-            };
-            retries = lib.mkOption {
-              type = lib.types.int;
-              default = 3;
-              description = "Number of retries";
-            };
-          };
-        });
+          }
+        );
         default = null;
         description = "Health check configuration";
       };
@@ -186,7 +192,11 @@ let
         description = "Container image (with tag)";
       };
       imagePullPolicy = lib.mkOption {
-        type = lib.types.enum [ "Always" "IfNotPresent" "Never" ];
+        type = lib.types.enum [
+          "Always"
+          "IfNotPresent"
+          "Never"
+        ];
         default = "IfNotPresent";
         description = "Image pull policy";
       };
@@ -196,295 +206,341 @@ let
         description = "Container ports to expose";
       };
       env = lib.mkOption {
-        type = lib.types.listOf (lib.types.submodule {
-          options = {
-            name = lib.mkOption { type = lib.types.str; };
-            value = lib.mkOption {
-              type = lib.types.nullOr lib.types.str;
-              default = null;
-            };
-            valueFrom = lib.mkOption {
-              type = lib.types.nullOr (lib.types.submodule {
-                options = {
-                  configMapKeyRef = lib.mkOption {
-                    type = lib.types.nullOr (lib.types.submodule {
-                      options = {
-                        name = lib.mkOption { type = lib.types.str; };
-                        key = lib.mkOption { type = lib.types.str; };
+        type = lib.types.listOf (
+          lib.types.submodule {
+            options = {
+              name = lib.mkOption { type = lib.types.str; };
+              value = lib.mkOption {
+                type = lib.types.nullOr lib.types.str;
+                default = null;
+              };
+              valueFrom = lib.mkOption {
+                type = lib.types.nullOr (
+                  lib.types.submodule {
+                    options = {
+                      configMapKeyRef = lib.mkOption {
+                        type = lib.types.nullOr (
+                          lib.types.submodule {
+                            options = {
+                              name = lib.mkOption { type = lib.types.str; };
+                              key = lib.mkOption { type = lib.types.str; };
+                            };
+                          }
+                        );
+                        default = null;
                       };
-                    });
-                    default = null;
-                  };
-                  secretKeyRef = lib.mkOption {
-                    type = lib.types.nullOr (lib.types.submodule {
-                      options = {
-                        name = lib.mkOption { type = lib.types.str; };
-                        key = lib.mkOption { type = lib.types.str; };
+                      secretKeyRef = lib.mkOption {
+                        type = lib.types.nullOr (
+                          lib.types.submodule {
+                            options = {
+                              name = lib.mkOption { type = lib.types.str; };
+                              key = lib.mkOption { type = lib.types.str; };
+                            };
+                          }
+                        );
+                        default = null;
                       };
-                    });
-                    default = null;
-                  };
-                };
-              });
-              default = null;
+                    };
+                  }
+                );
+                default = null;
+              };
             };
-          };
-        });
+          }
+        );
         default = [ ];
         description = "Environment variables";
       };
       envFrom = lib.mkOption {
-        type = lib.types.listOf (lib.types.submodule {
-          options = {
-            configMapRef = lib.mkOption {
-              type = lib.types.nullOr (lib.types.submodule {
-                options = {
-                  name = lib.mkOption { type = lib.types.str; };
-                  optional = lib.mkOption {
-                    type = lib.types.bool;
-                    default = false;
-                  };
-                };
-              });
-              default = null;
+        type = lib.types.listOf (
+          lib.types.submodule {
+            options = {
+              configMapRef = lib.mkOption {
+                type = lib.types.nullOr (
+                  lib.types.submodule {
+                    options = {
+                      name = lib.mkOption { type = lib.types.str; };
+                      optional = lib.mkOption {
+                        type = lib.types.bool;
+                        default = false;
+                      };
+                    };
+                  }
+                );
+                default = null;
+              };
+              secretRef = lib.mkOption {
+                type = lib.types.nullOr (
+                  lib.types.submodule {
+                    options = {
+                      name = lib.mkOption { type = lib.types.str; };
+                      optional = lib.mkOption {
+                        type = lib.types.bool;
+                        default = false;
+                      };
+                    };
+                  }
+                );
+                default = null;
+              };
             };
-            secretRef = lib.mkOption {
-              type = lib.types.nullOr (lib.types.submodule {
-                options = {
-                  name = lib.mkOption { type = lib.types.str; };
-                  optional = lib.mkOption {
-                    type = lib.types.bool;
-                    default = false;
-                  };
-                };
-              });
-              default = null;
-            };
-          };
-        });
+          }
+        );
         default = [ ];
         description = "Environment variables from config maps or secrets";
       };
       resources = lib.mkOption {
-        type = lib.types.nullOr (lib.types.submodule {
-          options = {
-            requests = lib.mkOption {
-              type = lib.types.submodule {
-                options = {
-                  cpu = lib.mkOption {
-                    type = lib.types.str;
-                    default = "100m";
-                  };
-                  memory = lib.mkOption {
-                    type = lib.types.str;
-                    default = "128Mi";
-                  };
-                };
-              };
-              default = { };
-            };
-            limits = lib.mkOption {
-              type = lib.types.submodule {
-                options = {
-                  cpu = lib.mkOption {
-                    type = lib.types.str;
-                    default = "500m";
-                  };
-                  memory = lib.mkOption {
-                    type = lib.types.str;
-                    default = "512Mi";
+        type = lib.types.nullOr (
+          lib.types.submodule {
+            options = {
+              requests = lib.mkOption {
+                type = lib.types.submodule {
+                  options = {
+                    cpu = lib.mkOption {
+                      type = lib.types.str;
+                      default = "100m";
+                    };
+                    memory = lib.mkOption {
+                      type = lib.types.str;
+                      default = "128Mi";
+                    };
                   };
                 };
+                default = { };
               };
-              default = { };
+              limits = lib.mkOption {
+                type = lib.types.submodule {
+                  options = {
+                    cpu = lib.mkOption {
+                      type = lib.types.str;
+                      default = "500m";
+                    };
+                    memory = lib.mkOption {
+                      type = lib.types.str;
+                      default = "512Mi";
+                    };
+                  };
+                };
+                default = { };
+              };
             };
-          };
-        });
+          }
+        );
         default = null;
         description = "Resource requests and limits";
       };
       securityContext = lib.mkOption {
-        type = lib.types.nullOr (lib.types.submodule {
-          options = {
-            allowPrivilegeEscalation = lib.mkOption {
-              type = lib.types.bool;
-              default = false;
+        type = lib.types.nullOr (
+          lib.types.submodule {
+            options = {
+              allowPrivilegeEscalation = lib.mkOption {
+                type = lib.types.bool;
+                default = false;
+              };
+              runAsNonRoot = lib.mkOption {
+                type = lib.types.bool;
+                default = true;
+              };
+              runAsUser = lib.mkOption {
+                type = lib.types.int;
+                default = 1000;
+              };
+              runAsGroup = lib.mkOption {
+                type = lib.types.int;
+                default = 1000;
+              };
+              readOnlyRootFilesystem = lib.mkOption {
+                type = lib.types.bool;
+                default = true;
+              };
+              capabilities = lib.mkOption {
+                type = lib.types.nullOr (
+                  lib.types.submodule {
+                    options = {
+                      drop = lib.mkOption {
+                        type = lib.types.listOf lib.types.str;
+                        default = [ "ALL" ];
+                      };
+                      add = lib.mkOption {
+                        type = lib.types.listOf lib.types.str;
+                        default = [ ];
+                      };
+                    };
+                  }
+                );
+                default = null;
+              };
             };
-            runAsNonRoot = lib.mkOption {
-              type = lib.types.bool;
-              default = true;
-            };
-            runAsUser = lib.mkOption {
-              type = lib.types.int;
-              default = 1000;
-            };
-            runAsGroup = lib.mkOption {
-              type = lib.types.int;
-              default = 1000;
-            };
-            readOnlyRootFilesystem = lib.mkOption {
-              type = lib.types.bool;
-              default = true;
-            };
-            capabilities = lib.mkOption {
-              type = lib.types.nullOr (lib.types.submodule {
-                options = {
-                  drop = lib.mkOption {
-                    type = lib.types.listOf lib.types.str;
-                    default = [ "ALL" ];
-                  };
-                  add = lib.mkOption {
-                    type = lib.types.listOf lib.types.str;
-                    default = [ ];
-                  };
-                };
-              });
-              default = null;
-            };
-          };
-        });
+          }
+        );
         default = null;
         description = "Security context for the container";
       };
       livenessProbe = lib.mkOption {
-        type = lib.types.nullOr (lib.types.submodule {
-          options = {
-            httpGet = lib.mkOption {
-              type = lib.types.nullOr (lib.types.submodule {
-                options = {
-                  path = lib.mkOption {
-                    type = lib.types.str;
-                    default = "/healthz";
-                  };
-                  port = lib.mkOption {
-                    type = lib.types.int;
-                    default = 80;
-                  };
-                  scheme = lib.mkOption {
-                    type = lib.types.enum [ "HTTP" "HTTPS" ];
-                    default = "HTTP";
-                  };
-                };
-              });
-              default = null;
+        type = lib.types.nullOr (
+          lib.types.submodule {
+            options = {
+              httpGet = lib.mkOption {
+                type = lib.types.nullOr (
+                  lib.types.submodule {
+                    options = {
+                      path = lib.mkOption {
+                        type = lib.types.str;
+                        default = "/healthz";
+                      };
+                      port = lib.mkOption {
+                        type = lib.types.int;
+                        default = 80;
+                      };
+                      scheme = lib.mkOption {
+                        type = lib.types.enum [
+                          "HTTP"
+                          "HTTPS"
+                        ];
+                        default = "HTTP";
+                      };
+                    };
+                  }
+                );
+                default = null;
+              };
+              tcpSocket = lib.mkOption {
+                type = lib.types.nullOr (
+                  lib.types.submodule {
+                    options = {
+                      port = lib.mkOption { type = lib.types.int; };
+                    };
+                  }
+                );
+                default = null;
+              };
+              exec = lib.mkOption {
+                type = lib.types.nullOr (
+                  lib.types.submodule {
+                    options = {
+                      command = lib.mkOption { type = lib.types.listOf lib.types.str; };
+                    };
+                  }
+                );
+                default = null;
+              };
+              initialDelaySeconds = lib.mkOption {
+                type = lib.types.int;
+                default = 30;
+              };
+              periodSeconds = lib.mkOption {
+                type = lib.types.int;
+                default = 10;
+              };
+              timeoutSeconds = lib.mkOption {
+                type = lib.types.int;
+                default = 5;
+              };
+              successThreshold = lib.mkOption {
+                type = lib.types.int;
+                default = 1;
+              };
+              failureThreshold = lib.mkOption {
+                type = lib.types.int;
+                default = 3;
+              };
             };
-            tcpSocket = lib.mkOption {
-              type = lib.types.nullOr (lib.types.submodule {
-                options = { port = lib.mkOption { type = lib.types.int; }; };
-              });
-              default = null;
-            };
-            exec = lib.mkOption {
-              type = lib.types.nullOr (lib.types.submodule {
-                options = {
-                  command =
-                    lib.mkOption { type = lib.types.listOf lib.types.str; };
-                };
-              });
-              default = null;
-            };
-            initialDelaySeconds = lib.mkOption {
-              type = lib.types.int;
-              default = 30;
-            };
-            periodSeconds = lib.mkOption {
-              type = lib.types.int;
-              default = 10;
-            };
-            timeoutSeconds = lib.mkOption {
-              type = lib.types.int;
-              default = 5;
-            };
-            successThreshold = lib.mkOption {
-              type = lib.types.int;
-              default = 1;
-            };
-            failureThreshold = lib.mkOption {
-              type = lib.types.int;
-              default = 3;
-            };
-          };
-        });
+          }
+        );
         default = null;
         description = "Liveness probe configuration";
       };
       readinessProbe = lib.mkOption {
-        type = lib.types.nullOr (lib.types.submodule {
-          options = {
-            httpGet = lib.mkOption {
-              type = lib.types.nullOr (lib.types.submodule {
-                options = {
-                  path = lib.mkOption {
-                    type = lib.types.str;
-                    default = "/healthz";
-                  };
-                  port = lib.mkOption {
-                    type = lib.types.int;
-                    default = 80;
-                  };
-                  scheme = lib.mkOption {
-                    type = lib.types.enum [ "HTTP" "HTTPS" ];
-                    default = "HTTP";
-                  };
-                };
-              });
-              default = null;
+        type = lib.types.nullOr (
+          lib.types.submodule {
+            options = {
+              httpGet = lib.mkOption {
+                type = lib.types.nullOr (
+                  lib.types.submodule {
+                    options = {
+                      path = lib.mkOption {
+                        type = lib.types.str;
+                        default = "/healthz";
+                      };
+                      port = lib.mkOption {
+                        type = lib.types.int;
+                        default = 80;
+                      };
+                      scheme = lib.mkOption {
+                        type = lib.types.enum [
+                          "HTTP"
+                          "HTTPS"
+                        ];
+                        default = "HTTP";
+                      };
+                    };
+                  }
+                );
+                default = null;
+              };
+              tcpSocket = lib.mkOption {
+                type = lib.types.nullOr (
+                  lib.types.submodule {
+                    options = {
+                      port = lib.mkOption { type = lib.types.int; };
+                    };
+                  }
+                );
+                default = null;
+              };
+              exec = lib.mkOption {
+                type = lib.types.nullOr (
+                  lib.types.submodule {
+                    options = {
+                      command = lib.mkOption { type = lib.types.listOf lib.types.str; };
+                    };
+                  }
+                );
+                default = null;
+              };
+              initialDelaySeconds = lib.mkOption {
+                type = lib.types.int;
+                default = 5;
+              };
+              periodSeconds = lib.mkOption {
+                type = lib.types.int;
+                default = 5;
+              };
+              timeoutSeconds = lib.mkOption {
+                type = lib.types.int;
+                default = 3;
+              };
+              successThreshold = lib.mkOption {
+                type = lib.types.int;
+                default = 1;
+              };
+              failureThreshold = lib.mkOption {
+                type = lib.types.int;
+                default = 3;
+              };
             };
-            tcpSocket = lib.mkOption {
-              type = lib.types.nullOr (lib.types.submodule {
-                options = { port = lib.mkOption { type = lib.types.int; }; };
-              });
-              default = null;
-            };
-            exec = lib.mkOption {
-              type = lib.types.nullOr (lib.types.submodule {
-                options = {
-                  command =
-                    lib.mkOption { type = lib.types.listOf lib.types.str; };
-                };
-              });
-              default = null;
-            };
-            initialDelaySeconds = lib.mkOption {
-              type = lib.types.int;
-              default = 5;
-            };
-            periodSeconds = lib.mkOption {
-              type = lib.types.int;
-              default = 5;
-            };
-            timeoutSeconds = lib.mkOption {
-              type = lib.types.int;
-              default = 3;
-            };
-            successThreshold = lib.mkOption {
-              type = lib.types.int;
-              default = 1;
-            };
-            failureThreshold = lib.mkOption {
-              type = lib.types.int;
-              default = 3;
-            };
-          };
-        });
+          }
+        );
         default = null;
         description = "Readiness probe configuration";
       };
       volumeMounts = lib.mkOption {
-        type = lib.types.listOf (lib.types.submodule {
-          options = {
-            name = lib.mkOption { type = lib.types.str; };
-            mountPath = lib.mkOption { type = lib.types.str; };
-            subPath = lib.mkOption {
-              type = lib.types.nullOr lib.types.str;
-              default = null;
+        type = lib.types.listOf (
+          lib.types.submodule {
+            options = {
+              name = lib.mkOption { type = lib.types.str; };
+              mountPath = lib.mkOption { type = lib.types.str; };
+              subPath = lib.mkOption {
+                type = lib.types.nullOr lib.types.str;
+                default = null;
+              };
+              readOnly = lib.mkOption {
+                type = lib.types.bool;
+                default = true;
+              };
             };
-            readOnly = lib.mkOption {
-              type = lib.types.bool;
-              default = true;
-            };
-          };
-        });
+          }
+        );
         default = [ ];
         description = "Volume mounts";
       };
@@ -625,8 +681,7 @@ let
         description = "Domain name for ingress";
       };
       configFiles = lib.mkOption {
-        type =
-          lib.types.attrsOf (lib.types.either lib.types.str lib.types.path);
+        type = lib.types.attrsOf (lib.types.either lib.types.str lib.types.path);
         default = { };
         description = "Configuration files";
       };
@@ -641,40 +696,42 @@ let
         description = "Environment variables";
       };
       resources = lib.mkOption {
-        type = lib.types.nullOr (lib.types.submodule {
-          options = {
-            requests = lib.mkOption {
-              type = lib.types.submodule {
-                options = {
-                  cpu = lib.mkOption {
-                    type = lib.types.str;
-                    default = "100m";
-                  };
-                  memory = lib.mkOption {
-                    type = lib.types.str;
-                    default = "128Mi";
-                  };
-                };
-              };
-              default = { };
-            };
-            limits = lib.mkOption {
-              type = lib.types.submodule {
-                options = {
-                  cpu = lib.mkOption {
-                    type = lib.types.str;
-                    default = "500m";
-                  };
-                  memory = lib.mkOption {
-                    type = lib.types.str;
-                    default = "512Mi";
+        type = lib.types.nullOr (
+          lib.types.submodule {
+            options = {
+              requests = lib.mkOption {
+                type = lib.types.submodule {
+                  options = {
+                    cpu = lib.mkOption {
+                      type = lib.types.str;
+                      default = "100m";
+                    };
+                    memory = lib.mkOption {
+                      type = lib.types.str;
+                      default = "128Mi";
+                    };
                   };
                 };
+                default = { };
               };
-              default = { };
+              limits = lib.mkOption {
+                type = lib.types.submodule {
+                  options = {
+                    cpu = lib.mkOption {
+                      type = lib.types.str;
+                      default = "500m";
+                    };
+                    memory = lib.mkOption {
+                      type = lib.types.str;
+                      default = "512Mi";
+                    };
+                  };
+                };
+                default = { };
+              };
             };
-          };
-        });
+          }
+        );
         default = null;
         description = "Resource requests and limits";
       };
@@ -694,8 +751,13 @@ let
   # ENVIRONMENT TYPES
   # =============================================================================
   # Environment types
-  environmentType =
-    lib.types.enum [ "local" "demo" "staging" "hrz" "production" ];
+  environmentType = lib.types.enum [
+    "local"
+    "demo"
+    "staging"
+    "hrz"
+    "production"
+  ];
   # Environment configuration
   environmentConfigType = lib.types.submodule {
     options = {
@@ -807,7 +869,11 @@ let
   # SBOM TYPES
   # =============================================================================
   # SBOM format types
-  sbomFormatType = lib.types.enum [ "spdx" "cyclonedx" "both" ];
+  sbomFormatType = lib.types.enum [
+    "spdx"
+    "cyclonedx"
+    "both"
+  ];
   # SBOM configuration
   sbomConfigType = lib.types.submodule {
     options = {
@@ -843,8 +909,20 @@ let
       };
     };
   };
-in {
-  inherit imageConfigType k8sContainerType serviceCategoryType serviceTierType
-    servicePhaseType serviceType environmentType environmentConfigType
-    registryType registryConfigType sbomFormatType sbomConfigType;
+in
+{
+  inherit
+    imageConfigType
+    k8sContainerType
+    serviceCategoryType
+    serviceTierType
+    servicePhaseType
+    serviceType
+    environmentType
+    environmentConfigType
+    registryType
+    registryConfigType
+    sbomFormatType
+    sbomConfigType
+    ;
 }

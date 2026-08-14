@@ -14,8 +14,10 @@
 
 { config, lib, ... }:
 
-let cfg = config.nix.remoteBuilders;
-in {
+let
+  cfg = config.nix.remoteBuilders;
+in
+{
   meta.maintainers = [ "opendesk-edu" ];
 
   ###### interface
@@ -25,48 +27,56 @@ in {
       enable = lib.mkEnableOption "Remote builders for distributed builds";
 
       nodes = lib.mkOption {
-        type = lib.types.listOf (lib.types.submodule {
-          options = {
-            name = lib.mkOption {
-              type = lib.types.str;
-              description = "Builder node name";
-            };
+        type = lib.types.listOf (
+          lib.types.submodule {
+            options = {
+              name = lib.mkOption {
+                type = lib.types.str;
+                description = "Builder node name";
+              };
 
-            endpoint = lib.mkOption {
-              type = lib.types.str;
-              description = "SSH endpoint (user@host)";
-            };
+              endpoint = lib.mkOption {
+                type = lib.types.str;
+                description = "SSH endpoint (user@host)";
+              };
 
-            sshKey = lib.mkOption {
-              type = lib.types.path;
-              description = "Path to SSH private key";
-            };
+              sshKey = lib.mkOption {
+                type = lib.types.path;
+                description = "Path to SSH private key";
+              };
 
-            system = lib.mkOption {
-              type = lib.types.enum [ "x86_64-linux" "aarch64-linux" ];
-              default = "x86_64-linux";
-              description = "Target system type";
-            };
+              system = lib.mkOption {
+                type = lib.types.enum [
+                  "x86_64-linux"
+                  "aarch64-linux"
+                ];
+                default = "x86_64-linux";
+                description = "Target system type";
+              };
 
-            maxJobs = lib.mkOption {
-              type = lib.types.int;
-              default = 4;
-              description = "Maximum parallel jobs on this node";
-            };
+              maxJobs = lib.mkOption {
+                type = lib.types.int;
+                default = 4;
+                description = "Maximum parallel jobs on this node";
+              };
 
-            speedFactor = lib.mkOption {
-              type = lib.types.int;
-              default = 1;
-              description = "Relative build speed (higher = faster)";
-            };
+              speedFactor = lib.mkOption {
+                type = lib.types.int;
+                default = 1;
+                description = "Relative build speed (higher = faster)";
+              };
 
-            supportedFeatures = lib.mkOption {
-              type = lib.types.listOf lib.types.str;
-              default = [ "kvm" "bigparallel" ];
-              description = "Special build features";
+              supportedFeatures = lib.mkOption {
+                type = lib.types.listOf lib.types.str;
+                default = [
+                  "kvm"
+                  "bigparallel"
+                ];
+                description = "Special build features";
+              };
             };
-          };
-        });
+          }
+        );
         default = [ ];
         description = "List of remote builder nodes";
       };
@@ -90,14 +100,20 @@ in {
   config = lib.mkIf cfg.enable {
     # Configure Nix to use remote builders
     nix.settings = {
-      builders = lib.mapAttrsToList (_name: value:
-        "${value.endpoint} ${value.system} ${toString value.speedFactor} ${
-          toString value.maxJobs
-        } ${lib.concatStringsSep "," value.supportedFeatures}") (lib.listToAttrs
-          (lib.mapIndexed (i: node: {
-            name = "builder-${toString i}";
-            value = node;
-          }) cfg.nodes));
+      builders =
+        lib.mapAttrsToList
+          (
+            _name: value:
+            "${value.endpoint} ${value.system} ${toString value.speedFactor} ${toString value.maxJobs} ${lib.concatStringsSep "," value.supportedFeatures}"
+          )
+          (
+            lib.listToAttrs (
+              lib.mapIndexed (i: node: {
+                name = "builder-${toString i}";
+                value = node;
+              }) cfg.nodes
+            )
+          );
 
       builders-use-substitutes = true;
       connect-timeout = cfg.connectTimeout;

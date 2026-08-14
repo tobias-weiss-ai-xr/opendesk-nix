@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
 
-# 
+#
 # self-service-password NixOS Configuration for openDesk
 # Version: latest
 # OpenSpec: Full compliance (FR-IMAGE-001 through FR-IMAGE-009)
-# 
+#
 
 { pkgs, lib, ... }:
 
@@ -30,7 +30,9 @@
     description = "self-service-password Service User";
   };
 
-  users.groups.self-service-password = { gid = 1000; };
+  users.groups.self-service-password = {
+    gid = 1000;
+  };
 
   # Setup directories
   system.activationScripts.setupself-service-password = lib.mkAfter ''

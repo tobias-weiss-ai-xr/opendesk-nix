@@ -117,11 +117,11 @@ declare -a EDU_IMAGES=(
 # Utility Functions
 # =============================================================================
 
-log_info()    { echo -e "${BLUE}[INFO]${NC} $1"; }
+log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
 log_success() { echo -e "${GREEN}[OK]${NC} $1"; }
-log_warn()    { echo -e "${YELLOW}[WARN]${NC} $1"; }
-log_error()   { echo -e "${RED}[ERROR]${NC} $1" >&2; }
-log_push()    { echo -e "${MAGENTA}[PUSH]${NC} $1"; }
+log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
+log_push() { echo -e "${MAGENTA}[PUSH]${NC} $1"; }
 
 check_docker() {
     if ! command -v docker &>/dev/null; then
@@ -172,26 +172,26 @@ convert_image() {
     # Strip the registry prefix
     local without_registry
     without_registry="${source_image#${SOURCE_REGISTRY}/}"
-    
+
     # Strip known sub-paths but preserve meaningful ones
     # opendesk-edu/ and tobias-weiss-ai-xr/ are registry org names, not part of image path
     # project-zot/ is also a registry org name
     local image_path
     case "$without_registry" in
-        opendesk-edu/*)
-            image_path="${without_registry#opendesk-edu/}"
-            ;;
-        tobias-weiss-ai-xr/*)
-            image_path="${without_registry#tobias-weiss-ai-xr/}"
-            ;;
-        project-zot/*)
-            image_path="${without_registry#project-zot/}"
-            ;;
-        *)
-            image_path="$without_registry"
-            ;;
+    opendesk-edu/*)
+        image_path="${without_registry#opendesk-edu/}"
+        ;;
+    tobias-weiss-ai-xr/*)
+        image_path="${without_registry#tobias-weiss-ai-xr/}"
+        ;;
+    project-zot/*)
+        image_path="${without_registry#project-zot/}"
+        ;;
+    *)
+        image_path="$without_registry"
+        ;;
     esac
-    
+
     echo "${TARGET_REGISTRY}/${image_path}"
 }
 
@@ -248,46 +248,64 @@ main() {
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            --all)     mode="all"; shift;;
-            --core)    mode="core"; shift;;
-            --list)    list_only=true; shift;;
-            --dry-run) dry_run=true; shift;;
-            --registry) TARGET_REGISTRY="$2"; shift 2;;
-            --source)  SOURCE_REGISTRY="$2"; shift 2;;
-            --help|-h)
-                echo "Usage: OPENCODE_TOKEN=\"glpat-xxx\" $0 [OPTIONS]"
-                echo ""
-                echo "Push images from ${SOURCE_REGISTRY} to ${TARGET_REGISTRY}"
-                echo ""
-                echo "Options:"
-                echo "  --all          Push all images (core + edu)"
-                echo "  --core         Push only core images (default)"
-                echo "  --list         List images that would be pushed"
-                echo "  --dry-run      Show what would be pushed without pushing"
-                echo "  --registry     Override target registry"
-                echo "  --source       Override source registry"
-                echo "  --help         Show this help"
-                echo ""
-                echo "Environment:"
-                echo "  OPENCODE_TOKEN    GitLab PAT (required)"
-                echo "  OPENCODE_USER     GitLab username (default: weiss)"
-                echo "  OPENCODE_REGISTRY Target registry (default: registry.opencode.de/umr)"
-                echo ""
-                echo "Core images:"
-                for img in "${CORE_IMAGES[@]}"; do
-                    echo "  ${img}"
-                done
-                echo ""
-                echo "EDU images (--all):"
-                for img in "${EDU_IMAGES[@]}"; do
-                    echo "  ${img}"
-                done
-                exit 0
-                ;;
-            *)
-                log_error "Unknown option: $1"
-                exit 1
-                ;;
+        --all)
+            mode="all"
+            shift
+            ;;
+        --core)
+            mode="core"
+            shift
+            ;;
+        --list)
+            list_only=true
+            shift
+            ;;
+        --dry-run)
+            dry_run=true
+            shift
+            ;;
+        --registry)
+            TARGET_REGISTRY="$2"
+            shift 2
+            ;;
+        --source)
+            SOURCE_REGISTRY="$2"
+            shift 2
+            ;;
+        --help | -h)
+            echo "Usage: OPENCODE_TOKEN=\"glpat-xxx\" $0 [OPTIONS]"
+            echo ""
+            echo "Push images from ${SOURCE_REGISTRY} to ${TARGET_REGISTRY}"
+            echo ""
+            echo "Options:"
+            echo "  --all          Push all images (core + edu)"
+            echo "  --core         Push only core images (default)"
+            echo "  --list         List images that would be pushed"
+            echo "  --dry-run      Show what would be pushed without pushing"
+            echo "  --registry     Override target registry"
+            echo "  --source       Override source registry"
+            echo "  --help         Show this help"
+            echo ""
+            echo "Environment:"
+            echo "  OPENCODE_TOKEN    GitLab PAT (required)"
+            echo "  OPENCODE_USER     GitLab username (default: weiss)"
+            echo "  OPENCODE_REGISTRY Target registry (default: registry.opencode.de/umr)"
+            echo ""
+            echo "Core images:"
+            for img in "${CORE_IMAGES[@]}"; do
+                echo "  ${img}"
+            done
+            echo ""
+            echo "EDU images (--all):"
+            for img in "${EDU_IMAGES[@]}"; do
+                echo "  ${img}"
+            done
+            exit 0
+            ;;
+        *)
+            log_error "Unknown option: $1"
+            exit 1
+            ;;
         esac
     done
 

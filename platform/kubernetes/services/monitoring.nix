@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
 
 { 
   lib,
@@ -8,14 +8,14 @@
   types ? import ../../lib/types.nix { },
   sbom ? import ../../lib/sbom.nix { },
   pkgs ? import <nixpkgs> { }
-  env ? import ../environments/hrz/default.nix { lib = lib; },
+  env ? import ../environments/hrz/default.nix { inherit lib; },
 }:
 
 let
 
   # OCI Labels (OpenSpec Compliance - FR-IMAGE-007)
   ociLabels = lib.mkOCILabels {
-    name = name;
+    inherit name;
     version = tag;
     description = "monitoring service for openDesk";
     serviceType = "web";
@@ -51,25 +51,25 @@ let
 in
 
 [ (lib.deployment {
-    name = name;
+    inherit name;
     image = "${image}:${tag}";
-    port = port;
+    inherit port;
     labels = { app = name; };
     selector = { app = name; };
-    namespace = namespace;
+    inherit namespace;
     resources = { limits = { cpu = "500m"; memory = "512Mi"; }; };
   })
   (lib.service {
-    name = name;
-    port = port;
+    inherit name;
+    inherit port;
     selector = { app = name; };
-    namespace = namespace;
+    inherit namespace;
   })
   (lib.ingressWithCert {
-    name = name;
-    namespace = namespace;
-    host = "monitoring.opendesk.hrz.uni-marburg.de";
-    port = port;
+    inherit name;
+    inherit namespace;
+    host = "monitoring.opendesk.internal";
+    inherit port;
     serviceName = name;
   })
 ]

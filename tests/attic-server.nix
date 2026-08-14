@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # Attic server integration test
 
-{ pkgs, ... }: {
+_: {
 
   name = "attic-server";
 
   nodes = {
-    attic = { config, pkgs, ... }: {
+    attic = _: {
       services.attic-server = {
         enable = true;
         listenPort = 8080;
@@ -15,9 +15,9 @@
       };
     };
 
-    client = { config, pkgs, ... }: {
+    client = _: {
       nix.settings.substituters = [ "http://attic:8080" ];
-      nix.settings.trusted-public-keys = [ "attic.scs.hrz@uni-marburg.de-1:abc123" ];
+      nix.settings.trusted-public-keys = [ "attic.internal-1:abc123" ];
     };
   };
 
@@ -25,15 +25,15 @@
     # Start Attic server
     attic.start()
     attic.wait_for_unit("attic-server.service")
-    
+
     # Verify server is responsive
     attic.succeed("curl -s http://localhost:8080/")
-    
+
     # Client can substitute from cache
     client.succeed(
       "nix build --substituters http://attic:8080 .\hello"
     )
-    
+
     # Verify path exists in cache
     attic.succeed("attic list main | grep hello")
   '';

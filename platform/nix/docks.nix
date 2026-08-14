@@ -8,15 +8,24 @@
 { pkgs, ... }:
 
 let
-  lib = pkgs.lib;
-  dockerTools = pkgs.dockerTools;
+  inherit (pkgs) lib;
+  inherit (pkgs) dockerTools;
 
   # Helper to get attribute with default
-  getAttrWithDefault = attr: default: config:
-    if config ? ${attr} then config.${attr} else default;
+  getAttrWithDefault =
+    attr: default: config:
+    config.${attr} or default;
 
-  mkImage = { name ? "opendesk-image", tag ? "latest", config ? { }
-    , containerConfig ? { }, extraPackages ? (_: [ ]), ociLabels ? { }, ... }:
+  mkImage =
+    {
+      name ? "opendesk-image",
+      tag ? "latest",
+      config ? { },
+      containerConfig ? { },
+      extraPackages ? (_: [ ]),
+      ociLabels ? { },
+      ...
+    }:
 
     let
       cmd = getAttrWithDefault "Cmd" [
@@ -35,8 +44,7 @@ let
       stopTimeout = getAttrWithDefault "StopTimeout" 30 containerConfig;
 
       # Determine if we need to create a custom user
-      userName =
-        if user == "nobody" || user == "root" || user == "" then null else user;
+      userName = if user == "nobody" || user == "root" || user == "" then null else user;
 
       # Volume paths from the Volumes attribute set
       volumePaths = builtins.attrNames volumes;
@@ -44,8 +52,21 @@ let
       # Build a proper root filesystem with symlinks at /bin, /usr/bin, etc.
       rootEnv = pkgs.buildEnv {
         name = "${name}-root";
-        paths = with pkgs; [ bash coreutils ] ++ extraPackages pkgs;
-        pathsToLink = [ "/bin" "/usr" "/etc" "/lib" "/share" "/sbin" ];
+        paths =
+          with pkgs;
+          [
+            bash
+            coreutils
+          ]
+          ++ extraPackages pkgs;
+        pathsToLink = [
+          "/bin"
+          "/usr"
+          "/etc"
+          "/lib"
+          "/share"
+          "/sbin"
+        ];
       };
 
       # runAsRoot script: create user/group and volume directories
@@ -65,22 +86,33 @@ let
         ''}
         ${lib.concatMapStrings (path: ''
           mkdir -p ${path}
-          ${lib.optionalString (userName != null)
-          "chown -R ${userName}:${userName} ${path}"}
+          ${lib.optionalString (userName != null) "chown -R ${userName}:${userName} ${path}"}
         '') volumePaths}
       '';
 
-    in dockerTools.buildImage {
+    in
+    dockerTools.buildImage {
       inherit name tag;
       runAsRoot = runAsRootScript;
       # Use copyToRoot with buildEnv for proper /bin, /usr/bin symlinks
       copyToRoot = rootEnv;
       config = {
-        inherit cmd env user workingDir exposedPorts volumes healthCheck
-          stopSignal;
+        inherit
+          cmd
+          env
+          user
+          workingDir
+          exposedPorts
+          volumes
+          healthCheck
+          stopSignal
+          ;
         StopTimeout = stopTimeout;
         Labels = ociLabels;
       };
     };
 
-in { inherit mkImage; }
+in
+{
+  inherit mkImage;
+}

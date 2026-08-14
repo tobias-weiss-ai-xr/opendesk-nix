@@ -33,10 +33,10 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-log_info()    { echo -e "${BLUE}[INFO]${NC} $1"; }
+log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
 log_success() { echo -e "${GREEN}[OK]${NC} $1"; }
-log_warn()    { echo -e "${YELLOW}[WARN]${NC} $1"; }
-log_error()   { echo -e "${RED}[ERROR]${NC} $1" >&2; }
+log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
 
 # =============================================================================
 # Image registry mappings
@@ -183,8 +183,8 @@ update_helmfile_images() {
     log_info "Updating ${images_file}"
 
     case "$source" in
-        ghcr)
-            cat > "$images_file" << 'EOF'
+    ghcr)
+        cat >"$images_file" <<'EOF'
 images:
   stalwart:
     repository: ghcr.io/opendesk-edu/stalwart
@@ -204,9 +204,9 @@ images:
     tag: 2.12.0
     pullPolicy: IfNotPresent
 EOF
-            ;;
-        opencode)
-            cat > "$images_file" << 'EOF'
+        ;;
+    opencode)
+        cat >"$images_file" <<'EOF'
 images:
   stalwart:
     repository: registry.gitlab.opencode.de/umr/stalwart
@@ -226,9 +226,9 @@ images:
     tag: 2.12.0
     pullPolicy: IfNotPresent
 EOF
-            ;;
-        zot)
-            cat > "$images_file" << 'EOF'
+        ;;
+    zot)
+        cat >"$images_file" <<'EOF'
 images:
   stalwart:
     repository: zot-registry.opendesk.svc:5000/opendesk-edu/stalwart
@@ -248,7 +248,7 @@ images:
     tag: 2.12.0
     pullPolicy: IfNotPresent
 EOF
-            ;;
+        ;;
     esac
     log_success "Updated helmfile images.yaml → ${source}"
 }
@@ -258,9 +258,18 @@ update_chart_values() {
     local registry prefix
 
     case "$source" in
-        ghcr)     registry="$GHCR_REGISTRY"; prefix="$GHCR_PREFIX";;
-        opencode) registry="$OPENCODE_REGISTRY"; prefix="$OPENCODE_PREFIX";;
-        zot)      registry="$ZOT_REGISTRY"; prefix="$ZOT_PREFIX";;
+    ghcr)
+        registry="$GHCR_REGISTRY"
+        prefix="$GHCR_PREFIX"
+        ;;
+    opencode)
+        registry="$OPENCODE_REGISTRY"
+        prefix="$OPENCODE_PREFIX"
+        ;;
+    zot)
+        registry="$ZOT_REGISTRY"
+        prefix="$ZOT_PREFIX"
+        ;;
     esac
 
     # SOGo
@@ -296,9 +305,18 @@ update_argocd_manifests() {
     local registry prefix
 
     case "$source" in
-        ghcr)     registry="$GHCR_REGISTRY"; prefix="$GHCR_PREFIX";;
-        opencode) registry="$OPENCODE_REGISTRY"; prefix="$OPENCODE_PREFIX";;
-        zot)      registry="$ZOT_REGISTRY"; prefix="$ZOT_PREFIX";;
+    ghcr)
+        registry="$GHCR_REGISTRY"
+        prefix="$GHCR_PREFIX"
+        ;;
+    opencode)
+        registry="$OPENCODE_REGISTRY"
+        prefix="$OPENCODE_PREFIX"
+        ;;
+    zot)
+        registry="$ZOT_REGISTRY"
+        prefix="$ZOT_PREFIX"
+        ;;
     esac
 
     for f in "${REPO_ROOT}"/argocd-opendesk/minimal-deployment/opendesk-*.yaml; do
@@ -345,9 +363,18 @@ update_nix() {
     local registry prefix
 
     case "$source" in
-        ghcr)     registry="$GHCR_REGISTRY"; prefix="$GHCR_PREFIX";;
-        opencode) registry="$OPENCODE_REGISTRY"; prefix="$OPENCODE_PREFIX";;
-        zot)      registry="$ZOT_REGISTRY"; prefix="$ZOT_PREFIX";;
+    ghcr)
+        registry="$GHCR_REGISTRY"
+        prefix="$GHCR_PREFIX"
+        ;;
+    opencode)
+        registry="$OPENCODE_REGISTRY"
+        prefix="$OPENCODE_PREFIX"
+        ;;
+    zot)
+        registry="$ZOT_REGISTRY"
+        prefix="$ZOT_PREFIX"
+        ;;
     esac
 
     for nix in "${REPO_ROOT}"/opendesk-edu/nix/k8s/{sogo,stalwart,opencloud,postgresql,memcached,mariadb,redis}.nix; do
@@ -376,34 +403,34 @@ main() {
     local source="${1:-status}"
 
     case "$source" in
-        ghcr|opencode|zot)
-            echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
-            echo -e "${CYAN}  Switching image source to: ${source}${NC}"
-            echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
-            echo ""
+    ghcr | opencode | zot)
+        echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
+        echo -e "${CYAN}  Switching image source to: ${source}${NC}"
+        echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
+        echo ""
 
-            update_helmfile_images "$source"
-            update_chart_values "$source"
-            update_argocd_manifests "$source"
-            update_nix "$source"
+        update_helmfile_images "$source"
+        update_chart_values "$source"
+        update_argocd_manifests "$source"
+        update_nix "$source"
 
-            echo ""
-            log_success "All image sources switched to: ${source}"
-            echo ""
-            show_status
-            ;;
-        status)
-            show_status
-            ;;
-        *)
-            echo "Usage: $0 {ghcr|opencode|zot|status}"
-            echo ""
-            echo "  ghcr     → ghcr.io/opendesk-edu/* (GitHub Container Registry)"
-            echo "  opencode → registry.gitlab.opencode.de/umr/* (GitLab CR)"
-            echo "  zot      → zot-registry.opendesk.svc:5000/* (local Zot cache)"
-            echo "  status   → Show current image source configuration"
-            exit 1
-            ;;
+        echo ""
+        log_success "All image sources switched to: ${source}"
+        echo ""
+        show_status
+        ;;
+    status)
+        show_status
+        ;;
+    *)
+        echo "Usage: $0 {ghcr|opencode|zot|status}"
+        echo ""
+        echo "  ghcr     → ghcr.io/opendesk-edu/* (GitHub Container Registry)"
+        echo "  opencode → registry.gitlab.opencode.de/umr/* (GitLab CR)"
+        echo "  zot      → zot-registry.opendesk.svc:5000/* (local Zot cache)"
+        echo "  status   → Show current image source configuration"
+        exit 1
+        ;;
     esac
 }
 

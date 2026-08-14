@@ -1,20 +1,20 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
 
 """
-HRZ Production Environment Configuration
+SCS Production Environment Configuration
 
-This environment configuration is for the HRZ Marburg production cluster.
+This environment configuration is for the SCS production cluster.
 """
 
-{ lib, ... }:
+_:
 
 {
   namespace = "opendesk";
   
   ingress = {
     className = "haproxy";
-    domain = "opendesk.hrz.uni-marburg.de";
+    domain = "opendesk.internal";
     annotations = {
       "haproxy.org/ssl-tls-verify-client" = "off";
       "haproxy.org/backend-config-snapshot" = "true";
@@ -34,7 +34,7 @@ This environment configuration is for the HRZ Marburg production cluster.
   };
   
   networking = {
-    proxy = "http://www-proxy2.uni-marburg.de:3128";
+    proxy = "http://proxy.internal:3128";
     dns = [ "137.248.21.22" "137.248.1.5" "137.248.1.8" ];
     noProxy = [ "192.168.0.0/16" "10.0.0.0/8" "172.16.0.0/12" ]; 
   };

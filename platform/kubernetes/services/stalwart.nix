@@ -4,7 +4,11 @@
 # Stalwart — Mail Server (SMTP/IMAP/JMAP)
 # Image: docker.io/stalwartlabs/stalwart:latest
 
-{ lib, env ? import ../environments/scs/default.nix { inherit lib; }, ... }:
+{
+  lib,
+  env ? import ../environments/scs/default.nix { inherit lib; },
+  ...
+}:
 
 let
   name = "stalwart";
@@ -32,8 +36,12 @@ let
     allowPrivilegeEscalation = false;
     runAsNonRoot = false;
     readOnlyRootFilesystem = false;
-    capabilities = { drop = [ ]; };
-    seccompProfile = { type = "RuntimeDefault"; };
+    capabilities = {
+      drop = [ ];
+    };
+    seccompProfile = {
+      type = "RuntimeDefault";
+    };
   };
 
   podSecurityContext = {
@@ -131,14 +139,25 @@ let
     }
   ];
 
-in [
+in
+[
   (lib.deployment {
-    inherit name image tag port resources labels;
+    inherit
+      name
+      image
+      tag
+      port
+      resources
+      labels
+      ;
     command = [ "stalwart" ];
-    cmdArgs = [ "-c" "/etc/stalwart/config.toml" ];
+    cmdArgs = [
+      "-c"
+      "/etc/stalwart/config.toml"
+    ];
     env = containerEnv;
-    securityContext = securityContext;
-    podSecurityContext = podSecurityContext;
+    inherit securityContext;
+    inherit podSecurityContext;
     liveness = livenessProbe;
     readiness = readinessProbe;
     namespace = env.namespaceEdu;
@@ -195,15 +214,19 @@ in [
         name = "config";
         configMap = {
           name = "${name}-config";
-          items = [{
-            key = "config.toml";
-            path = "config.toml";
-          }];
+          items = [
+            {
+              key = "config.toml";
+              path = "config.toml";
+            }
+          ];
         };
       }
       {
         name = "data";
-        persistentVolumeClaim = { claimName = "${name}-data"; };
+        persistentVolumeClaim = {
+          claimName = "${name}-data";
+        };
       }
     ];
   })
@@ -254,8 +277,8 @@ in [
   (lib.ingressWithCert {
     inherit name;
     host = env.hosts.stalwart;
-    port = port;
-    className = env.ingress.className;
+    inherit port;
+    inherit (env.ingress) className;
     tlsSecretName = env.tls.secretName;
     namespace = env.namespaceEdu;
   })
@@ -263,8 +286,10 @@ in [
   (lib.configMap {
     name = "${name}-config";
     namespace = env.namespaceEdu;
-    labels = labels;
-    data = { "config.toml" = stalwartConfig; };
+    inherit labels;
+    data = {
+      "config.toml" = stalwartConfig;
+    };
   })
 
   (lib.pvc {
@@ -273,6 +298,6 @@ in [
     storageClass = env.storage.rwo;
     accessModes = [ "ReadWriteOnce" ];
     namespace = env.namespaceEdu;
-    labels = labels;
+    inherit labels;
   })
 ]

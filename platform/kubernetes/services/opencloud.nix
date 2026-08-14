@@ -6,7 +6,11 @@
 # Config is generated via `opencloud init` and mounted as a Secret.
 # Image: docker.io/opencloudeu/opencloud:latest
 
-{ lib, env ? import ../environments/scs/default.nix { inherit lib; }, ... }:
+{
+  lib,
+  env ? import ../environments/scs/default.nix { inherit lib; },
+  ...
+}:
 
 let
   name = "opendesk-opencloud";
@@ -35,8 +39,12 @@ let
     runAsNonRoot = true;
     runAsUser = 1000;
     readOnlyRootFilesystem = false;
-    capabilities = { drop = [ "ALL" ]; };
-    seccompProfile = { type = "RuntimeDefault"; };
+    capabilities = {
+      drop = [ "ALL" ];
+    };
+    seccompProfile = {
+      type = "RuntimeDefault";
+    };
   };
 
   podSecurityContext = {
@@ -227,12 +235,20 @@ let
     }
   ];
 
-in [
+in
+[
   (lib.deployment {
-    inherit name image tag port resources labels;
+    inherit
+      name
+      image
+      tag
+      port
+      resources
+      labels
+      ;
     env = containerEnv;
-    securityContext = securityContext;
-    podSecurityContext = podSecurityContext;
+    inherit securityContext;
+    inherit podSecurityContext;
     liveness = livenessProbe;
     readiness = readinessProbe;
     namespace = env.namespaceEdu;
@@ -253,11 +269,15 @@ in [
     volumes = [
       {
         name = "data";
-        persistentVolumeClaim = { claimName = "${name}-data"; };
+        persistentVolumeClaim = {
+          claimName = "${name}-data";
+        };
       }
       {
         name = "config";
-        secret = { secretName = "${name}-config"; };
+        secret = {
+          secretName = "${name}-config";
+        };
       }
     ];
   })
@@ -270,8 +290,8 @@ in [
   (lib.ingressWithCert {
     inherit name;
     host = env.hosts.opencloud;
-    port = port;
-    className = env.ingress.className;
+    inherit port;
+    inherit (env.ingress) className;
     tlsSecretName = env.tls.secretName;
     annotations = env.ingress.annotations // {
       "haproxy-ingress.github.io/proxy-body-size" = "100M";
@@ -287,20 +307,24 @@ in [
     storageClass = env.storage.rwx;
     accessModes = [ "ReadWriteMany" ];
     namespace = env.namespaceEdu;
-    labels = labels;
+    inherit labels;
   })
 
   (lib.secret {
     name = "${name}-config";
     namespace = env.namespaceEdu;
-    labels = labels;
-    stringData = { "opencloud.yaml" = opencloudConfig; };
+    inherit labels;
+    stringData = {
+      "opencloud.yaml" = opencloudConfig;
+    };
   })
 
   (lib.secret {
     name = "${name}-db";
     namespace = env.namespaceEdu;
-    labels = labels;
-    stringData = { "oidc-client-secret" = "opencloud-secret-change-me"; };
+    inherit labels;
+    stringData = {
+      "oidc-client-secret" = "opencloud-secret-change-me";
+    };
   })
 ]

@@ -11,8 +11,10 @@
 
 { config, lib, ... }:
 
-let cfg = config.disko.configurations.k3sNode;
-in {
+let
+  cfg = config.disko.configurations.k3sNode;
+in
+{
   meta.maintainers = [ "opendesk-edu" ];
 
   ###### interface
@@ -28,7 +30,12 @@ in {
       };
 
       btrfsCompression = lib.mkOption {
-        type = lib.types.enum [ "none" "zstd" "lzo" "zlib" ];
+        type = lib.types.enum [
+          "none"
+          "zstd"
+          "lzo"
+          "zlib"
+        ];
         default = "zstd";
         description = "Btrfs compression algorithm";
       };
@@ -42,7 +49,7 @@ in {
       disk = {
         main = {
           type = "disk";
-          device = cfg.device;
+          inherit (cfg) device;
           content = {
             type = "gpt";
             partitions = {
@@ -72,7 +79,10 @@ in {
                   subvolumes = {
                     "/root" = {
                       mountPoint = "/";
-                      mountOptions = [ "subvol=root" "defaults" ];
+                      mountOptions = [
+                        "subvol=root"
+                        "defaults"
+                      ];
                     };
 
                     "/nix" = {
@@ -86,7 +96,10 @@ in {
 
                     "/var" = {
                       mountPoint = "/var";
-                      mountOptions = [ "subvol=var" "defaults" ];
+                      mountOptions = [
+                        "subvol=var"
+                        "defaults"
+                      ];
                     };
                   };
                 };

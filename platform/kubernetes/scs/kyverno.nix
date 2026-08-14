@@ -9,7 +9,11 @@
 #   P0-CONT-002: Kyverno policy for image verification
 #   P0-CONT-003: Non-root container enforcement
 
-{ lib, env ? import ../environments/scs/default.nix { inherit lib; }, ... }:
+{
+  lib,
+  env ? import ../environments/scs/default.nix { inherit lib; },
+  ...
+}:
 
 let
   name = "kyverno";
@@ -17,13 +21,15 @@ let
   image = "ghcr.io/kyverno/kyverno";
   tag = "v1.12.0";
 
-  labels = lib.mkLabels {
-    inherit name;
-    partOf = "scs-security";
-  } // {
-    "app.kubernetes.io/component" = "policy-engine";
-    "app.kubernetes.io/managed-by" = "nix";
-  };
+  labels =
+    lib.mkLabels {
+      inherit name;
+      partOf = "scs-security";
+    }
+    // {
+      "app.kubernetes.io/component" = "policy-engine";
+      "app.kubernetes.io/managed-by" = "nix";
+    };
 
   resources = {
     requests = {
@@ -39,7 +45,8 @@ let
   # Namespaces to exclude from policy enforcement
   excludedNamespaces = "kube-system,metallb-system,kyverno,kube-node-lease";
 
-in [
+in
+[
   # Namespace
   (lib.namespace {
     name = namespace;
@@ -53,15 +60,15 @@ in [
   # ServiceAccount
   (lib.serviceAccount {
     name = "${name}-admission-controller";
-    namespace = namespace;
-    labels = labels;
+    inherit namespace;
+    inherit labels;
     automountServiceAccountToken = true;
   })
 
   (lib.serviceAccount {
     name = "${name}-background-controller";
-    namespace = namespace;
-    labels = labels;
+    inherit namespace;
+    inherit labels;
     automountServiceAccountToken = true;
   })
 
@@ -71,7 +78,7 @@ in [
     kind = "ClusterRole";
     metadata = {
       name = "${name}-admission-controller";
-      labels = labels;
+      inherit labels;
     };
     rules = [
       # Core API resources
@@ -91,7 +98,15 @@ in [
           "resourcequotas"
           "limitranges"
         ];
-        verbs = [ "create" "update" "patch" "delete" "get" "list" "watch" ];
+        verbs = [
+          "create"
+          "update"
+          "patch"
+          "delete"
+          "get"
+          "list"
+          "watch"
+        ];
       }
       # Apps resources
       {
@@ -102,19 +117,49 @@ in [
           "statefulsets"
           "replicasets"
         ];
-        verbs = [ "create" "update" "patch" "delete" "get" "list" "watch" ];
+        verbs = [
+          "create"
+          "update"
+          "patch"
+          "delete"
+          "get"
+          "list"
+          "watch"
+        ];
       }
       # Batch resources
       {
         apiGroups = [ "batch" ];
-        resources = [ "jobs" "cronjobs" ];
-        verbs = [ "create" "update" "patch" "delete" "get" "list" "watch" ];
+        resources = [
+          "jobs"
+          "cronjobs"
+        ];
+        verbs = [
+          "create"
+          "update"
+          "patch"
+          "delete"
+          "get"
+          "list"
+          "watch"
+        ];
       }
       # Networking resources
       {
         apiGroups = [ "networking.k8s.io" ];
-        resources = [ "networkpolicies" "ingresses" ];
-        verbs = [ "create" "update" "patch" "delete" "get" "list" "watch" ];
+        resources = [
+          "networkpolicies"
+          "ingresses"
+        ];
+        verbs = [
+          "create"
+          "update"
+          "patch"
+          "delete"
+          "get"
+          "list"
+          "watch"
+        ];
       }
       # RBAC resources
       {
@@ -125,13 +170,29 @@ in [
           "roles"
           "rolebindings"
         ];
-        verbs = [ "create" "update" "patch" "delete" "get" "list" "watch" ];
+        verbs = [
+          "create"
+          "update"
+          "patch"
+          "delete"
+          "get"
+          "list"
+          "watch"
+        ];
       }
       # Kyverno CRDs
       {
         apiGroups = [ "kyverno.io" ];
         resources = [ "*" ];
-        verbs = [ "create" "update" "patch" "delete" "get" "list" "watch" ];
+        verbs = [
+          "create"
+          "update"
+          "patch"
+          "delete"
+          "get"
+          "list"
+          "watch"
+        ];
       }
       # Policy reports
       {
@@ -140,19 +201,43 @@ in [
           "reports.kyverno.io"
         ];
         resources = [ "*" ];
-        verbs = [ "create" "update" "patch" "delete" "get" "list" "watch" ];
+        verbs = [
+          "create"
+          "update"
+          "patch"
+          "delete"
+          "get"
+          "list"
+          "watch"
+        ];
       }
       # Coordination (leases)
       {
         apiGroups = [ "coordination.k8s.io" ];
         resources = [ "leases" ];
-        verbs = [ "create" "update" "patch" "delete" "get" "list" "watch" ];
+        verbs = [
+          "create"
+          "update"
+          "patch"
+          "delete"
+          "get"
+          "list"
+          "watch"
+        ];
       }
       # Image related
       {
         apiGroups = [ "images.kyverno.io" ];
         resources = [ "*" ];
-        verbs = [ "create" "update" "patch" "delete" "get" "list" "watch" ];
+        verbs = [
+          "create"
+          "update"
+          "patch"
+          "delete"
+          "get"
+          "list"
+          "watch"
+        ];
       }
     ];
   }
@@ -163,7 +248,7 @@ in [
     kind = "ClusterRole";
     metadata = {
       name = "${name}-background-controller";
-      labels = labels;
+      inherit labels;
     };
     rules = [
       {
@@ -179,7 +264,15 @@ in [
           "namespaces"
           "events"
         ];
-        verbs = [ "create" "update" "patch" "delete" "get" "list" "watch" ];
+        verbs = [
+          "create"
+          "update"
+          "patch"
+          "delete"
+          "get"
+          "list"
+          "watch"
+        ];
       }
       {
         apiGroups = [ "apps" ];
@@ -189,12 +282,28 @@ in [
           "statefulsets"
           "replicasets"
         ];
-        verbs = [ "create" "update" "patch" "delete" "get" "list" "watch" ];
+        verbs = [
+          "create"
+          "update"
+          "patch"
+          "delete"
+          "get"
+          "list"
+          "watch"
+        ];
       }
       {
         apiGroups = [ "kyverno.io" ];
         resources = [ "*" ];
-        verbs = [ "create" "update" "patch" "delete" "get" "list" "watch" ];
+        verbs = [
+          "create"
+          "update"
+          "patch"
+          "delete"
+          "get"
+          "list"
+          "watch"
+        ];
       }
       {
         apiGroups = [
@@ -202,12 +311,28 @@ in [
           "reports.kyverno.io"
         ];
         resources = [ "*" ];
-        verbs = [ "create" "update" "patch" "delete" "get" "list" "watch" ];
+        verbs = [
+          "create"
+          "update"
+          "patch"
+          "delete"
+          "get"
+          "list"
+          "watch"
+        ];
       }
       {
         apiGroups = [ "coordination.k8s.io" ];
         resources = [ "leases" ];
-        verbs = [ "create" "update" "patch" "delete" "get" "list" "watch" ];
+        verbs = [
+          "create"
+          "update"
+          "patch"
+          "delete"
+          "get"
+          "list"
+          "watch"
+        ];
       }
     ];
   }
@@ -218,18 +343,20 @@ in [
     kind = "ClusterRoleBinding";
     metadata = {
       name = "${name}-admission-controller";
-      labels = labels;
+      inherit labels;
     };
     roleRef = {
       apiGroup = "rbac.authorization.k8s.io";
       kind = "ClusterRole";
       name = "${name}-admission-controller";
     };
-    subjects = [{
-      kind = "ServiceAccount";
-      name = "${name}-admission-controller";
-      namespace = namespace;
-    }];
+    subjects = [
+      {
+        kind = "ServiceAccount";
+        name = "${name}-admission-controller";
+        inherit namespace;
+      }
+    ];
   }
 
   {
@@ -237,18 +364,20 @@ in [
     kind = "ClusterRoleBinding";
     metadata = {
       name = "${name}-background-controller";
-      labels = labels;
+      inherit labels;
     };
     roleRef = {
       apiGroup = "rbac.authorization.k8s.io";
       kind = "ClusterRole";
       name = "${name}-background-controller";
     };
-    subjects = [{
-      kind = "ServiceAccount";
-      name = "${name}-background-controller";
-      namespace = namespace;
-    }];
+    subjects = [
+      {
+        kind = "ServiceAccount";
+        name = "${name}-background-controller";
+        inherit namespace;
+      }
+    ];
   }
 
   # ConfigMap — Kyverno configuration
@@ -257,8 +386,8 @@ in [
     kind = "ConfigMap";
     metadata = {
       name = "${name}-config";
-      namespace = namespace;
-      labels = labels;
+      inherit namespace;
+      inherit labels;
     };
     data = {
       # Exclude system namespaces from policy enforcement
@@ -268,16 +397,27 @@ in [
         {
           name = "exclude-system-namespaces";
           namespaceSelector = {
-            matchExpressions = [{
-              key = "kubernetes.io/metadata.name";
-              operator = "In";
-              values = [ "kube-system" "metallb-system" "kube-node-lease" ];
-            }];
+            matchExpressions = [
+              {
+                key = "kubernetes.io/metadata.name";
+                operator = "In";
+                values = [
+                  "kube-system"
+                  "metallb-system"
+                  "kube-node-lease"
+                ];
+              }
+            ];
           };
         }
         {
           name = "exclude-kyverno-resources";
-          kinds = [ "ClusterPolicy" "Policy" "ClusterPolicyReport" "PolicyReport" ];
+          kinds = [
+            "ClusterPolicy"
+            "Policy"
+            "ClusterPolicyReport"
+            "PolicyReport"
+          ];
         }
       ];
     };
@@ -289,8 +429,10 @@ in [
     kind = "Deployment";
     metadata = {
       name = "${name}-admission-controller";
-      namespace = namespace;
-      labels = labels // { component = "admission-controller"; };
+      inherit namespace;
+      labels = labels // {
+        component = "admission-controller";
+      };
     };
     spec = {
       replicas = 1;
@@ -300,7 +442,9 @@ in [
       };
       template = {
         metadata = {
-          labels = labels // { component = "admission-controller"; };
+          labels = labels // {
+            component = "admission-controller";
+          };
           annotations = {
             "prometheus.io/scrape" = "true";
             "prometheus.io/port" = "8000";
@@ -315,127 +459,135 @@ in [
             fsGroup = 2000;
             fsGroupChangePolicy = "OnRootMismatch";
           };
-          initContainers = [{
-            name = "init";
-            image = "${image}:${tag}";
-            imagePullPolicy = "IfNotPresent";
-            args = [ "kyvernopre" ];
-            resources = {
-              requests = {
-                cpu = "50m";
-                memory = "64Mi";
-              };
-              limits = {
-                cpu = "200m";
-                memory = "256Mi";
-              };
-            };
-            securityContext = {
-              allowPrivilegeEscalation = false;
-              runAsNonRoot = true;
-              capabilities = { drop = [ "ALL" ]; };
-            };
-            env = [
-              {
-                name = "KYVERNO_NAMESPACE";
-                valueFrom = {
-                  fieldRef = {
-                    fieldPath = "metadata.namespace";
-                  };
+          initContainers = [
+            {
+              name = "init";
+              image = "${image}:${tag}";
+              imagePullPolicy = "IfNotPresent";
+              args = [ "kyvernopre" ];
+              resources = {
+                requests = {
+                  cpu = "50m";
+                  memory = "64Mi";
                 };
-              }
-            ];
-          }];
-          containers = [{
-            name = "kyverno";
-            image = "${image}:${tag}";
-            imagePullPolicy = "IfNotPresent";
-            ports = [
-              {
-                containerPort = 9443;
-                name = "webhook";
-                protocol = "TCP";
-              }
-              {
-                containerPort = 8000;
-                name = "metrics";
-                protocol = "TCP";
-              }
-            ];
-            resources = resources;
-            securityContext = {
-              allowPrivilegeEscalation = false;
-              runAsNonRoot = true;
-              readOnlyRootFilesystem = false;
-              capabilities = { drop = [ "ALL" ]; };
-            };
-            env = [
-              {
-                name = "INIT_CONTAINER";
-                value = "true";
-              }
-              {
-                name = "KYVERNO_NAMESPACE";
-                valueFrom = {
-                  fieldRef = {
-                    fieldPath = "metadata.namespace";
-                  };
+                limits = {
+                  cpu = "200m";
+                  memory = "256Mi";
                 };
-              }
-              {
-                name = "KYVERNO_POLICY_MUTATION";
-                value = "true";
-              }
-              {
-                name = "KYVERNO_POLICY_VALIDATION";
-                value = "true";
-              }
-              {
-                name = "KYVERNO_GENERATE_SUCCESS_EVENTS";
-                value = "true";
-              }
-              {
-                name = "KYVERNO_LEADER_ELECTION";
-                value = "true";
-              }
-              {
-                name = "WEBHOOK_TIMEOUT";
-                value = "30";
-              }
-            ];
-            volumeMounts = [
-              {
-                name = "tmp-dir";
-                mountPath = "/tmp";
-              }
-              {
-                name = "certs";
-                mountPath = "/etc/cert";
-              }
-            ];
-            livenessProbe = {
-              httpGet = {
-                path = "/healthz";
-                port = 9443;
-                scheme = "HTTPS";
               };
-              initialDelaySeconds = 15;
-              periodSeconds = 20;
-              timeoutSeconds = 5;
-              failureThreshold = 3;
-            };
-            readinessProbe = {
-              httpGet = {
-                path = "/healthz";
-                port = 9443;
-                scheme = "HTTPS";
+              securityContext = {
+                allowPrivilegeEscalation = false;
+                runAsNonRoot = true;
+                capabilities = {
+                  drop = [ "ALL" ];
+                };
               };
-              initialDelaySeconds = 5;
-              periodSeconds = 10;
-              timeoutSeconds = 5;
-              failureThreshold = 3;
-            };
-          }];
+              env = [
+                {
+                  name = "KYVERNO_NAMESPACE";
+                  valueFrom = {
+                    fieldRef = {
+                      fieldPath = "metadata.namespace";
+                    };
+                  };
+                }
+              ];
+            }
+          ];
+          containers = [
+            {
+              name = "kyverno";
+              image = "${image}:${tag}";
+              imagePullPolicy = "IfNotPresent";
+              ports = [
+                {
+                  containerPort = 9443;
+                  name = "webhook";
+                  protocol = "TCP";
+                }
+                {
+                  containerPort = 8000;
+                  name = "metrics";
+                  protocol = "TCP";
+                }
+              ];
+              inherit resources;
+              securityContext = {
+                allowPrivilegeEscalation = false;
+                runAsNonRoot = true;
+                readOnlyRootFilesystem = false;
+                capabilities = {
+                  drop = [ "ALL" ];
+                };
+              };
+              env = [
+                {
+                  name = "INIT_CONTAINER";
+                  value = "true";
+                }
+                {
+                  name = "KYVERNO_NAMESPACE";
+                  valueFrom = {
+                    fieldRef = {
+                      fieldPath = "metadata.namespace";
+                    };
+                  };
+                }
+                {
+                  name = "KYVERNO_POLICY_MUTATION";
+                  value = "true";
+                }
+                {
+                  name = "KYVERNO_POLICY_VALIDATION";
+                  value = "true";
+                }
+                {
+                  name = "KYVERNO_GENERATE_SUCCESS_EVENTS";
+                  value = "true";
+                }
+                {
+                  name = "KYVERNO_LEADER_ELECTION";
+                  value = "true";
+                }
+                {
+                  name = "WEBHOOK_TIMEOUT";
+                  value = "30";
+                }
+              ];
+              volumeMounts = [
+                {
+                  name = "tmp-dir";
+                  mountPath = "/tmp";
+                }
+                {
+                  name = "certs";
+                  mountPath = "/etc/cert";
+                }
+              ];
+              livenessProbe = {
+                httpGet = {
+                  path = "/healthz";
+                  port = 9443;
+                  scheme = "HTTPS";
+                };
+                initialDelaySeconds = 15;
+                periodSeconds = 20;
+                timeoutSeconds = 5;
+                failureThreshold = 3;
+              };
+              readinessProbe = {
+                httpGet = {
+                  path = "/healthz";
+                  port = 9443;
+                  scheme = "HTTPS";
+                };
+                initialDelaySeconds = 5;
+                periodSeconds = 10;
+                timeoutSeconds = 5;
+                failureThreshold = 3;
+              };
+            }
+          ];
           volumes = [
             {
               name = "tmp-dir";
@@ -459,8 +611,10 @@ in [
     kind = "Deployment";
     metadata = {
       name = "${name}-background-controller";
-      namespace = namespace;
-      labels = labels // { component = "background-controller"; };
+      inherit namespace;
+      labels = labels // {
+        component = "background-controller";
+      };
     };
     spec = {
       replicas = 1;
@@ -470,7 +624,9 @@ in [
       };
       template = {
         metadata = {
-          labels = labels // { component = "background-controller"; };
+          labels = labels // {
+            component = "background-controller";
+          };
         };
         spec = {
           serviceAccountName = "${name}-background-controller";
@@ -480,51 +636,55 @@ in [
             fsGroup = 2000;
             fsGroupChangePolicy = "OnRootMismatch";
           };
-          containers = [{
-            name = "kyverno-background-controller";
-            image = "ghcr.io/kyverno/kyverno:v1.12.0";
-            imagePullPolicy = "IfNotPresent";
-            args = [ "background-controller" ];
-            ports = [
-              {
-                containerPort = 9443;
-                name = "webhook";
-                protocol = "TCP";
-              }
-            ];
-            resources = {
-              requests = {
-                cpu = "50m";
-                memory = "128Mi";
-              };
-              limits = {
-                cpu = "500m";
-                memory = "512Mi";
-              };
-            };
-            securityContext = {
-              allowPrivilegeEscalation = false;
-              runAsNonRoot = true;
-              readOnlyRootFilesystem = true;
-              capabilities = { drop = [ "ALL" ]; };
-            };
-            env = [
-              {
-                name = "KYVERNO_NAMESPACE";
-                valueFrom = {
-                  fieldRef = {
-                    fieldPath = "metadata.namespace";
-                  };
+          containers = [
+            {
+              name = "kyverno-background-controller";
+              image = "ghcr.io/kyverno/kyverno:v1.12.0";
+              imagePullPolicy = "IfNotPresent";
+              args = [ "background-controller" ];
+              ports = [
+                {
+                  containerPort = 9443;
+                  name = "webhook";
+                  protocol = "TCP";
+                }
+              ];
+              resources = {
+                requests = {
+                  cpu = "50m";
+                  memory = "128Mi";
                 };
-              }
-            ];
-            volumeMounts = [
-              {
-                name = "tmp-dir";
-                mountPath = "/tmp";
-              }
-            ];
-          }];
+                limits = {
+                  cpu = "500m";
+                  memory = "512Mi";
+                };
+              };
+              securityContext = {
+                allowPrivilegeEscalation = false;
+                runAsNonRoot = true;
+                readOnlyRootFilesystem = true;
+                capabilities = {
+                  drop = [ "ALL" ];
+                };
+              };
+              env = [
+                {
+                  name = "KYVERNO_NAMESPACE";
+                  valueFrom = {
+                    fieldRef = {
+                      fieldPath = "metadata.namespace";
+                    };
+                  };
+                }
+              ];
+              volumeMounts = [
+                {
+                  name = "tmp-dir";
+                  mountPath = "/tmp";
+                }
+              ];
+            }
+          ];
           volumes = [
             {
               name = "tmp-dir";
@@ -544,17 +704,19 @@ in [
     kind = "Service";
     metadata = {
       name = "${name}-webhook";
-      namespace = namespace;
-      labels = labels;
+      inherit namespace;
+      inherit labels;
     };
     spec = {
       type = "ClusterIP";
-      ports = [{
-        port = 9443;
-        targetPort = 9443;
-        name = "webhook";
-        protocol = "TCP";
-      }];
+      ports = [
+        {
+          port = 9443;
+          targetPort = 9443;
+          name = "webhook";
+          protocol = "TCP";
+        }
+      ];
       selector = lib.mkSelectorLabels { name = "${name}-admission-controller"; };
     };
   }
@@ -565,17 +727,19 @@ in [
     kind = "Service";
     metadata = {
       name = "${name}-metrics";
-      namespace = namespace;
-      labels = labels;
+      inherit namespace;
+      inherit labels;
     };
     spec = {
       type = "ClusterIP";
-      ports = [{
-        port = 8000;
-        targetPort = 8000;
-        name = "metrics";
-        protocol = "TCP";
-      }];
+      ports = [
+        {
+          port = 8000;
+          targetPort = 8000;
+          name = "metrics";
+          protocol = "TCP";
+        }
+      ];
       selector = lib.mkSelectorLabels { name = "${name}-admission-controller"; };
     };
   }
@@ -586,34 +750,42 @@ in [
     kind = "ValidatingWebhookConfiguration";
     metadata = {
       name = "${name}-validating-webhook-cfg";
-      labels = labels;
+      inherit labels;
       annotations = {
         "cert-manager.k8s.io/inject-ca-from" = "${namespace}/${name}-tls";
       };
     };
-    webhooks = [{
-      name = "validate.kyverno.svc";
-      matchPolicy = "Equivalent";
-      rules = [{
-        apiGroups = [ "*" ];
-        apiVersions = [ "*" ];
-        operations = [ "CREATE" "UPDATE" "DELETE" ];
-        resources = [ "*" ];
-        scope = "*";
-      }];
-      failurePolicy = "Fail";
-      sideEffects = "NoneOnDryRun";
-      timeoutSeconds = 30;
-      admissionReviewVersions = [ "v1" ];
-      clientConfig = {
-        service = {
-          name = "${name}-webhook";
-          namespace = namespace;
-          path = "/validate";
-          port = 9443;
+    webhooks = [
+      {
+        name = "validate.kyverno.svc";
+        matchPolicy = "Equivalent";
+        rules = [
+          {
+            apiGroups = [ "*" ];
+            apiVersions = [ "*" ];
+            operations = [
+              "CREATE"
+              "UPDATE"
+              "DELETE"
+            ];
+            resources = [ "*" ];
+            scope = "*";
+          }
+        ];
+        failurePolicy = "Fail";
+        sideEffects = "NoneOnDryRun";
+        timeoutSeconds = 30;
+        admissionReviewVersions = [ "v1" ];
+        clientConfig = {
+          service = {
+            name = "${name}-webhook";
+            inherit namespace;
+            path = "/validate";
+            port = 9443;
+          };
         };
-      };
-    }];
+      }
+    ];
   }
 
   # MutatingWebhookConfiguration
@@ -622,34 +794,41 @@ in [
     kind = "MutatingWebhookConfiguration";
     metadata = {
       name = "${name}-mutating-webhook-cfg";
-      labels = labels;
+      inherit labels;
       annotations = {
         "cert-manager.k8s.io/inject-ca-from" = "${namespace}/${name}-tls";
       };
     };
-    webhooks = [{
-      name = "mutate.kyverno.svc";
-      matchPolicy = "Equivalent";
-      rules = [{
-        apiGroups = [ "*" ];
-        apiVersions = [ "*" ];
-        operations = [ "CREATE" "UPDATE" ];
-        resources = [ "*" ];
-        scope = "*";
-      }];
-      failurePolicy = "Fail";
-      sideEffects = "NoneOnDryRun";
-      timeoutSeconds = 30;
-      admissionReviewVersions = [ "v1" ];
-      reinvocationPolicy = "IfNeeded";
-      clientConfig = {
-        service = {
-          name = "${name}-webhook";
-          namespace = namespace;
-          path = "/mutate";
-          port = 9443;
+    webhooks = [
+      {
+        name = "mutate.kyverno.svc";
+        matchPolicy = "Equivalent";
+        rules = [
+          {
+            apiGroups = [ "*" ];
+            apiVersions = [ "*" ];
+            operations = [
+              "CREATE"
+              "UPDATE"
+            ];
+            resources = [ "*" ];
+            scope = "*";
+          }
+        ];
+        failurePolicy = "Fail";
+        sideEffects = "NoneOnDryRun";
+        timeoutSeconds = 30;
+        admissionReviewVersions = [ "v1" ];
+        reinvocationPolicy = "IfNeeded";
+        clientConfig = {
+          service = {
+            name = "${name}-webhook";
+            inherit namespace;
+            path = "/mutate";
+            port = 9443;
+          };
         };
-      };
-    }];
+      }
+    ];
   }
 ]

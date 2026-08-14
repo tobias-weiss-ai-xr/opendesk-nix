@@ -9,10 +9,17 @@
 # - Squashfs root with dm-verity
 # - A/B slot configuration
 
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
-let cfg = config.image;
-in {
+let
+  cfg = config.image;
+in
+{
   meta.maintainers = [ "opendesk-edu" ];
 
   ###### interface
@@ -22,7 +29,11 @@ in {
       enable = lib.mkEnableOption "Build NixOS appliance image";
 
       format = lib.mkOption {
-        type = lib.types.enum [ "ext4" "squashfs" "repart" ];
+        type = lib.types.enum [
+          "ext4"
+          "squashfs"
+          "repart"
+        ];
         default = "repart";
         description = "Image format type";
       };
@@ -45,8 +56,12 @@ in {
             size = "512M";
             type = "EF00";
           };
-          rootA = { size = "50%"; };
-          rootB = { size = "50%"; };
+          rootA = {
+            size = "50%";
+          };
+          rootB = {
+            size = "50%";
+          };
         };
       };
 
@@ -62,13 +77,19 @@ in {
 
   config = lib.mkIf cfg.enable {
     # Create image build derivation
-    system.build.applianceImage = pkgs.runCommand "appliance-image" {
-      buildInputs = [ pkgs.systemd pkgs.e2fsprogs ];
-    } ''
-      mkdir -p $out
-      # Image build logic here
-      echo "Image built at $out"
-    '';
+    system.build.applianceImage =
+      pkgs.runCommand "appliance-image"
+        {
+          buildInputs = [
+            pkgs.systemd
+            pkgs.e2fsprogs
+          ];
+        }
+        ''
+          mkdir -p $out
+          # Image build logic here
+          echo "Image built at $out"
+        '';
 
     # systemd-repart definitions
     environment.etc."systemd/repart.d/00-partition.conf".text = ''

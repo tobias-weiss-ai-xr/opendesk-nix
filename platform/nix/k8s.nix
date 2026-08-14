@@ -44,91 +44,164 @@ let
   # LABELS
   # ===========================================================================
 
-  mkOCILabels = { name, version, description ? "", component ? "backend" }: {
-    "app.kubernetes.io/name" = name;
-    "app.kubernetes.io/version" = version;
-    "app.kubernetes.io/component" = component;
-    "app.kubernetes.io/part-of" = "opendesk";
-    "app.kubernetes.io/managed-by" = "nix";
-    "org.opencontainers.image.title" = name;
-    "org.opencontainers.image.description" = description;
-    "org.opencontainers.image.version" = version;
-  };
+  mkOCILabels =
+    {
+      name,
+      version,
+      description ? "",
+      component ? "backend",
+    }:
+    {
+      "app.kubernetes.io/name" = name;
+      "app.kubernetes.io/version" = version;
+      "app.kubernetes.io/component" = component;
+      "app.kubernetes.io/part-of" = "opendesk";
+      "app.kubernetes.io/managed-by" = "nix";
+      "org.opencontainers.image.title" = name;
+      "org.opencontainers.image.description" = description;
+      "org.opencontainers.image.version" = version;
+    };
 
-  mkLabels = { name, partOf ? "opendesk", instance ? null, version ? null }:
+  mkLabels =
+    {
+      name,
+      partOf ? "opendesk",
+      instance ? null,
+      version ? null,
+    }:
     {
       app = name;
       "app.kubernetes.io/name" = name;
       "app.kubernetes.io/part-of" = partOf;
-    } // (lib.optionalAttrs (instance != null) {
+    }
+    // (lib.optionalAttrs (instance != null) {
       "app.kubernetes.io/instance" = instance;
-    }) // (lib.optionalAttrs (version != null) {
+    })
+    // (lib.optionalAttrs (version != null) {
       "app.kubernetes.io/version" = version;
     });
 
-  mkSelectorLabels = { name, instance ? null }:
+  mkSelectorLabels =
+    {
+      name,
+      instance ? null,
+    }:
     {
       app = name;
-    } // (lib.optionalAttrs (instance != null) { instance = instance; });
+    }
+    // (lib.optionalAttrs (instance != null) { inherit instance; });
 
   # ===========================================================================
   # PROBES
   # ===========================================================================
 
-  mkProbe = { type ? "http", port ? null, path ? "/healthz"
-    , initialDelaySeconds ? 30, periodSeconds ? 10, timeoutSeconds ? 5
-    , successThreshold ? 1, failureThreshold ? 3 }:
-    if type == "http" then {
-      httpGet = {
-        path = path;
-        port = if port != null then port else 8080;
-        scheme = "HTTP";
+  mkProbe =
+    {
+      type ? "http",
+      port ? null,
+      path ? "/healthz",
+      initialDelaySeconds ? 30,
+      periodSeconds ? 10,
+      timeoutSeconds ? 5,
+      successThreshold ? 1,
+      failureThreshold ? 3,
+    }:
+    if type == "http" then
+      {
+        httpGet = {
+          inherit path;
+          port = if port != null then port else 8080;
+          scheme = "HTTP";
+        };
+        inherit
+          initialDelaySeconds
+          periodSeconds
+          timeoutSeconds
+          successThreshold
+          failureThreshold
+          ;
+      }
+    else if type == "tcp" then
+      {
+        tcpSocket = {
+          port = if port != null then port else 8080;
+        };
+        inherit
+          initialDelaySeconds
+          periodSeconds
+          timeoutSeconds
+          successThreshold
+          failureThreshold
+          ;
+      }
+    else
+      {
+        exec = {
+          command = [
+            "/bin/sh"
+            "-c"
+            path
+          ];
+        };
+        inherit
+          initialDelaySeconds
+          periodSeconds
+          timeoutSeconds
+          successThreshold
+          failureThreshold
+          ;
       };
-      inherit initialDelaySeconds periodSeconds timeoutSeconds successThreshold
-        failureThreshold;
-    } else if type == "tcp" then {
-      tcpSocket = { port = if port != null then port else 8080; };
-      inherit initialDelaySeconds periodSeconds timeoutSeconds successThreshold
-        failureThreshold;
-    } else {
-      exec = { command = [ "/bin/sh" "-c" path ]; };
-      inherit initialDelaySeconds periodSeconds timeoutSeconds successThreshold
-        failureThreshold;
-    };
 
   # ===========================================================================
   # POD TEMPLATE
   # ===========================================================================
 
-  mkPodTemplate = { name, image, tag ? "latest", port ? 8080, labels ? null
-    , annotations ? { }, securityCtx ? defaultSecurityContext
-    , resources ? defaultResources, liveness ? null, readiness ? null, env ? [ ]
-    , ports ? null, ... }:
+  mkPodTemplate =
+    {
+      name,
+      image,
+      tag ? "latest",
+      port ? 8080,
+      labels ? null,
+      annotations ? { },
+      securityCtx ? defaultSecurityContext,
+      resources ? defaultResources,
+      env ? [ ],
+      ports ? null,
+      ...
+    }:
     let
       selLabels = if labels != null then labels else mkLabels { inherit name; };
-      defaultPorts = [{
-        containerPort = port;
-        name = "http";
-        protocol = "TCP";
-      }];
+      defaultPorts = [
+        {
+          containerPort = port;
+          name = "http";
+          protocol = "TCP";
+        }
+      ];
       usedPorts = if ports != null then ports else defaultPorts;
-    in {
+    in
+    {
       metadata = {
-        name = name;
+        inherit name;
         labels = selLabels;
-        annotations = annotations;
+        inherit annotations;
       };
       spec = {
-        containers = [{
-          name = name;
-          image = "${image}:${tag}";
-          imagePullPolicy = "IfNotPresent";
-          ports = usedPorts;
-          resources = resources;
-          securityContext = securityCtx;
-        }] ++ (lib.optional (env != [ ]) {
-          inherit env;
-        }) # hack: env goes inside container
+        containers =
+          [
+            {
+              inherit name;
+              image = "${image}:${tag}";
+              imagePullPolicy = "IfNotPresent";
+              ports = usedPorts;
+              inherit resources;
+              securityContext = securityCtx;
+            }
+          ]
+          ++ (lib.optional (env != [ ]) {
+            inherit env;
+          }) # hack: env goes inside container
         ;
         # Actually, let's build the container properly
       };
@@ -138,77 +211,111 @@ let
   # DEPLOYMENT
   # ===========================================================================
 
-  deployment = { name, image, tag ? "latest", port ? 8080, replicas ? 1
-    , env ? [ ], envFrom ? [ ], resources ? defaultResources
-    , securityContext ? defaultSecurityContext
-    , podSecurityContext ? defaultPodSecurityContext, liveness ? null
-    , readiness ? null, volumes ? [ ], volumeMounts ? [ ]
-    , imagePullSecrets ? [ ], command ? null, cmdArgs ? null, ports ? null
-    , labels ? null, annotations ? { }, nodeSelector ? { }, tolerations ? [ ]
-    , affinity ? null, strategyType ? "RollingUpdate", maxSurge ? "25%"
-    , maxUnavailable ? "25%", revisionHistoryLimit ? 10
-    , progressDeadlineSeconds ? 600, priorityClassName ? null
-    , terminationGracePeriodSeconds ? 30, namespace ? null, ... }:
+  deployment =
+    {
+      name,
+      image,
+      tag ? "latest",
+      port ? 8080,
+      replicas ? 1,
+      env ? [ ],
+      envFrom ? [ ],
+      resources ? defaultResources,
+      securityContext ? defaultSecurityContext,
+      podSecurityContext ? defaultPodSecurityContext,
+      volumes ? [ ],
+      volumeMounts ? [ ],
+      imagePullSecrets ? [ ],
+      command ? null,
+      cmdArgs ? null,
+      ports ? null,
+      labels ? null,
+      annotations ? { },
+      nodeSelector ? { },
+      tolerations ? [ ],
+      affinity ? null,
+      strategyType ? "RollingUpdate",
+      maxSurge ? "25%",
+      maxUnavailable ? "25%",
+      revisionHistoryLimit ? 10,
+      progressDeadlineSeconds ? 600,
+      priorityClassName ? null,
+      terminationGracePeriodSeconds ? 30,
+      namespace ? null,
+      ...
+    }:
     let
       selLabels = if labels != null then labels else mkLabels { inherit name; };
-      usedPorts = if ports != null then
-        ports
-      else [{
-        containerPort = port;
-        name = "http";
-        protocol = "TCP";
-      }];
-      container = {
-        name = name;
-        image = "${image}:${tag}";
-        imagePullPolicy = "IfNotPresent";
-        ports = usedPorts;
-        resources = resources;
-        securityContext = securityContext;
-      } // (lib.optionalAttrs (env != [ ]) { inherit env; })
+      usedPorts =
+        if ports != null then
+          ports
+        else
+          [
+            {
+              containerPort = port;
+              name = "http";
+              protocol = "TCP";
+            }
+          ];
+      container =
+        {
+          inherit name;
+          image = "${image}:${tag}";
+          imagePullPolicy = "IfNotPresent";
+          ports = usedPorts;
+          inherit resources;
+          inherit securityContext;
+        }
+        // (lib.optionalAttrs (env != [ ]) { inherit env; })
         // (lib.optionalAttrs (envFrom != [ ]) { inherit envFrom; })
-        // (lib.optionalAttrs (volumes != [ ]) { volumeMounts = volumeMounts; })
+        // (lib.optionalAttrs (volumes != [ ]) { inherit volumeMounts; })
         // (lib.optionalAttrs (command != null) { inherit command; })
         // (lib.optionalAttrs (cmdArgs != null) { args = cmdArgs; });
-    in {
+    in
+    {
       apiVersion = "apps/v1";
       kind = "Deployment";
       metadata = {
-        name = name;
+        inherit name;
         labels = selLabels;
       } // (lib.optionalAttrs (namespace != null) { inherit namespace; });
       spec = {
-        replicas = replicas;
-        revisionHistoryLimit = revisionHistoryLimit;
-        progressDeadlineSeconds = progressDeadlineSeconds;
-        selector = { matchLabels = mkSelectorLabels { inherit name; }; };
+        inherit replicas;
+        inherit revisionHistoryLimit;
+        inherit progressDeadlineSeconds;
+        selector = {
+          matchLabels = mkSelectorLabels { inherit name; };
+        };
         template = {
           metadata = {
             labels = selLabels;
-            annotations = annotations;
+            inherit annotations;
           };
-          spec = {
-            containers = [ container ];
-            securityContext = podSecurityContext;
-            volumes = volumes;
-            restartPolicy = "Always";
-            terminationGracePeriodSeconds = terminationGracePeriodSeconds;
-            dnsPolicy = "ClusterFirst";
-            dnsConfig = {
-              searches = [
-                "opendesk.svc.cluster.local"
-                "svc.cluster.local"
-                "cluster.local"
-              ];
-            };
-          } // (lib.optionalAttrs (affinity != null) { inherit affinity; })
+          spec =
+            {
+              containers = [ container ];
+              securityContext = podSecurityContext;
+              inherit volumes;
+              restartPolicy = "Always";
+              inherit terminationGracePeriodSeconds;
+              dnsPolicy = "ClusterFirst";
+              dnsConfig = {
+                searches = [
+                  "opendesk.svc.cluster.local"
+                  "svc.cluster.local"
+                  "cluster.local"
+                ];
+              };
+            }
+            // (lib.optionalAttrs (affinity != null) { inherit affinity; })
             // (lib.optionalAttrs (nodeSelector != { }) {
               inherit nodeSelector;
             })
             // (lib.optionalAttrs (tolerations != [ ]) { inherit tolerations; })
             // (lib.optionalAttrs (imagePullSecrets != [ ]) {
               inherit imagePullSecrets;
-            }) // (lib.optionalAttrs (priorityClassName != null) {
+            })
+            // (lib.optionalAttrs (priorityClassName != null) {
               inherit priorityClassName;
             });
         };
@@ -226,92 +333,130 @@ let
   # STATEFULSET
   # ===========================================================================
 
-  statefulset = { name, image, tag ? "latest", port ? 8080, replicas ? 1
-    , serviceName ? name, env ? [ ], envFrom ? [ ], resources ? defaultResources
-    , securityContext ? defaultSecurityContext
-    , podSecurityContext ? defaultPodSecurityContext, liveness ? null
-    , readiness ? null, volumeClaims ? [ ], volumes ? [ ], volumeMounts ? [ ]
-    , imagePullSecrets ? [ ], command ? null, cmdArgs ? null, ports ? null
-    , labels ? null, annotations ? { }, nodeSelector ? { }, tolerations ? [ ]
-    , affinity ? null, podManagementPolicy ? "Parallel"
-    , updateStrategy ? "RollingUpdate", revisionHistoryLimit ? 10
-    , priorityClassName ? null, terminationGracePeriodSeconds ? 30
-    , namespace ? null, instance ? null, ... }:
+  statefulset =
+    {
+      name,
+      image,
+      tag ? "latest",
+      port ? 8080,
+      replicas ? 1,
+      serviceName ? name,
+      env ? [ ],
+      envFrom ? [ ],
+      resources ? defaultResources,
+      securityContext ? defaultSecurityContext,
+      podSecurityContext ? defaultPodSecurityContext,
+      liveness ? null,
+      readiness ? null,
+      volumeClaims ? [ ],
+      volumes ? [ ],
+      volumeMounts ? [ ],
+      imagePullSecrets ? [ ],
+      command ? null,
+      cmdArgs ? null,
+      ports ? null,
+      labels ? null,
+      annotations ? { },
+      nodeSelector ? { },
+      tolerations ? [ ],
+      affinity ? null,
+      podManagementPolicy ? "Parallel",
+      updateStrategy ? "RollingUpdate",
+      revisionHistoryLimit ? 10,
+      priorityClassName ? null,
+      terminationGracePeriodSeconds ? 30,
+      namespace ? null,
+      instance ? null,
+      ...
+    }:
     let
-      selLabels =
-        if labels != null then labels else mkLabels { inherit name instance; };
-      usedPorts = if ports != null then
-        ports
-      else [{
-        containerPort = port;
-        name = "http";
-        protocol = "TCP";
-      }];
-      probeLiveness = if liveness != null then
-        liveness
-      else
-        mkProbe {
-          type = "tcp";
-          inherit port;
-        };
-      probeReadiness = if readiness != null then
-        readiness
-      else
-        mkProbe {
-          type = "tcp";
-          inherit port;
-          initialDelaySeconds = 5;
-        };
-      container = {
-        name = name;
-        image = "${image}:${tag}";
-        imagePullPolicy = "IfNotPresent";
-        ports = usedPorts;
-        resources = resources;
-        securityContext = securityContext;
-        livenessProbe = probeLiveness;
-        readinessProbe = probeReadiness;
-      } // (lib.optionalAttrs (env != [ ]) { inherit env; })
+      selLabels = if labels != null then labels else mkLabels { inherit name instance; };
+      usedPorts =
+        if ports != null then
+          ports
+        else
+          [
+            {
+              containerPort = port;
+              name = "http";
+              protocol = "TCP";
+            }
+          ];
+      probeLiveness =
+        if liveness != null then
+          liveness
+        else
+          mkProbe {
+            type = "tcp";
+            inherit port;
+          };
+      probeReadiness =
+        if readiness != null then
+          readiness
+        else
+          mkProbe {
+            type = "tcp";
+            inherit port;
+            initialDelaySeconds = 5;
+          };
+      container =
+        {
+          inherit name;
+          image = "${image}:${tag}";
+          imagePullPolicy = "IfNotPresent";
+          ports = usedPorts;
+          inherit resources;
+          inherit securityContext;
+          livenessProbe = probeLiveness;
+          readinessProbe = probeReadiness;
+        }
+        // (lib.optionalAttrs (env != [ ]) { inherit env; })
         // (lib.optionalAttrs (envFrom != [ ]) { inherit envFrom; })
         // (lib.optionalAttrs (volumeMounts != [ ]) { inherit volumeMounts; })
         // (lib.optionalAttrs (command != null) { inherit command; })
         // (lib.optionalAttrs (cmdArgs != null) { args = cmdArgs; });
-    in {
+    in
+    {
       apiVersion = "apps/v1";
       kind = "StatefulSet";
       metadata = {
-        name = name;
+        inherit name;
         labels = selLabels;
       } // (lib.optionalAttrs (namespace != null) { inherit namespace; });
       spec = {
-        serviceName = serviceName;
-        replicas = replicas;
-        podManagementPolicy = podManagementPolicy;
-        updateStrategy = { type = updateStrategy; };
-        revisionHistoryLimit = revisionHistoryLimit;
+        inherit serviceName;
+        inherit replicas;
+        inherit podManagementPolicy;
+        updateStrategy = {
+          type = updateStrategy;
+        };
+        inherit revisionHistoryLimit;
         selector = {
           matchLabels = mkSelectorLabels { inherit name instance; };
         };
         template = {
           metadata = {
             labels = selLabels;
-            annotations = annotations;
+            inherit annotations;
           };
-          spec = {
-            containers = [ container ];
-            securityContext = podSecurityContext;
-            volumes = volumes;
-            restartPolicy = "Always";
-            terminationGracePeriodSeconds = terminationGracePeriodSeconds;
-            dnsPolicy = "ClusterFirst";
-          } // (lib.optionalAttrs (affinity != null) { inherit affinity; })
+          spec =
+            {
+              containers = [ container ];
+              securityContext = podSecurityContext;
+              inherit volumes;
+              restartPolicy = "Always";
+              inherit terminationGracePeriodSeconds;
+              dnsPolicy = "ClusterFirst";
+            }
+            // (lib.optionalAttrs (affinity != null) { inherit affinity; })
             // (lib.optionalAttrs (nodeSelector != { }) {
               inherit nodeSelector;
             })
             // (lib.optionalAttrs (tolerations != [ ]) { inherit tolerations; })
             // (lib.optionalAttrs (imagePullSecrets != [ ]) {
               inherit imagePullSecrets;
-            }) // (lib.optionalAttrs (priorityClassName != null) {
+            })
+            // (lib.optionalAttrs (priorityClassName != null) {
               inherit priorityClassName;
             });
         };
@@ -325,45 +470,62 @@ let
   # SERVICE
   # ===========================================================================
 
-  service = { name, port ? 8080, targetPort ? null, type ? "ClusterIP"
-    , selector ? null, ports ? null, sessionAffinity ? "None"
-    , externalTrafficPolicy ? "Cluster", loadBalancerSourceRanges ? [ ]
-    , loadBalancerClass ? null, labels ? null, namespace ? null, instance ? null
-    , ... }:
+  service =
+    {
+      name,
+      port ? 8080,
+      targetPort ? null,
+      type ? "ClusterIP",
+      selector ? null,
+      ports ? null,
+      sessionAffinity ? "None",
+      externalTrafficPolicy ? "Cluster",
+      loadBalancerSourceRanges ? [ ],
+      loadBalancerClass ? null,
+      labels ? null,
+      namespace ? null,
+      instance ? null,
+      ...
+    }:
     let
-      selLabels = if selector != null then
-        selector
-      else
-        mkSelectorLabels { inherit name instance; };
-      usedPorts = if ports != null then
-        ports
-      else [{
-        port = port;
-        targetPort = (if targetPort != null then targetPort else port);
-        protocol = "TCP";
-        name = "http";
-      }];
-      svcLabels =
-        if labels != null then labels else mkLabels { inherit name instance; };
-    in {
+      selLabels = if selector != null then selector else mkSelectorLabels { inherit name instance; };
+      usedPorts =
+        if ports != null then
+          ports
+        else
+          [
+            {
+              inherit port;
+              targetPort = if targetPort != null then targetPort else port;
+              protocol = "TCP";
+              name = "http";
+            }
+          ];
+      svcLabels = if labels != null then labels else mkLabels { inherit name instance; };
+    in
+    {
       apiVersion = "v1";
       kind = "Service";
       metadata = {
-        name = name;
+        inherit name;
         labels = svcLabels;
       } // (lib.optionalAttrs (namespace != null) { inherit namespace; });
-      spec = {
-        type = type;
-        ports = usedPorts;
-        selector = selLabels;
-        sessionAffinity = sessionAffinity;
-      } // (lib.optionalAttrs (type != "ClusterIP") {
-        inherit externalTrafficPolicy;
-      }) // (lib.optionalAttrs (loadBalancerSourceRanges != [ ]) {
-        inherit loadBalancerSourceRanges;
-      }) // (lib.optionalAttrs (loadBalancerClass != null) {
-        inherit loadBalancerClass;
-      });
+      spec =
+        {
+          inherit type;
+          ports = usedPorts;
+          selector = selLabels;
+          inherit sessionAffinity;
+        }
+        // (lib.optionalAttrs (type != "ClusterIP") {
+          inherit externalTrafficPolicy;
+        })
+        // (lib.optionalAttrs (loadBalancerSourceRanges != [ ]) {
+          inherit loadBalancerSourceRanges;
+        })
+        // (lib.optionalAttrs (loadBalancerClass != null) {
+          inherit loadBalancerClass;
+        });
     };
 
   mkService = service;
@@ -372,24 +534,35 @@ let
   # HEADLESS SERVICE
   # ===========================================================================
 
-  headlessService = { name, port ? 8080, targetPort ? null, selector ? null
-    , ports ? null, labels ? null, namespace ? null, instance ? null, ... }:
+  headlessService =
+    {
+      name,
+      port ? 8080,
+      targetPort ? null,
+      selector ? null,
+      ports ? null,
+      labels ? null,
+      namespace ? null,
+      instance ? null,
+      ...
+    }:
     let
-      selLabels = if selector != null then
-        selector
-      else
-        mkSelectorLabels { inherit name instance; };
-      usedPorts = if ports != null then
-        ports
-      else [{
-        port = port;
-        targetPort = (if targetPort != null then targetPort else port);
-        protocol = "TCP";
-        name = "http";
-      }];
-      svcLabels =
-        if labels != null then labels else mkLabels { inherit name instance; };
-    in {
+      selLabels = if selector != null then selector else mkSelectorLabels { inherit name instance; };
+      usedPorts =
+        if ports != null then
+          ports
+        else
+          [
+            {
+              inherit port;
+              targetPort = if targetPort != null then targetPort else port;
+              protocol = "TCP";
+              name = "http";
+            }
+          ];
+      svcLabels = if labels != null then labels else mkLabels { inherit name instance; };
+    in
+    {
       apiVersion = "v1";
       kind = "Service";
       metadata = {
@@ -408,38 +581,53 @@ let
   # INGRESS
   # ===========================================================================
 
-  ingress = { name, hosts ? [ "${name}.opendesk.local" ], backendService
-    , backendPort ? 8080, tls ? null, annotations ? { }, pathType ? "Prefix"
-    , paths ? [ "/" ], className ? "haproxy", namespace ? null, ... }:
+  ingress =
+    {
+      name,
+      hosts ? [ "${name}.opendesk.local" ],
+      backendService,
+      backendPort ? 8080,
+      tls ? null,
+      annotations ? { },
+      pathType ? "Prefix",
+      paths ? [ "/" ],
+      className ? "haproxy",
+      namespace ? null,
+      ...
+    }:
     let
-      tlsConfig = if tls != null then
-        tls
-      else
-        map (host: {
-          hosts = [ host ];
-          secretName = "tls-${name}";
-        }) hosts;
-    in {
+      tlsConfig =
+        if tls != null then
+          tls
+        else
+          map (host: {
+            hosts = [ host ];
+            secretName = "tls-${name}";
+          }) hosts;
+    in
+    {
       apiVersion = "networking.k8s.io/v1";
       kind = "Ingress";
       metadata = {
-        name = name;
+        inherit name;
         labels = mkLabels { inherit name; };
-        annotations = annotations;
+        inherit annotations;
       } // (lib.optionalAttrs (namespace != null) { inherit namespace; });
       spec = {
         ingressClassName = className;
         tls = tlsConfig;
         rules = map (host: {
-          host = host;
+          inherit host;
           http = {
             paths = map (path: {
-              path = path;
-              pathType = pathType;
+              inherit path;
+              inherit pathType;
               backend = {
                 service = {
                   name = backendService;
-                  port = { number = backendPort; };
+                  port = {
+                    number = backendPort;
+                  };
                 };
               };
             }) paths;
@@ -450,9 +638,18 @@ let
 
   mkIngress = ingress;
 
-  ingressWithCert = { name, host, port ? 80, className ? "haproxy"
-    , tlsSecretName ? "opendesk-certificates-tls", annotations ? { }
-    , namespace ? null, ... }: {
+  ingressWithCert =
+    {
+      name,
+      host,
+      port ? 80,
+      className ? "haproxy",
+      tlsSecretName ? "opendesk-certificates-tls",
+      annotations ? { },
+      namespace ? null,
+      ...
+    }:
+    {
       apiVersion = "networking.k8s.io/v1";
       kind = "Ingress";
       metadata = {
@@ -464,25 +661,33 @@ let
       } // (lib.optionalAttrs (namespace != null) { inherit namespace; });
       spec = {
         ingressClassName = className;
-        tls = [{
-          hosts = [ host ];
-          secretName = tlsSecretName;
-        }];
-        rules = [{
-          host = host;
-          http = {
-            paths = [{
-              path = "/";
-              pathType = "Prefix";
-              backend = {
-                service = {
-                  name = name;
-                  port = { number = port; };
-                };
-              };
-            }];
-          };
-        }];
+        tls = [
+          {
+            hosts = [ host ];
+            secretName = tlsSecretName;
+          }
+        ];
+        rules = [
+          {
+            inherit host;
+            http = {
+              paths = [
+                {
+                  path = "/";
+                  pathType = "Prefix";
+                  backend = {
+                    service = {
+                      inherit name;
+                      port = {
+                        number = port;
+                      };
+                    };
+                  };
+                }
+              ];
+            };
+          }
+        ];
       };
     };
 
@@ -493,18 +698,26 @@ let
   # ===========================================================================
 
   configMap =
-    { name, data, immutable ? false, labels ? null, namespace ? null, ... }:
+    {
+      name,
+      data,
+      immutable ? false,
+      labels ? null,
+      namespace ? null,
+      ...
+    }:
     let
       cmLabels = if labels != null then labels else mkLabels { inherit name; };
-    in {
+    in
+    {
       apiVersion = "v1";
       kind = "ConfigMap";
       metadata = {
-        name = name;
+        inherit name;
         labels = cmLabels;
       } // (lib.optionalAttrs (namespace != null) { inherit namespace; });
-      data = data;
-      immutable = immutable;
+      inherit data;
+      inherit immutable;
     };
 
   mkConfigMap = configMap;
@@ -513,19 +726,29 @@ let
   # SECRET
   # ===========================================================================
 
-  secret = { name, stringData ? { }, data ? { }, type ? "Opaque", labels ? null
-    , namespace ? null, ... }:
+  secret =
+    {
+      name,
+      stringData ? { },
+      data ? { },
+      type ? "Opaque",
+      labels ? null,
+      namespace ? null,
+      ...
+    }:
     let
       secLabels = if labels != null then labels else mkLabels { inherit name; };
-    in {
+    in
+    {
       apiVersion = "v1";
       kind = "Secret";
       metadata = {
-        name = name;
+        inherit name;
         labels = secLabels;
       } // (lib.optionalAttrs (namespace != null) { inherit namespace; });
-      type = type;
-    } // (lib.optionalAttrs (stringData != { }) { inherit stringData; })
+      inherit type;
+    }
+    // (lib.optionalAttrs (stringData != { }) { inherit stringData; })
     // (lib.optionalAttrs (data != { }) { inherit data; });
 
   mkOpaqueSecret = secret;
@@ -534,23 +757,36 @@ let
   # PVC
   # ===========================================================================
 
-  pvc = { name, size ? "1Gi", storageClass ? "ceph-rbd"
-    , accessModes ? [ "ReadWriteOnce" ], volumeMode ? "Filesystem"
-    , labels ? null, namespace ? null, ... }:
+  pvc =
+    {
+      name,
+      size ? "1Gi",
+      storageClass ? "ceph-rbd",
+      accessModes ? [ "ReadWriteOnce" ],
+      volumeMode ? "Filesystem",
+      labels ? null,
+      namespace ? null,
+      ...
+    }:
     let
       pvcLabels = if labels != null then labels else mkLabels { inherit name; };
-    in {
+    in
+    {
       apiVersion = "v1";
       kind = "PersistentVolumeClaim";
       metadata = {
-        name = name;
+        inherit name;
         labels = pvcLabels;
       } // (lib.optionalAttrs (namespace != null) { inherit namespace; });
       spec = {
-        accessModes = accessModes;
-        volumeMode = volumeMode;
+        inherit accessModes;
+        inherit volumeMode;
         storageClassName = storageClass;
-        resources = { requests = { storage = size; }; };
+        resources = {
+          requests = {
+            storage = size;
+          };
+        };
       };
     };
 
@@ -560,26 +796,40 @@ let
   # NETWORK POLICY
   # ===========================================================================
 
-  networkPolicy = { name, podSelector ? null, namespaceSelector ? null
-    , ingress ? null, egress ? null, policyTypes ? [ "Ingress" "Egress" ]
-    , labels ? null, namespace ? null, ... }:
+  networkPolicy =
+    {
+      name,
+      podSelector ? null,
+      namespaceSelector ? null,
+      ingress ? null,
+      egress ? null,
+      policyTypes ? [
+        "Ingress"
+        "Egress"
+      ],
+      labels ? null,
+      namespace ? null,
+      ...
+    }:
     let
       npLabels = if labels != null then labels else mkLabels { inherit name; };
-      selLabels = if podSelector != null then
-        podSelector
-      else
-        mkSelectorLabels { inherit name; };
-    in {
+      selLabels = if podSelector != null then podSelector else mkSelectorLabels { inherit name; };
+    in
+    {
       apiVersion = "networking.k8s.io/v1";
       kind = "NetworkPolicy";
       metadata = {
-        name = name;
+        inherit name;
         labels = npLabels;
       } // (lib.optionalAttrs (namespace != null) { inherit namespace; });
-      spec = {
-        podSelector = { matchLabels = selLabels; };
-        policyTypes = policyTypes;
-      } // (lib.optionalAttrs (ingress != null) { inherit ingress; })
+      spec =
+        {
+          podSelector = {
+            matchLabels = selLabels;
+          };
+          inherit policyTypes;
+        }
+        // (lib.optionalAttrs (ingress != null) { inherit ingress; })
         // (lib.optionalAttrs (egress != null) { inherit egress; })
         // (lib.optionalAttrs (namespaceSelector != null) {
           inherit namespaceSelector;
@@ -592,24 +842,34 @@ let
   # POD DISRUPTION BUDGET
   # ===========================================================================
 
-  pdb = { name, minAvailable ? 1, maxUnavailable ? null, selector ? null
-    , labels ? null, namespace ? null, ... }:
+  pdb =
+    {
+      name,
+      minAvailable ? 1,
+      maxUnavailable ? null,
+      selector ? null,
+      labels ? null,
+      namespace ? null,
+      ...
+    }:
     let
       pdbLabels = if labels != null then labels else mkLabels { inherit name; };
-      selLabels = if selector != null then
-        selector
-      else
-        mkSelectorLabels { inherit name; };
-    in {
+      selLabels = if selector != null then selector else mkSelectorLabels { inherit name; };
+    in
+    {
       apiVersion = "policy/v1";
       kind = "PodDisruptionBudget";
       metadata = {
-        name = name;
+        inherit name;
         labels = pdbLabels;
       } // (lib.optionalAttrs (namespace != null) { inherit namespace; });
-      spec = {
-        selector = { matchLabels = selLabels; };
-      } // (lib.optionalAttrs (minAvailable != null) { inherit minAvailable; })
+      spec =
+        {
+          selector = {
+            matchLabels = selLabels;
+          };
+        }
+        // (lib.optionalAttrs (minAvailable != null) { inherit minAvailable; })
         // (lib.optionalAttrs (maxUnavailable != null) {
           inherit maxUnavailable;
         });
@@ -621,18 +881,24 @@ let
   # HPA
   # ===========================================================================
 
-  hpa = { name, targetRef, minReplicas ? 1, maxReplicas ? 3, cpuTarget ? 80
-    , memoryTarget ? null, behavior ? null, metrics ? null, labels ? null
-    , namespace ? null, targetCPUUtilization ? null, ... }:
+  hpa =
+    {
+      name,
+      targetRef,
+      minReplicas ? 1,
+      maxReplicas ? 3,
+      cpuTarget ? 80,
+      memoryTarget ? null,
+      behavior ? null,
+      metrics ? null,
+      labels ? null,
+      namespace ? null,
+      targetCPUUtilization ? null,
+      ...
+    }:
     let
-      hpaLabels = if labels != null then
-        labels
-      else
-        mkLabels { name = targetRef.name or name; };
-      cpuUtil = if targetCPUUtilization != null then
-        targetCPUUtilization
-      else
-        cpuTarget;
+      hpaLabels = if labels != null then labels else mkLabels { name = targetRef.name or name; };
+      cpuUtil = if targetCPUUtilization != null then targetCPUUtilization else cpuTarget;
       cpuMetric = {
         type = "Resource";
         resource = {
@@ -643,30 +909,36 @@ let
           };
         };
       };
-      memoryMetric = if memoryTarget != null then {
-        type = "Resource";
-        resource = {
-          name = "memory";
-          target = {
-            type = "Utilization";
-            averageUtilization = memoryTarget;
-          };
-        };
-      } else
-        null;
-      allMetrics = (if metrics != null then metrics else [ ]) ++ [ cpuMetric ]
+      memoryMetric =
+        if memoryTarget != null then
+          {
+            type = "Resource";
+            resource = {
+              name = "memory";
+              target = {
+                type = "Utilization";
+                averageUtilization = memoryTarget;
+              };
+            };
+          }
+        else
+          null;
+      allMetrics =
+        (if metrics != null then metrics else [ ])
+        ++ [ cpuMetric ]
         ++ (if memoryMetric != null then [ memoryMetric ] else [ ]);
-    in {
+    in
+    {
       apiVersion = "autoscaling/v2";
       kind = "HorizontalPodAutoscaler";
       metadata = {
-        name = name;
+        inherit name;
         labels = hpaLabels;
       } // (lib.optionalAttrs (namespace != null) { inherit namespace; });
       spec = {
         scaleTargetRef = targetRef;
-        minReplicas = minReplicas;
-        maxReplicas = maxReplicas;
+        inherit minReplicas;
+        inherit maxReplicas;
         metrics = allMetrics;
       } // (lib.optionalAttrs (behavior != null) { inherit behavior; });
     };
@@ -677,45 +949,67 @@ let
   # NAMESPACE
   # ===========================================================================
 
-  namespace = { name, labels ? { }, ... }: {
-    apiVersion = "v1";
-    kind = "Namespace";
-    metadata = {
-      name = name;
-      labels = labels // { "app.kubernetes.io/part-of" = "opendesk"; };
+  namespace =
+    {
+      name,
+      labels ? { },
+      ...
+    }:
+    {
+      apiVersion = "v1";
+      kind = "Namespace";
+      metadata = {
+        inherit name;
+        labels = labels // {
+          "app.kubernetes.io/part-of" = "opendesk";
+        };
+      };
     };
-  };
 
   # ===========================================================================
   # SERVICE ACCOUNT
   # ===========================================================================
 
-  serviceAccount = { name, namespace ? null
-    , automountServiceAccountToken ? false, labels ? null, ... }:
+  serviceAccount =
+    {
+      name,
+      namespace ? null,
+      automountServiceAccountToken ? false,
+      labels ? null,
+      ...
+    }:
     let
       saLabels = if labels != null then labels else mkLabels { inherit name; };
-    in {
+    in
+    {
       apiVersion = "v1";
       kind = "ServiceAccount";
       metadata = {
-        name = name;
+        inherit name;
         labels = saLabels;
       } // (lib.optionalAttrs (namespace != null) { inherit namespace; });
-      automountServiceAccountToken = automountServiceAccountToken;
+      inherit automountServiceAccountToken;
     };
 
   # ===========================================================================
   # TLS SECRET (placeholder)
   # ===========================================================================
 
-  mkTLSSecret = { name, namespace ? null, labels ? null, ... }:
+  mkTLSSecret =
+    {
+      name,
+      namespace ? null,
+      labels ? null,
+      ...
+    }:
     let
       tlsLabels = if labels != null then labels else mkLabels { inherit name; };
-    in {
+    in
+    {
       apiVersion = "v1";
       kind = "Secret";
       metadata = {
-        name = name;
+        inherit name;
         labels = tlsLabels;
       } // (lib.optionalAttrs (namespace != null) { inherit namespace; });
       type = "kubernetes.io/tls";
@@ -734,7 +1028,14 @@ let
     readOnlyRootFilesystem = false;
     capabilities = {
       drop = [ "ALL" ];
-      add = [ "SYS_NICE" "DAC_OVERRIDE" "CHOWN" "FOWNER" "SETGID" "SETUID" ];
+      add = [
+        "SYS_NICE"
+        "DAC_OVERRIDE"
+        "CHOWN"
+        "FOWNER"
+        "SETGID"
+        "SETUID"
+      ];
     };
   };
 
@@ -744,12 +1045,45 @@ let
     fsGroupChangePolicy = "OnRootMismatch";
   };
 
-in {
-  inherit defaultSecurityContext defaultPodSecurityContext defaultResources
-    mkOCILabels mkLabels mkSelectorLabels mkProbe mkPodTemplate deployment
-    mkDeployment statefulset mkStatefulSet service mkService headlessService
-    ingress mkIngress ingressWithCert mkIngressWithTLS configMap mkConfigMap
-    secret mkOpaqueSecret mkTLSSecret pvc mkPVC networkPolicy mkNetworkPolicy
-    pdb mkPDB hpa mkHPA namespace serviceAccount securityContext
-    databaseSecurityContext databasePodSecurityContext;
+in
+{
+  inherit
+    defaultSecurityContext
+    defaultPodSecurityContext
+    defaultResources
+    mkOCILabels
+    mkLabels
+    mkSelectorLabels
+    mkProbe
+    mkPodTemplate
+    deployment
+    mkDeployment
+    statefulset
+    mkStatefulSet
+    service
+    mkService
+    headlessService
+    ingress
+    mkIngress
+    ingressWithCert
+    mkIngressWithTLS
+    configMap
+    mkConfigMap
+    secret
+    mkOpaqueSecret
+    mkTLSSecret
+    pvc
+    mkPVC
+    networkPolicy
+    mkNetworkPolicy
+    pdb
+    mkPDB
+    hpa
+    mkHPA
+    namespace
+    serviceAccount
+    securityContext
+    databaseSecurityContext
+    databasePodSecurityContext
+    ;
 }

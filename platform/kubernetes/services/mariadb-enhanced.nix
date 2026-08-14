@@ -3,14 +3,14 @@
   security ? import ../../lib/security.nix { },
   registry ? import ../../lib/registry.nix { },
   pkgs ? import <nixpkgs> { }
-  env ? import ../environments/hrz/default.nix { lib = lib; },
+  env ? import ../environments/hrz/default.nix { inherit lib; },
 }:
 
 let
 
   # OCI Labels (OpenSpec Compliance - FR-IMAGE-007)
   ociLabels = lib.mkOCILabels {
-    name = name;
+    inherit name;
     version = tag;
     description = "mariadb-enhanced service for openDesk";
     serviceType = "web";
@@ -82,14 +82,14 @@ in [
     inherit name fullName;
     image = imageName;
     tag = imageVersion;
-    instance = instance;
+    inherit instance;
     port = 3306;
     
     containerSecurityContext = containerSecurity;
     podSecurityContext = podSecurity;
-    resources = resources;
-    livenessProbe = livenessProbe;
-    readinessProbe = readinessProbe;
+    inherit resources;
+    inherit livenessProbe;
+    inherit readinessProbe;
     
     volumeClaims = [
       {

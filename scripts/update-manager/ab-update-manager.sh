@@ -62,7 +62,7 @@ get_inactive_slot() {
 # Check boot status
 check_boot_status() {
     log_info "Checking boot status..."
-    
+
     # Check if system booted successfully
     if systemctl is-active --quiet multi-user.target; then
         log_info "${GREEN}✓ System booted successfully${NC}"
@@ -80,13 +80,13 @@ show_status() {
     echo "Active Slot:     $(get_active_slot)"
     echo "Inactive Slot:   $(get_inactive_slot)"
     echo ""
-    
+
     # Show partition information
-    if command -v systemctl &> /dev/null; then
+    if command -v systemctl &>/dev/null; then
         echo "Partition Status:"
         systemctl list-partitions 2>/dev/null || echo "  (partition info unavailable)"
     fi
-    
+
     echo ""
     echo "Update State:"
     if [ -f "${STATE_DIR}/pending_update" ]; then
@@ -95,7 +95,7 @@ show_status() {
     else
         echo "  Status: ${GREEN}Up to date${NC}"
     fi
-    
+
     echo ""
 }
 
@@ -104,18 +104,18 @@ download_update() {
     local url="$1"
     local inactive
     inactive=$(get_inactive_slot)
-    
+
     log_info "Downloading update from ${url}..."
     log_info "Target slot: ${inactive}"
-    
+
     # Create state directory
     mkdir -p "${STATE_DIR}"
-    
+
     # Download update using sysupdate
-    if command -v systemd-sysupdate &> /dev/null; then
+    if command -v systemd-sysupdate &>/dev/null; then
         systemd-sysupdate download "${url}"
-        echo "${url}" > "${STATE_DIR}/pending_update"
-        echo "${inactive}" > "${STATE_DIR}/pending_slot"
+        echo "${url}" >"${STATE_DIR}/pending_update"
+        echo "${inactive}" >"${STATE_DIR}/pending_slot"
         log_info "${GREEN}✓ Update downloaded successfully${NC}"
     else
         log_error "systemd-sysupdate not found"
@@ -127,13 +127,13 @@ download_update() {
 switch_slot() {
     local inactive
     inactive=$(get_inactive_slot)
-    
+
     log_info "Switching to slot ${inactive}..."
-    
+
     # Create boot entry for inactive slot
-    if command -v systemd-sysupdate &> /dev/null; then
+    if command -v systemd-sysupdate &>/dev/null; then
         systemd-sysupdate switch "${inactive}"
-        echo "${inactive}" > "${STATE_DIR}/active_slot"
+        echo "${inactive}" >"${STATE_DIR}/active_slot"
         log_info "${GREEN}✓ Slot switched. Reboot required.${NC}"
     else
         log_error "systemd-sysupdate not found"
@@ -145,10 +145,10 @@ switch_slot() {
 rollback() {
     local previous
     previous=$(get_active_slot)
-    
+
     log_info "Rolling back to slot ${previous}..."
-    
-    if command -v systemd-sysupdate &> /dev/null; then
+
+    if command -v systemd-sysupdate &>/dev/null; then
         systemd-sysupdate switch "${previous}"
         log_info "${GREEN}✓ Rollback initiated. Reboot required.${NC}"
     else
@@ -160,16 +160,16 @@ rollback() {
 # Verify signatures
 verify_update() {
     local signing_key="$1"
-    
+
     log_info "Verifying update signatures..."
-    
+
     if [ ! -f "$signing_key" ]; then
         log_error "Signing key not found: ${signing_key}"
         return 1
     fi
-    
+
     # Verify using systemd-sysupdate verify
-    if command -v systemd-sysupdate &> /dev/null; then
+    if command -v systemd-sysupdate &>/dev/null; then
         systemd-sysupdate verify --key="$signing_key"
         log_info "${GREEN}✓ Update verified${NC}"
     else
@@ -182,44 +182,44 @@ verify_update() {
 main() {
     local command="${1:-help}"
     shift || true
-    
+
     case "$command" in
-        status)
-            show_status
-            ;;
-        update)
-            if [ -z "${1:-}" ]; then
-                log_error "Usage: $0 update <URL>"
-                exit 1
-            fi
-            download_update "$1"
-            ;;
-        switch)
-            switch_slot
-            ;;
-        rollback)
-            rollback
-            ;;
-        verify)
-            if [ -z "${1:-}" ]; then
-                log_error "Usage: $0 verify <SIGNING_KEY>"
-                exit 1
-            fi
-            verify_update "$1"
-            ;;
-        help|*)
-            echo "A/B Update Manager"
-            echo ""
-            echo "Usage: $0 <command> [options]"
-            echo ""
-            echo "Commands:"
-            echo "  status              Show current slot and status"
-            echo "  update <URL>        Download and prepare update"
-            echo "  switch              Switch to inactive slot (reboot required)"
-            echo "  rollback            Rollback to previous slot (reboot required)"
-            echo "  verify <KEY>        Verify update signatures"
-            echo "  help                Show this help message"
-            ;;
+    status)
+        show_status
+        ;;
+    update)
+        if [ -z "${1:-}" ]; then
+            log_error "Usage: $0 update <URL>"
+            exit 1
+        fi
+        download_update "$1"
+        ;;
+    switch)
+        switch_slot
+        ;;
+    rollback)
+        rollback
+        ;;
+    verify)
+        if [ -z "${1:-}" ]; then
+            log_error "Usage: $0 verify <SIGNING_KEY>"
+            exit 1
+        fi
+        verify_update "$1"
+        ;;
+    help | *)
+        echo "A/B Update Manager"
+        echo ""
+        echo "Usage: $0 <command> [options]"
+        echo ""
+        echo "Commands:"
+        echo "  status              Show current slot and status"
+        echo "  update <URL>        Download and prepare update"
+        echo "  switch              Switch to inactive slot (reboot required)"
+        echo "  rollback            Rollback to previous slot (reboot required)"
+        echo "  verify <KEY>        Verify update signatures"
+        echo "  help                Show this help message"
+        ;;
     esac
 }
 

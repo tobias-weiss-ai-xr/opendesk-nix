@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
 
-# 
+#
 # typo3 NixOS Configuration for openDesk
 # Version: latest
 # OpenSpec: Full compliance (FR-IMAGE-001 through FR-IMAGE-009)
-# 
+#
 
 { pkgs, lib, ... }:
 
@@ -30,7 +30,9 @@
     description = "typo3 Service User";
   };
 
-  users.groups.typo3 = { gid = 1000; };
+  users.groups.typo3 = {
+    gid = 1000;
+  };
 
   # Setup directories
   system.activationScripts.setuptypo3 = lib.mkAfter ''

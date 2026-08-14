@@ -1,14 +1,11 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
 
-{ 
+{
   lib,
   security ? import ../../lib/security.nix { },
   registry ? import ../../lib/registry.nix { },
-  types ? import ../../lib/types.nix { },
-  sbom ? import ../../lib/sbom.nix { },
-  pkgs ? import <nixpkgs> { },
-  env ? import ../environments/hrz/default.nix { lib = lib; },
+  env ? import ../environments/hrz/default.nix { inherit lib; },
 }:
 
 let
@@ -19,29 +16,33 @@ let
   description = "MariaDB 11.4 database server for ILIAS";
   fullName = "${instance}-${name}";
   storageSize = "10Gi";
-  
+
   # OCI Labels (OpenSpec Compliance - FR-IMAGE-007)
   ociLabels = lib.mkOCILabels {
     name = fullName;
-    version = version;
-    description = description;
+    inherit version;
+    inherit description;
     serviceType = "database";
     component = "backend";
   };
   storageClass = env.storage.rwo;
-  
+
   # OCI Labels (OpenSpec Compliance - FR-IMAGE-007)
   ociLabels = lib.mkOCILabels {
     name = fullName;
-    version = version;
-    description = description;
+    inherit version;
+    inherit description;
     serviceType = "database";
     component = "backend";
   };
 
   # Security configuration
   containerSecurity = security.mkContainerSecurityContext { profile = "database"; };
-  podSecurity = security.mkPodSecurityContext { user = 1000; group = 1000; fsGroup = 1000; };
+  podSecurity = security.mkPodSecurityContext {
+    user = 1000;
+    group = 1000;
+    fsGroup = 1000;
+  };
 
   # Probe configuration
   livenessProbe = lib.mkProbe {
@@ -59,96 +60,138 @@ let
     timeoutSeconds = 3;
   };
 
-
 in
- [
-  (lib.statefulset { 
+[
+  (lib.statefulset {
     name = fullName;
     inherit instance;
     image = registry.formatServiceImageName { service = name; };
-    tag = version; 
+    tag = version;
     port = 3306;
     labels = ociLabels;
-    namespace = env.namespace;
+    inherit (env) namespace;
     securityContext = containerSecurity;
     podSecurityContext = podSecurity;
-    livenessProbe = livenessProbe;
-    readinessProbe = readinessProbe;
+    inherit livenessProbe;
+    inherit readinessProbe;
     resources = {
-      requests = { cpu = "500m"; memory = "512Mi"; };
-      limits = { cpu = "2"; memory = "2Gi"; };
+      requests = {
+        cpu = "500m";
+        memory = "512Mi";
+      };
+      limits = {
+        cpu = "2";
+        memory = "2Gi";
+      };
     };
     volumeClaims = [
-      { name = "data"; spec = { 
-        accessModes = [ "ReadWriteOnce" ];
-        storageClassName = storageClass;
-        resources = { requests = { storage = storageSize; }; };
-      }; }
+      {
+        name = "data";
+        spec = {
+          accessModes = [ "ReadWriteOnce" ];
+          storageClassName = storageClass;
+          resources = {
+            requests = {
+              storage = storageSize;
+            };
+          };
+        };
+      }
     ];
   })
-  (lib.service { 
+  (lib.service {
     name = fullName;
     inherit instance;
     port = 3306;
     labels = ociLabels;
-    selector = { app = fullName; };
+    selector = {
+      app = fullName;
+    };
   })
-  (lib.headlessService { 
+  (lib.headlessService {
     name = "${fullName}-headless";
     labels = ociLabels;
     port = 3306;
-    selector = { app = fullName; };
+    selector = {
+      app = fullName;
+    };
   })
-  
+
   # Ingress for admin interface (optional, can be disabled per environment)
-  (if env.ingress.className != null then 
-    lib.mkIngressWithTLS {
-      name = fullName;
-      host = "mariadb-admin.${env.ingress.domain}";
-      serviceName = fullName;
-      servicePort = 3306;
-      ingressClass = env.ingress.className;
-      annotations = env.ingress.annotations;
-    }
-   else null)
-  
+  (
+    if env.ingress.className != null then
+      lib.mkIngressWithTLS {
+        name = fullName;
+        host = "mariadb-admin.${env.ingress.domain}";
+        serviceName = fullName;
+        servicePort = 3306;
+        ingressClass = env.ingress.className;
+        inherit (env.ingress) annotations;
+      }
+    else
+      null
+  )
+
   # NetworkPolicy (lookup by labels)
   (lib.networkPolicy {
     name = "${fullName}-allow-from-opendesk";
     labels = ociLabels;
-    namespace = env.namespace;
-    ingress = [ {
-      from = [ { namespaceSelector = { matchLabels = { name = env.namespace; }; }; } ];
-      ports = [ { protocol = "TCP"; port = 3306; } ];
-    } ];
-    podSelector = { app = fullName; };
+    inherit (env) namespace;
+    ingress = [
+      {
+        from = [
+          {
+            namespaceSelector = {
+              matchLabels = {
+                name = env.namespace;
+              };
+            };
+          }
+        ];
+        ports = [
+          {
+            protocol = "TCP";
+            port = 3306;
+          }
+        ];
+      }
+    ];
+    podSelector = {
+      app = fullName;
+    };
   })
-  
+
   # PodDisruptionBudget
   (lib.pdb {
     name = fullName;
     labels = ociLabels;
-    namespace = env.namespace;
+    inherit (env) namespace;
     minAvailable = 1;
-    podSelector = { app = fullName; };
+    podSelector = {
+      app = fullName;
+    };
   })
-  
+
   # HorizontalPodAutoscaler (only for stateless, but included for completeness)
   (lib.hpa {
     name = fullName;
     labels = ociLabels;
-    namespace = env.namespace;
+    inherit (env) namespace;
     minReplicas = 1;
     maxReplicas = 2;
     targetCPUUtilization = 80;
-    scaleTargetRef = { apiVersion = "apps/v1"; kind = "StatefulSet"; name = fullName; };
+    scaleTargetRef = {
+      apiVersion = "apps/v1";
+      kind = "StatefulSet";
+      name = fullName;
+    };
   })
-  
+
   # ConfigMap for configuration
   (lib.configMap {
     name = "${fullName}-config";
     labels = ociLabels;
-    namespace = env.namespace;
+    inherit (env) namespace;
     data = {
       "my.cnf" = ''
         [mysqld]
@@ -158,12 +201,12 @@ in
       '';
     };
   })
-  
+
   # Secrets (example - actual password should be from external secret)
   (lib.secret {
     name = "${fullName}-secrets";
     labels = ociLabels;
-    namespace = env.namespace;
+    inherit (env) namespace;
     type = "Opaque";
     stringData = {
       "MARIADB_ROOT_PASSWORD" = "CHANGE_ME";
@@ -172,5 +215,6 @@ in
       "MARIADB_PASSWORD" = "CHANGE_ME";
     };
   })
-  
-] // builtins.filter (x: x != null)
+
+]
+// builtins.filter (x: x != null)

@@ -5,7 +5,11 @@
 # Uses shared Galera cluster for database (instead of embedded H2)
 # Image: quay.io/keycloak/keycloak:26.0
 
-{ lib, env ? import ../environments/scs/default.nix { inherit lib; }, ... }:
+{
+  lib,
+  env ? import ../environments/scs/default.nix { inherit lib; },
+  ...
+}:
 
 let
   name = "keycloak";
@@ -36,8 +40,12 @@ let
     runAsNonRoot = true;
     runAsUser = 1000;
     readOnlyRootFilesystem = false;
-    capabilities = { drop = [ "ALL" ]; };
-    seccompProfile = { type = "RuntimeDefault"; };
+    capabilities = {
+      drop = [ "ALL" ];
+    };
+    seccompProfile = {
+      type = "RuntimeDefault";
+    };
   };
 
   podSecurityContext = {
@@ -100,8 +108,7 @@ let
     }
     {
       name = "KC_DB_URL";
-      value =
-        "jdbc:mariadb://${db.host}:${toString db.port}/${db.keycloak.name}";
+      value = "jdbc:mariadb://${db.host}:${toString db.port}/${db.keycloak.name}";
     }
     {
       name = "KC_DB_USERNAME";
@@ -121,46 +128,60 @@ let
     }
   ];
 
-in [
+in
+[
   (lib.deployment {
-    inherit name image tag port resources labels;
+    inherit
+      name
+      image
+      tag
+      port
+      resources
+      labels
+      ;
     env = containerEnv;
-    securityContext = securityContext;
-    podSecurityContext = podSecurityContext;
+    inherit securityContext;
+    inherit podSecurityContext;
     liveness = livenessProbe;
     readiness = readinessProbe;
-    namespace = env.namespace;
+    inherit (env) namespace;
     replicas = env.replicas.default;
 
     command = [ "/opt/keycloak/bin/kc.sh" ];
     cmdArgs = [ "start" ];
 
-    volumeMounts = [{
-      name = "data";
-      mountPath = "/opt/keycloak/data";
-    }];
+    volumeMounts = [
+      {
+        name = "data";
+        mountPath = "/opt/keycloak/data";
+      }
+    ];
 
-    volumes = [{
-      name = "data";
-      persistentVolumeClaim = { claimName = "${name}-data"; };
-    }];
+    volumes = [
+      {
+        name = "data";
+        persistentVolumeClaim = {
+          claimName = "${name}-data";
+        };
+      }
+    ];
   })
 
   (lib.service {
     inherit name port labels;
-    namespace = env.namespace;
+    inherit (env) namespace;
   })
 
   (lib.ingressWithCert {
     inherit name;
     host = env.hosts.keycloak;
-    port = port;
-    className = env.ingress.className;
+    inherit port;
+    inherit (env.ingress) className;
     tlsSecretName = env.tls.secretName;
     annotations = env.ingress.annotations // {
       "haproxy-ingress.github.io/timeout-server" = "300s";
     };
-    namespace = env.namespace;
+    inherit (env) namespace;
   })
 
   (lib.pvc {
@@ -168,14 +189,16 @@ in [
     size = "5Gi";
     storageClass = env.storage.rwo;
     accessModes = [ "ReadWriteOnce" ];
-    namespace = env.namespace;
-    labels = labels;
+    inherit (env) namespace;
+    inherit labels;
   })
 
   (lib.secret {
     name = "${name}-db";
-    namespace = env.namespace;
-    labels = labels;
-    stringData = { "db-password" = db.keycloak.password; };
+    inherit (env) namespace;
+    inherit labels;
+    stringData = {
+      "db-password" = db.keycloak.password;
+    };
   })
 ]

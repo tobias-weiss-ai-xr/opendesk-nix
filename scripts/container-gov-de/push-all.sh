@@ -67,7 +67,7 @@ get_all_services() {
 get_image_version() {
     local service="$1"
     local service_dir="$PROJECT_ROOT/docker/services/$service/nixos"
-    
+
     if [ -f "$service_dir/default.nix" ]; then
         grep -E "tag\s*=" "$service_dir/default.nix" | grep -oE '"[^"]+"' | tr -d '"' | head -1
     else
@@ -85,12 +85,12 @@ push_image() {
     local dry_run="$6"
     local sign_image="$7"
     local keys_dir="$8"
-    
+
     local version=$(get_image_version "$service")
     local image_name="opendesk-edu/${service}"
     local image_ref="${registry}/${image_name}:${tag}"
     local version_ref="${registry}/${image_name}:${version}"
-    
+
     if [ "$dry_run" = "true" ]; then
         echo "[$YELLOW]DRY RUN] Would push: ${image_ref}"
         if [ "$version" != "latest" ] && [ "$tag" = "latest" ]; then
@@ -98,26 +98,26 @@ push_image() {
         fi
         return 0
     fi
-    
+
     echo "[$BLUE]Pushing: ${service} (${image_ref})"
-    
+
     local log_file="$LOG_DIR/${service}-push-$(date +%Y%m%d-%H%M%S).log"
     mkdir -p "$(dirname "$log_file")"
-    
+
     # Build push command
     local push_cmd="docker push ${image_ref}"
-    
+
     if [ "$compress" = "true" ]; then
         push_cmd="docker push --compress ${image_ref}"
     fi
-    
+
     # Execute push
     if eval "$push_cmd > $log_file 2>&1"; then
         echo "[$GREEN]Pushed: ${image_ref}"
-        
+
         # Also push version tag if different
         if [ "$version" != "latest" ] && [ "$tag" = "latest" ]; then
-            if docker push "$version_ref" >> "$log_file" 2>&1; then
+            if docker push "$version_ref" >>"$log_file" 2>&1; then
                 echo "[$GREEN]Pushed: ${version_ref}"
             fi
         fi
@@ -125,12 +125,12 @@ push_image() {
         echo "[$RED]Failed to push: ${image_ref}"
         return 1
     fi
-    
+
     # Sign the image if requested
     if [ "$sign_image" = "true" ]; then
         sign_single_image "$service" "$registry" "$tag" "$keys_dir"
     fi
-    
+
     return 0
 }
 
@@ -140,23 +140,23 @@ sign_single_image() {
     local registry="$2"
     local tag="$3"
     local keys_dir="$4"
-    
+
     local version=$(get_image_version "$service")
     local image_name="opendesk-edu/${service}"
     local image_ref="${registry}/${image_name}:${tag}"
     local private_key="$keys_dir/cosign-key.key"
     local public_key="$keys_dir/cosign-key.pub"
-    
+
     if [ ! -f "$private_key" ] || [ ! -f "$public_key" ]; then
         echo "[$YELLOW]Cosign keys not found in $keys_dir, skipping signing for $service"
         return 0
     fi
-    
+
     echo "[$BLUE]Signing: $image_ref"
-    
+
     if cosign sign --key "$private_key" "$image_ref" 2>&1; then
         echo "[$GREEN]Signed: $image_ref"
-        
+
         # Sign version tag if different
         if [ "$version" != "latest" ] && [ "$tag" = "latest" ]; then
             local version_ref="${registry}/${image_name}:${version}"
@@ -166,7 +166,7 @@ sign_single_image() {
         echo "[$RED]Failed to sign: $image_ref"
         return 1
     fi
-    
+
     return 0
 }
 
@@ -180,81 +180,81 @@ main() {
     local dry_run=false
     local sign=false
     local keys_dir="$SCRIPT_DIR/../migrate-upstream/keys"
-    
+
     # Parse arguments
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            --services)
-                services_arg="$2"
-                shift 2
-                ;;
-            --registry)
-                custom_registry="$2"
-                shift 2
-                ;;
-            --tag)
-                custom_tag="$2"
-                shift 2
-                ;;
-            --force)
-                force=true
-                shift
-                ;;
-            --compress)
-                compress=true
-                shift
-                ;;
-            --sign)
-                sign=true
-                shift
-                ;;
-            --dry-run)
-                dry_run=true
-                shift
-                ;;
-            --help|-h)
-                usage
-                exit 0
-                ;;
-            -*)
-                echo "$RED Unknown option: $1"
-                usage
-                exit 1
-                ;;
-            *)
-                echo "$RED Unexpected argument: $1"
-                usage
-                exit 1
-                ;;
+        --services)
+            services_arg="$2"
+            shift 2
+            ;;
+        --registry)
+            custom_registry="$2"
+            shift 2
+            ;;
+        --tag)
+            custom_tag="$2"
+            shift 2
+            ;;
+        --force)
+            force=true
+            shift
+            ;;
+        --compress)
+            compress=true
+            shift
+            ;;
+        --sign)
+            sign=true
+            shift
+            ;;
+        --dry-run)
+            dry_run=true
+            shift
+            ;;
+        --help | -h)
+            usage
+            exit 0
+            ;;
+        -*)
+            echo "$RED Unknown option: $1"
+            usage
+            exit 1
+            ;;
+        *)
+            echo "$RED Unexpected argument: $1"
+            usage
+            exit 1
+            ;;
         esac
     done
-    
+
     cd "$PROJECT_ROOT"
-    
+
     # Create directories
     mkdir -p "$LOG_DIR" "$keys_dir"
-    
+
     # Check for docker
-    if ! docker info > /dev/null 2>&1; then
+    if ! docker info >/dev/null 2>&1; then
         echo "$RED Error: Docker daemon is not running"
         exit 1
     fi
-    
+
     # Get services
     local services=()
     if [ -n "$services_arg" ]; then
-        IFS=',' read -ra services <<< "$services_arg"
+        IFS=',' read -ra services <<<"$services_arg"
     else
         local all_services=($(get_all_services | tr ',' '\n'))
         services=("${all_services[@]}")
     fi
-    
+
     if [ ${#services[@]} -eq 0 ]; then
         echo "$RED Error: No services found"
         usage
         exit 1
     fi
-    
+
     echo ""
     echo "============================================================"
     echo "  container.gov.de Image Push Utility"
@@ -267,11 +267,11 @@ main() {
     [ "$compress" = "true" ] && echo "Compress: YES"
     [ "$sign" = "true" ] && echo "Sign: YES"
     echo ""
-    
+
     # Push images sequentially
     local success_count=0
     local failure_count=0
-    
+
     for service in "${services[@]}"; do
         echo ""
         if push_image "$service" "$custom_registry" "$custom_tag" "$force" "$compress" "$dry_run" "$sign" "$keys_dir"; then
@@ -280,7 +280,7 @@ main() {
             ((failure_count++))
         fi
     done
-    
+
     echo ""
     echo "============================================================"
     echo "  Push Summary"
@@ -288,14 +288,14 @@ main() {
     echo "Successful: $success_count"
     echo "Failed: $failure_count"
     echo "Total: $((success_count + failure_count))"
-    
+
     if [ "$failure_count" -gt 0 ]; then
         echo "$RED Some pushes failed"
         exit 1
     fi
-    
+
     echo "$GREEN All images pushed successfully!"
-    
+
     # Show next steps
     echo ""
     echo "Next steps:"

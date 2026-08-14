@@ -27,7 +27,7 @@ log_step() { echo -e "${BLUE}[STEP]${NC} $*"; }
 # Create namespace
 create_namespace() {
     log_step "Creating namespace..."
-    
+
     kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
     log_info "✓ Namespace ${NAMESPACE} created"
 }
@@ -35,10 +35,10 @@ create_namespace() {
 # Generate Keycloak realm config
 generate_keycloak_config() {
     log_step "Generating Keycloak realm configuration..."
-    
+
     mkdir -p ./runtime-state/keycloak
-    
-    cat > ./runtime-state/keycloak/realm.json << EOF
+
+    cat >./runtime-state/keycloak/realm.json <<EOF
 {
   "realm": "${KEYCLOAK_REALM}",
   "enabled": true,
@@ -78,18 +78,18 @@ generate_keycloak_config() {
   ]
 }
 EOF
-    
+
     log_info "✓ Keycloak configuration generated"
 }
 
 # Generate Grafana configuration
 generate_grafana_config() {
     log_step "Generating Grafana configuration..."
-    
+
     mkdir -p ./runtime-state/grafana/provisioning/{datasources,dashboards}
-    
+
     # Datasources
-    cat > ./runtime-state/grafana/provisioning/datasources/datasources.yml << EOF
+    cat >./runtime-state/grafana/provisioning/datasources/datasources.yml <<EOF
 apiVersion: 1
 
 datasources:
@@ -106,9 +106,9 @@ datasources:
     url: http://loki:3100
     editable: false
 EOF
-    
+
     # Dashboard definitions
-    cat > ./runtime-state/grafana/provisioning/dashboards/dashboards.yml << EOF
+    cat >./runtime-state/grafana/provisioning/dashboards/dashboards.yml <<EOF
 apiVersion: 1
 
 providers:
@@ -121,18 +121,18 @@ providers:
     options:
       path: /etc/grafana/provisioning/dashboards
 EOF
-    
+
     log_info "✓ Grafana configuration generated"
 }
 
 # Generate Prometheus configuration
 generate_prometheus_config() {
     log_step "Generating Prometheus configuration..."
-    
+
     mkdir -p ./runtime-state/prometheus/rules
-    
+
     # Main config
-    cat > ./runtime-state/prometheus/prometheus.yml << EOF
+    cat >./runtime-state/prometheus/prometheus.yml <<EOF
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
@@ -155,9 +155,9 @@ scrape_configs:
 rule_files:
   - "/etc/prometheus/rules/*.yml"
 EOF
-    
+
     # Alert rules
-    cat > ./runtime-state/prometheus/rules/opendesk-alerts.yml << EOF
+    cat >./runtime-state/prometheus/rules/opendesk-alerts.yml <<EOF
 groups:
   - name: opendesk
     rules:
@@ -193,45 +193,45 @@ groups:
         annotations:
           summary: "K3s API server is down"
 EOF
-    
+
     log_info "✓ Prometheus configuration generated"
 }
 
 # Deploy to cluster
 deploy_to_cluster() {
     log_step "Deploying runtime state to cluster..."
-    
+
     # Deploy Keycloak
     if [ -f ./runtime-state/keycloak/realm.json ]; then
         kubectl apply -f ./runtime-state/keycloak/ -n "${NAMESPACE}" 2>/dev/null || log_warn "Keycloak deployment skipped"
     fi
-    
+
     # Deploy Grafana
     if [ -d ./runtime-state/grafana ]; then
         kubectl apply -f ./runtime-state/grafana/ -n "${NAMESPACE}" 2>/dev/null || log_warn "Grafana deployment skipped"
     fi
-    
+
     # Deploy Prometheus
     if [ -f ./runtime-state/prometheus/prometheus.yml ]; then
         kubectl apply -f ./runtime-state/prometheus/ -n "${NAMESPACE}" 2>/dev/null || log_warn "Prometheus deployment skipped"
     fi
-    
+
     log_info "✓ Runtime state deployed"
 }
 
 # Verify deployment
 verify_deployment() {
     log_step "Verifying deployment..."
-    
+
     # Check services
     for service in keycloak grafana prometheus; do
-        if kubectl get svc "${service}" -n "${NAMESPACE}" &> /dev/null; then
+        if kubectl get svc "${service}" -n "${NAMESPACE}" &>/dev/null; then
             log_info "✓ ${service} service available"
         else
             log_warn "✗ ${service} service not found"
         fi
     done
-    
+
     # Check pods
     local pods
     pods=$(kubectl get pods -n "${NAMESPACE}" --no-headers 2>/dev/null | wc -l)
@@ -244,14 +244,14 @@ main() {
     log_info "Runtime State Setup"
     log_info "=========================================="
     log_info ""
-    
+
     create_namespace
     generate_keycloak_config
     generate_grafana_config
     generate_prometheus_config
     deploy_to_cluster
     verify_deployment
-    
+
     log_info ""
     log_info "=========================================="
     log_info "Setup Complete!"

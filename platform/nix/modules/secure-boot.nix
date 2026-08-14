@@ -10,10 +10,17 @@
 # - TPM 2.0 attestation support
 # - Measured boot integration
 
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
-let cfg = config.security.secureBoot;
-in {
+let
+  cfg = config.security.secureBoot;
+in
+{
   meta.maintainers = [ "opendesk-edu" ];
 
   ###### interface
@@ -23,13 +30,20 @@ in {
       enable = lib.mkEnableOption "UEFI Secure Boot with lanzaboote";
 
       mode = lib.mkOption {
-        type = lib.types.enum [ "enroll" "manual" ];
+        type = lib.types.enum [
+          "enroll"
+          "manual"
+        ];
         default = "enroll";
         description = "Key enrollment mode";
       };
 
       keySize = lib.mkOption {
-        type = lib.types.enum [ 2048 3072 4096 ];
+        type = lib.types.enum [
+          2048
+          3072
+          4096
+        ];
         default = 3072;
         description = "RSA key size in bits";
       };
@@ -65,10 +79,12 @@ in {
   config = lib.mkIf cfg.enable {
     # Import lanzaboote module
     imports = [
-      (if pkgs ? lanzaboote then
-        "${toString pkgs.lanzaboote}/nix/modules/lanzaboote"
-      else
-        throw "lanzaboote not available in this nixpkgs version")
+      (
+        if pkgs ? lanzaboote then
+          "${toString pkgs.lanzaboote}/nix/modules/lanzaboote"
+        else
+          throw "lanzaboote not available in this nixpkgs version"
+      )
     ];
 
     # Lanzaboote configuration
@@ -78,34 +94,33 @@ in {
     };
 
     # Generate Secure Boot keys
-    environment.etc."lanzaboote/generate-keys.sh".source =
-      pkgs.writeScript "generate-keys" ''
-        #!/usr/bin/env bash
-        set -euo pipefail
+    environment.etc."lanzaboote/generate-keys.sh".source = pkgs.writeScript "generate-keys" ''
+      #!/usr/bin/env bash
+      set -euo pipefail
 
-        PKI_DIR="/etc/lanzaboote/pki"
-        KEY_SIZE=${toString cfg.keySize}
+      PKI_DIR="/etc/lanzaboote/pki"
+      KEY_SIZE=${toString cfg.keySize}
 
-        mkdir -p "$PKI_DIR"
+      mkdir -p "$PKI_DIR"
 
-        # Generate CA key
-        openssl req -x509 -newkey rsa:$KEY_SIZE -keyout "$PKI_DIR/ca.key" \
-          -out "$PKI_DIR/ca.crt" -days 3650 -nodes \
-          -subj "/CN=openDesk Edu Secure Boot CA"
+      # Generate CA key
+      openssl req -x509 -newkey rsa:$KEY_SIZE -keyout "$PKI_DIR/ca.key" \
+        -out "$PKI_DIR/ca.crt" -days 3650 -nodes \
+        -subj "/CN=openDesk Edu Secure Boot CA"
 
-        # Generate signing key
-        openssl req -x509 -newkey rsa:$KEY_SIZE -keyout "$PKI_DIR/db.key" \
-          -out "$PKI_DIR/db.crt" -days 3650 -nodes \
-          -subj "/CN=openDesk Edu Signing Key"
+      # Generate signing key
+      openssl req -x509 -newkey rsa:$KEY_SIZE -keyout "$PKI_DIR/db.key" \
+        -out "$PKI_DIR/db.crt" -days 3650 -nodes \
+        -subj "/CN=openDesk Edu Signing Key"
 
-        # Generate platform key
-        openssl req -x509 -newkey rsa:$KEY_SIZE -keyout "$PKI_DIR/plat.key" \
-          -out "$PKI_DIR/plat.crt" -days 3650 -nodes \
-          -subj "/CN=openDesk Edu Platform Key"
+      # Generate platform key
+      openssl req -x509 -newkey rsa:$KEY_SIZE -keyout "$PKI_DIR/plat.key" \
+        -out "$PKI_DIR/plat.crt" -days 3650 -nodes \
+        -subj "/CN=openDesk Edu Platform Key"
 
-        chmod 600 "$PKI_DIR"/*.key
-        echo "Keys generated in $PKI_DIR"
-      '';
+      chmod 600 "$PKI_DIR"/*.key
+      echo "Keys generated in $PKI_DIR"
+    '';
 
     # TPM 2.0 configuration
     services.tpm2 = lib.mkIf cfg.tpmAttestation {
@@ -149,7 +164,10 @@ in {
     };
 
     # Kernel parameters for secure boot
-    boot.kernelParams = [ "tpm.log=verbose" "secureboot=enforce" ];
+    boot.kernelParams = [
+      "tpm.log=verbose"
+      "secureboot=enforce"
+    ];
 
     # Audit logging for security events
     audit = {

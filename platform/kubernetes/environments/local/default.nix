@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
 
 """
 Local Development Environment Configuration
@@ -7,7 +7,7 @@ Local Development Environment Configuration
 This environment configuration is for local development (Minikube, KIND, etc.)
 """
 
-{ lib, ... }:
+_:
 
 {
   namespace = "opendesk-local";

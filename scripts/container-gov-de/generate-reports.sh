@@ -67,8 +67,8 @@ generate_compliance_report() {
   "status": "compliant",
   "generated": "'"$(date -Iseconds)"'"
 }'
-    
-    echo "$report" | jq . > "$report_file" 2>/dev/null || echo "$report" > "$report_file"
+
+    echo "$report" | jq . >"$report_file" 2>/dev/null || echo "$report" >"$report_file"
     echo "  Compliance report: $report_file"
     return 0
 }
@@ -116,8 +116,8 @@ generate_sbom_report() {
   },
   "components": []
 }'
-    
-    echo "$report" | jq . > "$report_file" 2>/dev/null || echo "$report" > "$report_file"
+
+    echo "$report" | jq . >"$report_file" 2>/dev/null || echo "$report" >"$report_file"
     echo "  SBOM report: $report_file"
     return 0
 }
@@ -133,17 +133,52 @@ main() {
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            --services) services_arg="$2"; shift 2 ;;
-            --format) format_arg="$2"; shift 2 ;;
-            --output-dir) custom_output_dir="$2"; shift 2 ;;
-            --include-sbom) include_sbom=true; shift ;;
-            --exclude-sbom) include_sbom=false; shift ;;
-            --include-compliance) include_compliance=true; shift ;;
-            --exclude-compliance) include_compliance=false; shift ;;
-            --dry-run) dry_run=true; shift ;;
-            --help|-h) usage; exit 0 ;;
-            -*) echo "Unknown option: $1"; usage; exit 1 ;;
-            *) echo "Unexpected argument: $1"; usage; exit 1 ;;
+        --services)
+            services_arg="$2"
+            shift 2
+            ;;
+        --format)
+            format_arg="$2"
+            shift 2
+            ;;
+        --output-dir)
+            custom_output_dir="$2"
+            shift 2
+            ;;
+        --include-sbom)
+            include_sbom=true
+            shift
+            ;;
+        --exclude-sbom)
+            include_sbom=false
+            shift
+            ;;
+        --include-compliance)
+            include_compliance=true
+            shift
+            ;;
+        --exclude-compliance)
+            include_compliance=false
+            shift
+            ;;
+        --dry-run)
+            dry_run=true
+            shift
+            ;;
+        --help | -h)
+            usage
+            exit 0
+            ;;
+        -*)
+            echo "Unknown option: $1"
+            usage
+            exit 1
+            ;;
+        *)
+            echo "Unexpected argument: $1"
+            usage
+            exit 1
+            ;;
         esac
     done
 
@@ -157,7 +192,7 @@ main() {
     # Get services
     local services=()
     if [ -n "$services_arg" ]; then
-        IFS=',' read -ra services <<< "$services_arg"
+        IFS=',' read -ra services <<<"$services_arg"
     else
         local all_services=($(get_all_services | tr ',' '\n'))
         services=("${all_services[@]}")

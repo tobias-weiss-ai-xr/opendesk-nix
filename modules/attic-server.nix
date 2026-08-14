@@ -6,10 +6,17 @@
 #
 # See: ~/git/nix-best-practices/docs/05-binary-cache.md
 
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
-let cfg = config.services.attic;
-in {
+let
+  cfg = config.services.attic;
+in
+{
   meta.maintainers = [ "opendesk-edu" ];
 
   ###### interface
@@ -55,7 +62,11 @@ in {
       };
 
       storageBackend = lib.mkOption {
-        type = lib.types.enum [ "local" "s3" "ceph" ];
+        type = lib.types.enum [
+          "local"
+          "s3"
+          "ceph"
+        ];
         default = "local";
         description = "Storage backend type";
       };
@@ -130,13 +141,13 @@ in {
     ];
 
     # Generate signing key if not provided
-    environment.etc."attic/signing.key".source =
-      lib.mkIf (cfg.signingKey == null)
-      (pkgs.runCommand "attic-signing-key" { buildInputs = [ pkgs.attic ]; } ''
+    environment.etc."attic/signing.key".source = lib.mkIf (cfg.signingKey == null) (
+      pkgs.runCommand "attic-signing-key" { buildInputs = [ pkgs.attic ]; } ''
         mkdir -p $out
         ATTIC_KEY_FILE=$out/signing.key ${pkgs.attic}/bin/attic key generate
         chmod 600 $out/signing.key
-      '');
+      ''
+    );
 
     # Attic server systemd service
     systemd.services.attic = {
@@ -155,16 +166,13 @@ in {
           ${cfg.package}/bin/attic server \
             --listen ${cfg.listenAddress}:${toString cfg.listenPort} \
             --cache-dir ${cfg.cacheDir} \
-            ${
-              lib.optionalString
-              (cfg.storageBackend == "s3" || cfg.storageBackend == "ceph") ''
-                --storage s3 \
-                --s3-endpoint ${cfg.s3Endpoint} \
-                --s3-bucket ${cfg.s3Bucket} \
-                --s3-access-key-id ${cfg.s3AccessKeyId} \
-                --s3-secret-key ${cfg.s3SecretKey}
-              ''
-            }
+            ${lib.optionalString (cfg.storageBackend == "s3" || cfg.storageBackend == "ceph") ''
+              --storage s3 \
+              --s3-endpoint ${cfg.s3Endpoint} \
+              --s3-bucket ${cfg.s3Bucket} \
+              --s3-access-key-id ${cfg.s3AccessKeyId} \
+              --s3-secret-key ${cfg.s3SecretKey}
+            ''}
         '';
 
         # Security hardening
@@ -183,8 +191,7 @@ in {
     };
 
     # Open firewall if requested
-    networking.firewall =
-      lib.mkIf cfg.openFirewall { allowedTCPPorts = [ cfg.firewallPort ]; };
+    networking.firewall = lib.mkIf cfg.openFirewall { allowedTCPPorts = [ cfg.firewallPort ]; };
 
     # Prometheus metrics endpoint
     services.prometheus.exporters.custom = lib.mkIf cfg.enableMetrics {
@@ -196,7 +203,10 @@ in {
 
     # Nix configuration for server
     nix.settings = {
-      trusted-users = [ "root" "attic" ];
+      trusted-users = [
+        "root"
+        "attic"
+      ];
       # Allow Attic to upload builds
       builders-use-substitutes = true;
     };

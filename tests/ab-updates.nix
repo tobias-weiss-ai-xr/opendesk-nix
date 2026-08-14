@@ -7,7 +7,7 @@
   name = "ab-updates";
 
   nodes = {
-    builder = { ... }: { };
+    builder = _: { };
 
     node = pkgs.nixosTest {
       name = "ab-update-node";

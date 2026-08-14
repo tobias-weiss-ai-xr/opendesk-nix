@@ -141,22 +141,59 @@ main() {
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            --services) services_arg="$2"; shift 2;;
-            --namespace) namespace="$2"; shift 2;;
-            --registry) registry="$2"; shift 2;;
-            --tag) tag="$2"; shift 2;;
-            --replicas) replicas="$2"; shift 2;;
-            --dry-run) dry_run=true; apply=false; shift;;
-            --apply) apply=true; dry_run=false; shift;;
-            --clean) clean=true; shift;;
-            --verify) verify=true; shift;;
-            --help|-h) usage; exit 0;;
-            *) echo "Error: $1"; usage; exit 1;;
+        --services)
+            services_arg="$2"
+            shift 2
+            ;;
+        --namespace)
+            namespace="$2"
+            shift 2
+            ;;
+        --registry)
+            registry="$2"
+            shift 2
+            ;;
+        --tag)
+            tag="$2"
+            shift 2
+            ;;
+        --replicas)
+            replicas="$2"
+            shift 2
+            ;;
+        --dry-run)
+            dry_run=true
+            apply=false
+            shift
+            ;;
+        --apply)
+            apply=true
+            dry_run=false
+            shift
+            ;;
+        --clean)
+            clean=true
+            shift
+            ;;
+        --verify)
+            verify=true
+            shift
+            ;;
+        --help | -h)
+            usage
+            exit 0
+            ;;
+        *)
+            echo "Error: $1"
+            usage
+            exit 1
+            ;;
         esac
     done
 
     cd "$PROJECT_ROOT"
-    local services=(); [ -n "$services_arg" ] && IFS=',' read -ra services <<< "$services_arg" || services=($(get_all_services | tr ',' '\n'))
+    local services=()
+    [ -n "$services_arg" ] && IFS=',' read -ra services <<<"$services_arg" || services=($(get_all_services | tr ',' '\n'))
     [ ${#services[@]} -eq 0 ] && echo "Error: No services" && exit 1
 
     echo "Deploying to: ${namespace} | Registry: ${registry} | Tag: ${tag}"

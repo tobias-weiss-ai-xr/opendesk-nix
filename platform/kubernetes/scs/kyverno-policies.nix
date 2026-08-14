@@ -19,14 +19,16 @@
 let
   name = "kyverno-policies";
 
-  labels = lib.mkLabels {
-    name = "baseline-policies";
-    partOf = "scs-security";
-  } // {
-    "app.kubernetes.io/component" = "policy";
-    "app.kubernetes.io/managed-by" = "nix";
-    "policies.kyverno.io/category" = "Baseline";
-  };
+  labels =
+    lib.mkLabels {
+      name = "baseline-policies";
+      partOf = "scs-security";
+    }
+    // {
+      "app.kubernetes.io/component" = "policy";
+      "app.kubernetes.io/managed-by" = "nix";
+      "policies.kyverno.io/category" = "Baseline";
+    };
 
   # Common match block — apply to opendesk and opendesk-edu namespaces
   opendeskMatch = {
@@ -49,18 +51,27 @@ let
     any = [
       {
         resources = {
-          namespaces = [ "kube-system" "metallb-system" "kube-node-lease" ];
+          namespaces = [
+            "kube-system"
+            "metallb-system"
+            "kube-node-lease"
+          ];
         };
       }
       {
         resources = {
-          namespaces = [ "kyverno" "trivy-system" "falco" ];
+          namespaces = [
+            "kyverno"
+            "trivy-system"
+            "falco"
+          ];
         };
       }
     ];
   };
 
-in [
+in
+[
   # =============================================================================
   # POLICY 1: Require Resource Limits
   # Critical on bare-metal cluster — unbounded pods can OOM-kill neighbors.
@@ -70,9 +81,12 @@ in [
     kind = "ClusterPolicy";
     metadata = {
       name = "require-resource-limits";
-      labels = labels // { "policies.kyverno.io/title" = "Require Resource Limits"; };
+      labels = labels // {
+        "policies.kyverno.io/title" = "Require Resource Limits";
+      };
       annotations = {
-        "policies.kyverno.io/description" = "Requires that all containers have CPU and memory resource limits set. Essential on bare-metal clusters to prevent noisy-neighbor problems.";
+        "policies.kyverno.io/description" =
+          "Requires that all containers have CPU and memory resource limits set. Essential on bare-metal clusters to prevent noisy-neighbor problems.";
         "policies.kyverno.io/subject" = "Pod";
         "policies.kyverno.io/severity" = "medium";
       };
@@ -80,26 +94,30 @@ in [
     spec = {
       validationFailureAction = "Audit";
       background = true;
-      rules = [{
-        name = "require-limits";
-        match = opendeskMatch;
-        exclude = systemExclusions;
-        validate = {
-          message = "All containers must have CPU and memory limits set. This is required on bare-metal clusters.";
-          pattern = {
-            spec = {
-              containers = [{
-                resources = {
-                  limits = {
-                    cpu = "?*";
-                    memory = "?*";
-                  };
-                };
-              }];
+      rules = [
+        {
+          name = "require-limits";
+          match = opendeskMatch;
+          exclude = systemExclusions;
+          validate = {
+            message = "All containers must have CPU and memory limits set. This is required on bare-metal clusters.";
+            pattern = {
+              spec = {
+                containers = [
+                  {
+                    resources = {
+                      limits = {
+                        cpu = "?*";
+                        memory = "?*";
+                      };
+                    };
+                  }
+                ];
+              };
             };
           };
-        };
-      }];
+        }
+      ];
     };
   }
 
@@ -112,9 +130,12 @@ in [
     kind = "ClusterPolicy";
     metadata = {
       name = "block-privileged";
-      labels = labels // { "policies.kyverno.io/title" = "Block Privileged Containers"; };
+      labels = labels // {
+        "policies.kyverno.io/title" = "Block Privileged Containers";
+      };
       annotations = {
-        "policies.kyverno.io/description" = "Blocks containers with privilege escalation, privileged mode, or dangerous Linux capabilities.";
+        "policies.kyverno.io/description" =
+          "Blocks containers with privilege escalation, privileged mode, or dangerous Linux capabilities.";
         "policies.kyverno.io/subject" = "Pod";
         "policies.kyverno.io/severity" = "high";
       };
@@ -131,11 +152,13 @@ in [
             message = "Privilege escalation is not allowed. Set allowPrivilegeEscalation to false.";
             pattern = {
               spec = {
-                containers = [{
-                  securityContext = {
-                    allowPrivilegeEscalation = false;
-                  };
-                }];
+                containers = [
+                  {
+                    securityContext = {
+                      allowPrivilegeEscalation = false;
+                    };
+                  }
+                ];
               };
             };
           };
@@ -148,11 +171,13 @@ in [
             message = "Privileged containers are not allowed. Set privileged to false.";
             pattern = {
               spec = {
-                containers = [{
-                  securityContext = {
-                    privileged = false;
-                  };
-                }];
+                containers = [
+                  {
+                    securityContext = {
+                      privileged = false;
+                    };
+                  }
+                ];
               };
             };
           };
@@ -166,13 +191,19 @@ in [
             anyPattern = [
               {
                 spec = {
-                  containers = [{
-                    securityContext = {
-                      capabilities = {
-                        add = [ "!SYS_ADMIN" "!NET_ADMIN" "!SYS_PTRACE" ];
+                  containers = [
+                    {
+                      securityContext = {
+                        capabilities = {
+                          add = [
+                            "!SYS_ADMIN"
+                            "!NET_ADMIN"
+                            "!SYS_PTRACE"
+                          ];
+                        };
                       };
-                    };
-                  }];
+                    }
+                  ];
                 };
               }
             ];
@@ -192,9 +223,12 @@ in [
     kind = "ClusterPolicy";
     metadata = {
       name = "restrict-image-registries";
-      labels = labels // { "policies.kyverno.io/title" = "Restrict Image Registries"; };
+      labels = labels // {
+        "policies.kyverno.io/title" = "Restrict Image Registries";
+      };
       annotations = {
-        "policies.kyverno.io/description" = "Restricts container images to approved registries only. The SCS cluster is air-gapped — all images must go through the local registry or approved ghcr.io sources.";
+        "policies.kyverno.io/description" =
+          "Restricts container images to approved registries only. The SCS cluster is air-gapped — all images must go through the local registry or approved ghcr.io sources.";
         "policies.kyverno.io/subject" = "Pod";
         "policies.kyverno.io/severity" = "high";
       };
@@ -202,36 +236,40 @@ in [
     spec = {
       validationFailureAction = "Audit";
       background = true;
-      rules = [{
-        name = "validate-image-registry";
-        match = opendeskMatch;
-        exclude = systemExclusions;
-        validate = {
-          message = "Images must come from approved registries: localhost:5001/ (SCS local), ghcr.io/, docker.io/weissto/";
-          foreach = [
-            {
-              list = "spec.containers";
-              foreach = [
-                {
-                  list = "image";
-                  deny = {
-                    conditions = [{
-                      key = "{{ element }}";
-                      operator = "NotEquals";
-                      # SCS local registry prefixes + approved upstream
-                      value = "";
-                      # Note: In Audit mode, this logs violations.
-                      # Allowed: localhost:5001/*, ghcr.io/aquasecurity/*,
-                      #          ghcr.io/kyverno/*, ghcr.io/falcosecurity/*,
-                      #          ghcr.io/bitnami-labs/*, docker.io/weissto/*
-                    }];
-                  };
-                }
-              ];
-            }
-          ];
-        };
-      }];
+      rules = [
+        {
+          name = "validate-image-registry";
+          match = opendeskMatch;
+          exclude = systemExclusions;
+          validate = {
+            message = "Images must come from approved registries: localhost:5001/ (SCS local), ghcr.io/, docker.io/weissto/";
+            foreach = [
+              {
+                list = "spec.containers";
+                foreach = [
+                  {
+                    list = "image";
+                    deny = {
+                      conditions = [
+                        {
+                          key = "{{ element }}";
+                          operator = "NotEquals";
+                          # SCS local registry prefixes + approved upstream
+                          value = "";
+                          # Note: In Audit mode, this logs violations.
+                          # Allowed: localhost:5001/*, ghcr.io/aquasecurity/*,
+                          #          ghcr.io/kyverno/*, ghcr.io/falcosecurity/*,
+                          #          ghcr.io/bitnami-labs/*, docker.io/weissto/*
+                        }
+                      ];
+                    };
+                  }
+                ];
+              }
+            ];
+          };
+        }
+      ];
     };
   }
 
@@ -244,9 +282,12 @@ in [
     kind = "ClusterPolicy";
     metadata = {
       name = "disallow-latest-tag";
-      labels = labels // { "policies.kyverno.io/title" = "Disallow Latest Tag"; };
+      labels = labels // {
+        "policies.kyverno.io/title" = "Disallow Latest Tag";
+      };
       annotations = {
-        "policies.kyverno.io/description" = "Prevents containers from using the :latest image tag. Explicit tags ensure reproducibility and traceability.";
+        "policies.kyverno.io/description" =
+          "Prevents containers from using the :latest image tag. Explicit tags ensure reproducibility and traceability.";
         "policies.kyverno.io/subject" = "Pod";
         "policies.kyverno.io/severity" = "medium";
       };
@@ -263,9 +304,11 @@ in [
             message = "Using the :latest tag is not allowed. Use a specific tag for reproducibility.";
             pattern = {
               spec = {
-                containers = [{
-                  image = "*:*?*";
-                }];
+                containers = [
+                  {
+                    image = "*:*?*";
+                  }
+                ];
               };
             };
           };
@@ -278,9 +321,11 @@ in [
             message = "Using the :latest tag in initContainers is not allowed. Use a specific tag.";
             pattern = {
               spec = {
-                initContainers = [{
-                  image = "*:*?*";
-                }];
+                initContainers = [
+                  {
+                    image = "*:*?*";
+                  }
+                ];
               };
             };
           };

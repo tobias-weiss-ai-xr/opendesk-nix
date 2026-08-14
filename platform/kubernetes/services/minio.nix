@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
 
 { 
   lib,
@@ -8,14 +8,14 @@
   types ? import ../../lib/types.nix { },
   sbom ? import ../../lib/sbom.nix { },
   pkgs ? import <nixpkgs> { }
-  env ? import ../environments/hrz/default.nix { lib = lib; },
+  env ? import ../environments/hrz/default.nix { inherit lib; },
 }:
 
 let
 
   # OCI Labels (OpenSpec Compliance - FR-IMAGE-007)
   ociLabels = lib.mkOCILabels {
-    name = name;
+    inherit name;
     version = tag;
     description = "minio service for openDesk";
     serviceType = "web";
@@ -46,4 +46,4 @@ let
 
 in
  lib.statefulset { inherit name image tag; port = 9000; resources.limits = { cpu = "2"; memory = "4Gi"; }; }
-// lib.service { inherit name; port = 9000; }
+# lib.service { inherit name; port = 9000; }

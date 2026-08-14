@@ -108,25 +108,25 @@ create_structure() {
 build_image() {
     local upstream_image="$1"
     local dry_run="$2"
-    
+
     local version=$(get_upstream_version "$upstream_image")
     local short_name=$(get_short_name "$upstream_image")
     local service_dir="$PROJECT_ROOT/docker/services/${short_name}"
-    
+
     if [ "$dry_run" = "true" ]; then
         echo "  [DRY RUN] Would build: ${upstream_image} -> ${short_name}"
         return 0
     fi
-    
+
     echo "  Building: ${upstream_image} -> ${short_name}"
-    
+
     # Create NixOS directory if it doesn't exist
     mkdir -p "$service_dir/nixos"
-    
+
     # Check if the service already has a Nix configuration
     if [ -f "$service_dir/nixos/configuration.nix" ] && [ -f "$service_dir/nixos/default.nix" ]; then
         echo "    Using existing Nix configuration"
-        
+
         # Build using existing configuration
         cd "$service_dir"
         if nix build -A container 2>&1; then
@@ -138,9 +138,9 @@ build_image() {
         fi
     else
         echo "    No Nix configuration found, using template"
-        
+
         # Create basic Nix configuration
-        cat > "$service_dir/nixos/configuration.nix" <<NIX
+        cat >"$service_dir/nixos/configuration.nix" <<NIX
 { config, pkgs, ... }:
 {
   # Basic NixOS configuration for container
@@ -173,7 +173,7 @@ build_image() {
 }
 NIX
 
-        cat > "$service_dir/nixos/default.nix" <<NIX
+        cat >"$service_dir/nixos/default.nix" <<NIX
 { system ? "x86_64-linux" }:
 let
   nixos-lib = import <nixpkgs/lib>;
@@ -210,17 +210,17 @@ push_image() {
     local upstream_image="$1"
     local registry="$2"
     local dry_run="$3"
-    
+
     local version=$(get_upstream_version "$upstream_image")
     local short_name=$(get_short_name "$upstream_image")
     local tag="$version"
     local image_ref="${registry}/${short_name}:${tag}"
-    
+
     if [ "$dry_run" = "true" ]; then
         echo "  [DRY RUN] Would push: ${image_ref}"
         return 0
     fi
-    
+
     echo "  Pushing: ${image_ref}"
     if docker push "$image_ref" 2>&1; then
         echo "    Pushed: ${image_ref}"
@@ -236,23 +236,23 @@ scan_image() {
     local upstream_image="$1"
     local registry="$2"
     local dry_run="$3"
-    
+
     local version=$(get_upstream_version "$upstream_image")
     local short_name=$(get_short_name "$upstream_image")
     local tag="$version"
     local image_ref="${registry}/${short_name}:${tag}"
-    
+
     if [ "$dry_run" = "true" ]; then
         echo "  [DRY RUN] Would scan: ${image_ref}"
         return 0
     fi
-    
+
     echo "  Scanning: ${image_ref}"
     local scan_dir="$MIGRATION_DIR/scans/${short_name}"
     mkdir -p "$scan_dir"
-    
+
     # Use grype for scanning
-    if command -v grype > /dev/null; then
+    if command -v grype >/dev/null; then
         if grype "$image_ref" -o dir:"$scan_dir" 2>&1; then
             echo "    Scan complete: ${scan_dir}"
             return 0
@@ -272,23 +272,23 @@ sign_image() {
     local registry="$2"
     local keys_dir="$3"
     local dry_run="$4"
-    
+
     local version=$(get_upstream_version "$upstream_image")
     local short_name=$(get_short_name "$upstream_image")
     local tag="$version"
     local image_ref="${registry}/${short_name}:${tag}"
     local private_key="$keys_dir/cosign-key.key"
-    
+
     if [ "$dry_run" = "true" ]; then
         echo "  [DRY RUN] Would sign: ${image_ref}"
         return 0
     fi
-    
+
     if [ ! -f "$private_key" ]; then
         echo "  Cosign key not found, skipping sign"
         return 0
     fi
-    
+
     echo "  Signing: ${image_ref}"
     if cosign sign --key "$private_key" "$image_ref" 2>&1; then
         echo "    Signed: ${image_ref}"
@@ -303,21 +303,21 @@ sign_image() {
 check_compliance() {
     local upstream_image="$1"
     local dry_run="$2"
-    
+
     local short_name=$(get_short_name "$upstream_image")
     local service_dir="$PROJECT_ROOT/docker/services/${short_name}/nixos"
     local report_file="$MIGRATION_DIR/reports/${short_name}-compliance.json"
-    
+
     if [ "$dry_run" = "true" ]; then
         echo "  [DRY RUN] Would check compliance: ${upstream_image}"
         return 0
     fi
-    
+
     echo "  Checking compliance: ${upstream_image}"
     mkdir -p "$(dirname "$report_file")"
-    
+
     # Generate compliance report
-    cat > "$report_file" <<EOF
+    cat >"$report_file" <<EOF
 {
   "service": "${short_name}",
   "upstreamImage": "${upstream_image}",
@@ -345,7 +345,7 @@ main() {
     local target_arg=""
     local registry="$TARGET_REGISTRY"
     local parallel="$DEFAULT_PARALLEL"
-    
+
     local action_build=false
     local action_push=false
     local action_scan=false
@@ -353,51 +353,95 @@ main() {
     local action_compliance=false
     local dry_run=false
     local setup=false
-    
+
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            --images) images_arg="$2"; shift 2 ;;
-            --target) target_arg="$2"; shift 2 ;;
-            --registry) registry="$2"; shift 2 ;;
-            --parallel) parallel="$2"; shift 2 ;;
-            --build) action_build=true; shift ;;
-            --push) action_push=true; shift ;;
-            --scan) action_scan=true; shift ;;
-            --sign) action_sign=true; shift ;;
-            --compliance) action_compliance=true; shift ;;
-            --all|--all-actions) 
-                action_build=true
-                action_push=true
-                action_scan=true
-                action_sign=true
-                action_compliance=true
-                shift
-                ;;
-            --dry-run) dry_run=true; shift ;;
-            --setup) setup=true; shift ;;
-            --help|-h) usage; exit 0 ;;
-            -*) echo "Unknown option: $1"; usage; exit 1 ;;
-            *) echo "Unexpected argument: $1"; usage; exit 1 ;;
+        --images)
+            images_arg="$2"
+            shift 2
+            ;;
+        --target)
+            target_arg="$2"
+            shift 2
+            ;;
+        --registry)
+            registry="$2"
+            shift 2
+            ;;
+        --parallel)
+            parallel="$2"
+            shift 2
+            ;;
+        --build)
+            action_build=true
+            shift
+            ;;
+        --push)
+            action_push=true
+            shift
+            ;;
+        --scan)
+            action_scan=true
+            shift
+            ;;
+        --sign)
+            action_sign=true
+            shift
+            ;;
+        --compliance)
+            action_compliance=true
+            shift
+            ;;
+        --all | --all-actions)
+            action_build=true
+            action_push=true
+            action_scan=true
+            action_sign=true
+            action_compliance=true
+            shift
+            ;;
+        --dry-run)
+            dry_run=true
+            shift
+            ;;
+        --setup)
+            setup=true
+            shift
+            ;;
+        --help | -h)
+            usage
+            exit 0
+            ;;
+        -*)
+            echo "Unknown option: $1"
+            usage
+            exit 1
+            ;;
+        *)
+            echo "Unexpected argument: $1"
+            usage
+            exit 1
+            ;;
         esac
     done
-    
+
     cd "$PROJECT_ROOT"
     mkdir -p "$MIGRATION_DIR/{logs,output,scans,keys,reports,flake-entries}"
-    
+
     # Setup mode
     if [ "$setup" = "true" ]; then
         create_structure
         exit 0
     fi
-    
+
     # Get images
     local images=()
     if [ -n "$images_arg" ]; then
-        IFS=',' read -ra images <<< "$images_arg"
+        IFS=',' read -ra images <<<"$images_arg"
     else
         images=($(get_upstream_images | tr ',' '\n'))
     fi
-    
+
     echo "========================================"
     echo " container.gov.de Image Migration"
     echo "========================================"
@@ -406,80 +450,80 @@ main() {
     echo "Parallel: $parallel"
     [ "$dry_run" = "true" ] && echo "Mode: DRY RUN"
     echo ""
-    
+
     local actions=()
     [ "$action_build" = "true" ] && actions+=("build")
     [ "$action_push" = "true" ] && actions+=("push")
     [ "$action_scan" = "true" ] && actions+=("scan")
     [ "$action_sign" = "true" ] && actions+=("sign")
     [ "$action_compliance" = "true" ] && actions+=("compliance")
-    
+
     [ ${#actions[@]} -eq 0 ] && actions=("setup")
     echo "Actions: ${actions[*]}"
     echo ""
-    
+
     local success_count=0
     local failure_count=0
-    
+
     for image in "${images[@]}"; do
         echo "Processing: $image"
-        
+
         for action in "${actions[@]}"; do
             case "$action" in
-                build)
-                    if build_image "$image" "$dry_run"; then
-                        ((success_count++))
-                    else
-                        ((failure_count++))
-                    fi
-                    ;;
-                push)
-                    if push_image "$image" "$registry" "$dry_run"; then
-                        ((success_count++))
-                    else
-                        ((failure_count++))
-                    fi
-                    ;;
-                scan)
-                    if scan_image "$image" "$registry" "$dry_run"; then
-                        ((success_count++))
-                    else
-                        ((failure_count++))
-                    fi
-                    ;;
-                sign)
-                    if sign_image "$image" "$registry" "$MIGRATION_DIR/keys" "$dry_run"; then
-                        ((success_count++))
-                    else
-                        ((failure_count++))
-                    fi
-                    ;;
-                compliance)
-                    if check_compliance "$image" "$dry_run"; then
-                        ((success_count++))
-                    else
-                        ((failure_count++))
-                    fi
-                    ;;
-                setup)
-                    create_structure
+            build)
+                if build_image "$image" "$dry_run"; then
                     ((success_count++))
-                    ;;
+                else
+                    ((failure_count++))
+                fi
+                ;;
+            push)
+                if push_image "$image" "$registry" "$dry_run"; then
+                    ((success_count++))
+                else
+                    ((failure_count++))
+                fi
+                ;;
+            scan)
+                if scan_image "$image" "$registry" "$dry_run"; then
+                    ((success_count++))
+                else
+                    ((failure_count++))
+                fi
+                ;;
+            sign)
+                if sign_image "$image" "$registry" "$MIGRATION_DIR/keys" "$dry_run"; then
+                    ((success_count++))
+                else
+                    ((failure_count++))
+                fi
+                ;;
+            compliance)
+                if check_compliance "$image" "$dry_run"; then
+                    ((success_count++))
+                else
+                    ((failure_count++))
+                fi
+                ;;
+            setup)
+                create_structure
+                ((success_count++))
+                ;;
             esac
         done
-        
+
         echo ""
     done
-    
+
     echo "========================================"
     echo " Migration Summary"
     echo "========================================"
     echo "Successful: $success_count"
     echo "Failed: $failure_count"
     echo "Total actions: $((success_count + failure_count))"
-    
+
     [ "$failure_count" -gt 0 ] && exit 1
-    
+
     echo ""
     echo "All migrations completed successfully!"
     echo ""

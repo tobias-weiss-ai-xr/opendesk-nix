@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
 
 { 
   lib,
@@ -8,14 +8,14 @@
   types ? import ../../lib/types.nix { },
   sbom ? import ../../lib/sbom.nix { },
   pkgs ? import <nixpkgs> { }
-  env ? import ../environments/hrz/default.nix { lib = lib; },
+  env ? import ../environments/hrz/default.nix { inherit lib; },
 }:
 
 let
 
   # OCI Labels (OpenSpec Compliance - FR-IMAGE-007)
   ociLabels = lib.mkOCILabels {
-    name = name;
+    inherit name;
     version = tag;
     description = "kibana service for openDesk";
     serviceType = "web";
@@ -53,11 +53,11 @@ in
 [
   # Kibana Deployment
   (lib.deployment {
-    name = name;
+    inherit name;
     image = "docker.elastic.co/kibana/kibana:8.13.0";
     labels = { app = name; };
     selector = { app = name; };
-    namespace = namespace;
+    inherit namespace;
     ports = [ { name = "http"; containerPort = port; } ];
     resources = { 
       limits = { cpu = "1"; memory = "1Gi"; }; 
@@ -67,18 +67,18 @@ in
 
   # Kibana Service
   (lib.service {
-    name = name;
-    port = port;
+    inherit name;
+    inherit port;
     selector = { app = name; };
-    namespace = namespace;
+    inherit namespace;
   })
 
   # Kibana Ingress with TLS
   (lib.ingressWithCert {
-    name = name;
-    namespace = namespace;
-    host = "kibana.opendesk.hrz.uni-marburg.de";
-    port = port;
+    inherit name;
+    inherit namespace;
+    host = "kibana.opendesk.internal";
+    inherit port;
     serviceName = name;
   })
 ]

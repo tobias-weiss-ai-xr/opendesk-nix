@@ -23,10 +23,8 @@ let
     tag = "latest";
     fromImage = pkgs.dockerTools.pullImage {
       imageName = "gcr.io/distroless/static-debian11";
-      imageDigest =
-        "sha256:9d7619fd40aae13a9123f87b237596709f4689b07e2d8f40c5f8e8e9a3c2e8f1";
-      sha256 =
-        "sha256-9d7619fd40aae13a9123f87b237596709f4689b07e2d8f40c5f8e8e9a3c2e8f1";
+      imageDigest = "sha256:9d7619fd40aae13a9123f87b237596709f4689b07e2d8f40c5f8e8e9a3c2e8f1";
+      sha256 = "sha256-9d7619fd40aae13a9123f87b237596709f4689b07e2d8f40c5f8e8e9a3c2e8f1";
     };
     config = {
       User = "1000";
@@ -146,15 +144,21 @@ let
       runAsGroup = 1000;
       fsGroup = 1000;
     };
-    volumes = [{
-      name = "certs";
-      secret = { secretName = "compliance-operator-cert"; };
-    }];
-    volumeMounts = [{
-      name = "certs";
-      mountPath = "/etc/operator/certs";
-      readOnly = true;
-    }];
+    volumes = [
+      {
+        name = "certs";
+        secret = {
+          secretName = "compliance-operator-cert";
+        };
+      }
+    ];
+    volumeMounts = [
+      {
+        name = "certs";
+        mountPath = "/etc/operator/certs";
+        readOnly = true;
+      }
+    ];
   };
 
   # Compliance Operator RBAC
@@ -164,34 +168,81 @@ let
     rules = [
       {
         apiGroups = [ "opendesk-edu.org" ];
-        resources =
-          [ "compliances" "compliances/status" "compliances/finalizers" ];
-        verbs = [ "get" "list" "watch" "create" "update" "patch" "delete" ];
+        resources = [
+          "compliances"
+          "compliances/status"
+          "compliances/finalizers"
+        ];
+        verbs = [
+          "get"
+          "list"
+          "watch"
+          "create"
+          "update"
+          "patch"
+          "delete"
+        ];
       }
       {
         apiGroups = [ "kyverno.io" ];
-        resources = [ "clusterpolicies" "policies" "policystatus" ];
-        verbs = [ "get" "list" "watch" ];
+        resources = [
+          "clusterpolicies"
+          "policies"
+          "policystatus"
+        ];
+        verbs = [
+          "get"
+          "list"
+          "watch"
+        ];
       }
       {
         apiGroups = [ "reports.kyverno.com" ];
-        resources = [ "policyreports" "clusterpolicyreports" ];
-        verbs = [ "get" "list" "watch" ];
+        resources = [
+          "policyreports"
+          "clusterpolicyreports"
+        ];
+        verbs = [
+          "get"
+          "list"
+          "watch"
+        ];
       }
       {
         apiGroups = [ "" ];
-        resources = [ "namespaces" "pods" "services" "deployments" ];
-        verbs = [ "get" "list" "watch" ];
+        resources = [
+          "namespaces"
+          "pods"
+          "services"
+          "deployments"
+        ];
+        verbs = [
+          "get"
+          "list"
+          "watch"
+        ];
       }
       {
         apiGroups = [ "apps" ];
-        resources = [ "deployments" "statefulsets" "daemonsets" ];
-        verbs = [ "get" "list" "watch" ];
+        resources = [
+          "deployments"
+          "statefulsets"
+          "daemonsets"
+        ];
+        verbs = [
+          "get"
+          "list"
+          "watch"
+        ];
       }
       {
         apiGroups = [ "networking.k8s.io" ];
         resources = [ "networkpolicies" ];
-        verbs = [ "get" "list" "watch" ];
+        verbs = [
+          "get"
+          "list"
+          "watch"
+        ];
       }
     ];
   };
@@ -313,15 +364,21 @@ let
     volumes = [
       {
         name = "nix-store";
-        persistentVolumeClaim = { claimName = "nix-store-pvc"; };
+        persistentVolumeClaim = {
+          claimName = "nix-store-pvc";
+        };
       }
       {
         name = "certs";
-        secret = { secretName = "image-builder-operator-cert"; };
+        secret = {
+          secretName = "image-builder-operator-cert";
+        };
       }
       {
         name = "docker-config";
-        secret = { secretName = "docker-registry-auth"; };
+        secret = {
+          secretName = "docker-registry-auth";
+        };
       }
     ];
     volumeMounts = [
@@ -349,24 +406,57 @@ let
     rules = [
       {
         apiGroups = [ "opendesk-edu.org" ];
-        resources =
-          [ "imagebuilds" "imagebuilds/status" "imagebuilds/finalizers" ];
-        verbs = [ "get" "list" "watch" "create" "update" "patch" "delete" ];
+        resources = [
+          "imagebuilds"
+          "imagebuilds/status"
+          "imagebuilds/finalizers"
+        ];
+        verbs = [
+          "get"
+          "list"
+          "watch"
+          "create"
+          "update"
+          "patch"
+          "delete"
+        ];
       }
       {
         apiGroups = [ "" ];
-        resources = [ "pods" "pods/log" "persistentvolumeclaims" ];
-        verbs = [ "get" "list" "watch" "create" "update" "delete" ];
+        resources = [
+          "pods"
+          "pods/log"
+          "persistentvolumeclaims"
+        ];
+        verbs = [
+          "get"
+          "list"
+          "watch"
+          "create"
+          "update"
+          "delete"
+        ];
       }
       {
         apiGroups = [ "" ];
         resources = [ "secrets" ];
-        verbs = [ "get" "list" "watch" ];
+        verbs = [
+          "get"
+          "list"
+          "watch"
+        ];
       }
       {
         apiGroups = [ "batch" ];
         resources = [ "jobs" ];
-        verbs = [ "get" "list" "watch" "create" "update" "delete" ];
+        verbs = [
+          "get"
+          "list"
+          "watch"
+          "create"
+          "update"
+          "delete"
+        ];
       }
     ];
   };
@@ -443,7 +533,8 @@ let
   # Export
   # ============================================================================
 
-in {
+in
+{
   # Compliance Operator
   compliance-operator = {
     crd = complianceCRD;
@@ -461,14 +552,23 @@ in {
 
   # Combined operators deployment
   all-operators = {
-    crds = [ complianceCRD imageBuilderCRD ];
-    deployments =
-      [ complianceOperatorDeployment imageBuilderOperatorDeployment ];
-    rbac = [ complianceOperatorRBAC imageBuilderOperatorRBAC ];
+    crds = [
+      complianceCRD
+      imageBuilderCRD
+    ];
+    deployments = [
+      complianceOperatorDeployment
+      imageBuilderOperatorDeployment
+    ];
+    rbac = [
+      complianceOperatorRBAC
+      imageBuilderOperatorRBAC
+    ];
   };
 
   # Helper function to create operator namespace
-  createOperatorNamespace = name:
+  createOperatorNamespace =
+    name:
     lib.k8s.mkNamespace {
       inherit name;
       labels = {
@@ -478,9 +578,12 @@ in {
     };
 
   # Helper function to create operator service account
-  createOperatorServiceAccount = name: namespace:
+  createOperatorServiceAccount =
+    name: namespace:
     lib.k8s.mkServiceAccount {
       inherit name namespace;
-      annotations = { "kubernetes.io/service-account.name" = name; };
+      annotations = {
+        "kubernetes.io/service-account.name" = name;
+      };
     };
 }

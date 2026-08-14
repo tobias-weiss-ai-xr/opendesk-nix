@@ -28,9 +28,9 @@ log_step() { echo -e "${BLUE}[STEP]${NC} $*"; }
 # Generate signing keys
 generate_keys() {
     log_step "Generating A/B update signing keys..."
-    
+
     mkdir -p /etc/ab-updates
-    
+
     if [ ! -f /etc/ab-updates/signing-key ]; then
         # Generate Ed25519 key pair
         openssl genpkey -algorithm Ed25519 -out /etc/ab-updates/signing-key
@@ -45,14 +45,14 @@ generate_keys() {
 # Deploy to single node
 deploy_to_node() {
     local node="$1"
-    
+
     log_info "Deploying to ${node}..."
-    
+
     # Copy configuration
     ssh root@${node} "mkdir -p /etc/systemd/sysupdate.d"
-    
+
     # Create sysupdate configuration
-    cat << EOF | ssh root@${node} "cat > /etc/systemd/sysupdate.d/ab-update.conf"
+    cat <<EOF | ssh root@${node} "cat > /etc/systemd/sysupdate.d/ab-update.conf"
 [Update]
 Destination=/
 Source=${UPDATE_SERVER}
@@ -64,12 +64,12 @@ Slots=a
 Type=root-a
 Priority=100
 EOF
-    
+
     # Copy signing key
     scp /etc/ab-updates/signing-key.pub root@${node}:/etc/ab-updates/signing-key.pub
-    
+
     # Enable and start services
-    ssh root@${node} << 'INNEREOF'
+    ssh root@${node} <<'INNEREOF'
     systemctl daemon-reload
     systemctl enable ab-rollback-assessment.timer
     systemctl start ab-rollback-assessment.timer
@@ -82,35 +82,35 @@ EOF
         exit 1
     fi
 INNEREOF
-    
+
     log_info "✓ ${node} configured"
 }
 
 # Test A/B update on single node
 test_ab_update() {
     local node="$1"
-    
+
     log_step "Testing A/B update on ${node}..."
-    
+
     # Check current slot
     local slot
     slot=$(ssh root@${node} "cat /var/lib/ab-updates/active_slot 2>/dev/null || echo 'a'")
     log_info "  Current slot: ${slot}"
-    
+
     # Check update manager
-    if ssh root@${node} "which ab-update-manager" &> /dev/null; then
+    if ssh root@${node} "which ab-update-manager" &>/dev/null; then
         log_info "  ✓ Update manager installed"
     else
         log_warn "  ✗ Update manager not found"
     fi
-    
+
     # Check timer
     if ssh root@${node} "systemctl is-active ab-rollback-assessment.timer" | grep -q active; then
         log_info "  ✓ Rollback timer active"
     else
         log_warn "  ✗ Rollback timer not active"
     fi
-    
+
     log_info "✓ ${node} test complete"
 }
 
@@ -120,13 +120,13 @@ main() {
     log_info "A/B Updates Deployment for SCS Cluster"
     log_info "=========================================="
     log_info ""
-    
+
     # Generate keys
     generate_keys
-    
+
     # Deploy to all nodes
     log_step "Deploying to cluster nodes..."
-    
+
     for node in ${CLUSTER_NODES}; do
         if deploy_to_node "${node}"; then
             test_ab_update "${node}"
@@ -134,7 +134,7 @@ main() {
             log_error "Failed to deploy to ${node}"
         fi
     done
-    
+
     log_info ""
     log_info "=========================================="
     log_info "Deployment Complete!"

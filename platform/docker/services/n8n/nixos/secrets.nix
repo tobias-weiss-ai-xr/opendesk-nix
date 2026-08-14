@@ -1,13 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
 
-# 
+#
 # n8n Secrets Configuration
 # Uses sops-nix for encrypted secrets management
 # OpenSpec: FR-SEC-004 (Image verification & secrets)
-# 
+#
 
-{ ... }:
+_:
 
 {
   services.n8n = {

@@ -7,7 +7,7 @@
 # Ingress: HAProxy
 # Registry: Local at 172.26.24.6:5001 (air-gapped, containerd mirror)
 
-{ ... }:
+_:
 
 {
   # Cluster identity
@@ -83,7 +83,10 @@
   # Networking
   networking = {
     proxy = "";
-    dns = [ "8.8.8.8" "8.8.4.4" ];
+    dns = [
+      "8.8.8.8"
+      "8.8.4.4"
+    ];
     noProxy = [
       "127.0.0.1"
       "10.0.0.0/8"

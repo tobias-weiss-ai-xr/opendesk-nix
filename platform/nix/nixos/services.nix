@@ -692,13 +692,16 @@ let
   # =============================================================================
 
   # Build a single container image from a service definition
-  buildServiceImage = name: svc:
+  buildServiceImage =
+    name: svc:
     docks.mkImage {
       name = "${name}-opendesk";
       tag = "${svc.version}-nixos";
 
       containerConfig = {
-        ExposedPorts = { "${toString svc.port}/tcp" = { }; };
+        ExposedPorts = {
+          "${toString svc.port}/tcp" = { };
+        };
         Env = [
           "OPENDESK_ENV=production"
           "NIXOS=1"
@@ -708,11 +711,19 @@ let
         ];
         User = svc.user;
         WorkingDir = "/";
-        Cmd = [ "/usr/bin/env" "bash" "-c" "echo Service ${name} ready" ];
+        Cmd = [
+          "/usr/bin/env"
+          "bash"
+          "-c"
+          "echo Service ${name} ready"
+        ];
         StopSignal = "SIGTERM";
         StopTimeout = 30;
         HealthCheck = {
-          Test = [ "CMD-SHELL" "exit 0" ];
+          Test = [
+            "CMD-SHELL"
+            "exit 0"
+          ];
           Interval = 30000000000;
           Timeout = 10000000000;
           Retries = 3;
@@ -720,21 +731,25 @@ let
         };
       };
 
-      extraPackages = p:
+      extraPackages =
+        p:
         (if svc.package != null then [ svc.package ] else [ ])
-        ++ (with p; [ bash coreutils openssl curl procps ]);
+        ++ (with p; [
+          bash
+          coreutils
+          openssl
+          curl
+          procps
+        ]);
 
       ociLabels = {
         "org.opencontainers.image.title" = "${name}-opendesk";
-        "org.opencontainers.image.description" =
-          "${name} ${svc.version} for openDesk Edu with NixOS";
+        "org.opencontainers.image.description" = "${name} ${svc.version} for openDesk Edu with NixOS";
         "org.opencontainers.image.version" = "${svc.version}-nixos";
         "org.opencontainers.image.authors" = "openDesk Edu Team";
-        "org.opencontainers.image.url" = "https://opendesk.hrz.uni-marburg.de";
-        "org.opencontainers.image.documentation" =
-          "https://github.com/opendesk-edu/opendesk-nix";
-        "org.opencontainers.image.source" =
-          "https://github.com/opendesk-edu/opendesk-nix";
+        "org.opencontainers.image.url" = "https://opendesk.internal";
+        "org.opencontainers.image.documentation" = "https://github.com/opendesk-edu/opendesk-nix";
+        "org.opencontainers.image.source" = "https://github.com/opendesk-edu/opendesk-nix";
         "org.opencontainers.image.licenses" = "Apache-2.0";
         "com.opendesk.service" = name;
         "com.opendesk.environment" = "production";
@@ -752,9 +767,8 @@ let
 
   serviceList = builtins.attrNames services;
 
-  countByType = type:
-    builtins.length
-    (builtins.filter (name: services.${name}.type == type) serviceList);
+  countByType =
+    type: builtins.length (builtins.filter (name: services.${name}.type == type) serviceList);
 
   serviceCounts = {
     total = builtins.length serviceList;
@@ -772,4 +786,12 @@ let
     };
   };
 
-in { inherit services allContainers serviceCounts buildServiceImage; }
+in
+{
+  inherit
+    services
+    allContainers
+    serviceCounts
+    buildServiceImage
+    ;
+}

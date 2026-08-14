@@ -15,8 +15,14 @@
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      flake-utils,
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
 
@@ -44,23 +50,35 @@
           spec = {
             validationFailureAction = "enforce";
             background = true;
-            rules = [{
-              name = "run-as-non-root";
-              match = {
-                any = [{
-                  resources = {
-                    kinds = [ "Pod" "Deployment" "StatefulSet" "DaemonSet" ];
-                  };
-                }];
-              };
-              validate = {
-                message =
-                  "Containers must run as non-root user. Set securityContext.runAsNonRoot to true.";
-                pattern = {
-                  spec = { securityContext = { runAsNonRoot = true; }; };
+            rules = [
+              {
+                name = "run-as-non-root";
+                match = {
+                  any = [
+                    {
+                      resources = {
+                        kinds = [
+                          "Pod"
+                          "Deployment"
+                          "StatefulSet"
+                          "DaemonSet"
+                        ];
+                      };
+                    }
+                  ];
                 };
-              };
-            }];
+                validate = {
+                  message = "Containers must run as non-root user. Set securityContext.runAsNonRoot to true.";
+                  pattern = {
+                    spec = {
+                      securityContext = {
+                        runAsNonRoot = true;
+                      };
+                    };
+                  };
+                };
+              }
+            ];
           };
         };
 
@@ -84,41 +102,42 @@
           spec = {
             validationFailureAction = "audit";
             background = true;
-            rules = [{
-              name = "check-network-policy";
-              context = [
-                {
-                  name = "namespace";
-                  variable = {
-                    jmesPath = "request.object.metadata.namespace";
-                  };
-                }
-                {
-                  name = "networkPolicies";
-                  apiCall = {
-                    urlPath =
-                      "/apis/networking.k8s.io/v1/namespaces/${namespace}/networkpolicies";
-                  };
-                }
-              ];
-              preconditions = {
-                all = [{
-                  key = "{{request.operation}}";
-                  operator = "NotEquals";
-                  values = [ "DELETE" ];
-                }];
-              };
-              validate = {
-                message =
-                  "Namespace must have at least one network policy defined.";
-                pattern = {
-                  spec = {
-                    networkPolicyCount =
-                      "{{networkPolicies.items | length(@)}}";
+            rules = [
+              {
+                name = "check-network-policy";
+                context = [
+                  {
+                    name = "namespace";
+                    variable = {
+                      jmesPath = "request.object.metadata.namespace";
+                    };
+                  }
+                  {
+                    name = "networkPolicies";
+                    apiCall = {
+                      urlPath = "/apis/networking.k8s.io/v1/namespaces/${namespace}/networkpolicies";
+                    };
+                  }
+                ];
+                preconditions = {
+                  all = [
+                    {
+                      key = "{{request.operation}}";
+                      operator = "NotEquals";
+                      values = [ "DELETE" ];
+                    }
+                  ];
+                };
+                validate = {
+                  message = "Namespace must have at least one network policy defined.";
+                  pattern = {
+                    spec = {
+                      networkPolicyCount = "{{networkPolicies.items | length(@)}}";
+                    };
                   };
                 };
-              };
-            }];
+              }
+            ];
           };
         };
 
@@ -146,30 +165,51 @@
               {
                 name = "check-app-label";
                 match = {
-                  any = [{
-                    resources = {
-                      kinds = [ "Deployment" "Service" "ConfigMap" "Secret" ];
-                    };
-                  }];
+                  any = [
+                    {
+                      resources = {
+                        kinds = [
+                          "Deployment"
+                          "Service"
+                          "ConfigMap"
+                          "Secret"
+                        ];
+                      };
+                    }
+                  ];
                 };
                 validate = {
-                  message =
-                    "Resource must have 'app' label for identification.";
-                  pattern = { metadata = { labels = { app = "?*"; }; }; };
+                  message = "Resource must have 'app' label for identification.";
+                  pattern = {
+                    metadata = {
+                      labels = {
+                        app = "?*";
+                      };
+                    };
+                  };
                 };
               }
               {
                 name = "check-kubernetes-io-labels";
                 match = {
-                  any =
-                    [{ resources = { kinds = [ "Deployment" "Service" ]; }; }];
+                  any = [
+                    {
+                      resources = {
+                        kinds = [
+                          "Deployment"
+                          "Service"
+                        ];
+                      };
+                    }
+                  ];
                 };
                 validate = {
-                  message =
-                    "Resources must have 'app.kubernetes.io/name' label.";
+                  message = "Resources must have 'app.kubernetes.io/name' label.";
                   pattern = {
                     metadata = {
-                      labels = { "app.kubernetes.io/name" = "?*"; };
+                      labels = {
+                        "app.kubernetes.io/name" = "?*";
+                      };
                     };
                   };
                 };
@@ -202,18 +242,32 @@
               {
                 name = "check-cpu-limits";
                 match = {
-                  any = [{
-                    resources = {
-                      kinds = [ "Pod" "Deployment" "StatefulSet" "DaemonSet" ];
-                    };
-                  }];
+                  any = [
+                    {
+                      resources = {
+                        kinds = [
+                          "Pod"
+                          "Deployment"
+                          "StatefulSet"
+                          "DaemonSet"
+                        ];
+                      };
+                    }
+                  ];
                 };
                 validate = {
                   message = "Containers must have CPU limits defined.";
                   pattern = {
                     spec = {
-                      containers =
-                        [{ resources = { limits = { cpu = "?*"; }; }; }];
+                      containers = [
+                        {
+                          resources = {
+                            limits = {
+                              cpu = "?*";
+                            };
+                          };
+                        }
+                      ];
                     };
                   };
                 };
@@ -221,18 +275,32 @@
               {
                 name = "check-memory-limits";
                 match = {
-                  any = [{
-                    resources = {
-                      kinds = [ "Pod" "Deployment" "StatefulSet" "DaemonSet" ];
-                    };
-                  }];
+                  any = [
+                    {
+                      resources = {
+                        kinds = [
+                          "Pod"
+                          "Deployment"
+                          "StatefulSet"
+                          "DaemonSet"
+                        ];
+                      };
+                    }
+                  ];
                 };
                 validate = {
                   message = "Containers must have memory limits defined.";
                   pattern = {
                     spec = {
-                      containers =
-                        [{ resources = { limits = { memory = "?*"; }; }; }];
+                      containers = [
+                        {
+                          resources = {
+                            limits = {
+                              memory = "?*";
+                            };
+                          };
+                        }
+                      ];
                     };
                   };
                 };
@@ -261,20 +329,30 @@
           spec = {
             validationFailureAction = "enforce";
             background = false;
-            rules = [{
-              name = "check-signatures";
-              match = { any = [{ resources = { kinds = [ "Pod" ]; }; }]; };
-              verifyImages = [{
-                registry =
-                  "registry.opencode.de/umr/opendesk-edu/opendesk-nix/";
-                attestations =
-                  [{ predicateType = "https://slsa.dev/provenance/v0.2"; }];
-                key = ''
-                  -----BEGIN PUBLIC KEY-----
-                  MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC...
-                  -----END PUBLIC KEY-----'';
-              }];
-            }];
+            rules = [
+              {
+                name = "check-signatures";
+                match = {
+                  any = [
+                    {
+                      resources = {
+                        kinds = [ "Pod" ];
+                      };
+                    }
+                  ];
+                };
+                verifyImages = [
+                  {
+                    registry = "registry.opencode.de/umr/opendesk-edu/opendesk-nix/";
+                    attestations = [ { predicateType = "https://slsa.dev/provenance/v0.2"; } ];
+                    key = ''
+                      -----BEGIN PUBLIC KEY-----
+                      MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC...
+                      -----END PUBLIC KEY-----'';
+                  }
+                ];
+              }
+            ];
           };
         };
 
@@ -298,25 +376,35 @@
           spec = {
             validationFailureAction = "enforce";
             background = true;
-            rules = [{
-              name = "read-only-rootfs";
-              match = {
-                any = [{
-                  resources = {
-                    kinds = [ "Pod" "Deployment" "StatefulSet" "DaemonSet" ];
-                  };
-                }];
-              };
-              validate = {
-                message =
-                  "Containers must use read-only root filesystem. Set securityContext.readOnlyRootFilesystem to true.";
-                pattern = {
-                  spec = {
-                    securityContext = { readOnlyRootFilesystem = true; };
+            rules = [
+              {
+                name = "read-only-rootfs";
+                match = {
+                  any = [
+                    {
+                      resources = {
+                        kinds = [
+                          "Pod"
+                          "Deployment"
+                          "StatefulSet"
+                          "DaemonSet"
+                        ];
+                      };
+                    }
+                  ];
+                };
+                validate = {
+                  message = "Containers must use read-only root filesystem. Set securityContext.readOnlyRootFilesystem to true.";
+                  pattern = {
+                    spec = {
+                      securityContext = {
+                        readOnlyRootFilesystem = true;
+                      };
+                    };
                   };
                 };
-              };
-            }];
+              }
+            ];
           };
         };
 
@@ -340,25 +428,37 @@
           spec = {
             validationFailureAction = "enforce";
             background = true;
-            rules = [{
-              name = "drop-all";
-              match = {
-                any = [{
-                  resources = {
-                    kinds = [ "Pod" "Deployment" "StatefulSet" "DaemonSet" ];
-                  };
-                }];
-              };
-              validate = {
-                message =
-                  "Containers must drop all capabilities. Add only required capabilities.";
-                pattern = {
-                  spec = {
-                    securityContext = { capabilities = { drop = [ "ALL" ]; }; };
+            rules = [
+              {
+                name = "drop-all";
+                match = {
+                  any = [
+                    {
+                      resources = {
+                        kinds = [
+                          "Pod"
+                          "Deployment"
+                          "StatefulSet"
+                          "DaemonSet"
+                        ];
+                      };
+                    }
+                  ];
+                };
+                validate = {
+                  message = "Containers must drop all capabilities. Add only required capabilities.";
+                  pattern = {
+                    spec = {
+                      securityContext = {
+                        capabilities = {
+                          drop = [ "ALL" ];
+                        };
+                      };
+                    };
                   };
                 };
-              };
-            }];
+              }
+            ];
           };
         };
 
@@ -387,7 +487,8 @@
           ${builtins.toJSON dropCapabilitiesPolicy}
         '';
 
-      in {
+      in
+      {
         packages = {
           # All compliance policies
           compliance-policies = allPolicies;
@@ -405,7 +506,11 @@
         default = self.packages.${system}.compliance-policies;
 
         devShells.default = pkgs.mkShell {
-          buildInputs = [ pkgs.kubectl pkgs.kyverno-cli pkgs.yq ];
+          buildInputs = [
+            pkgs.kubectl
+            pkgs.kyverno-cli
+            pkgs.yq
+          ];
 
           shellHook = ''
             echo "openDesk Edu - Compliance Example"
@@ -430,5 +535,6 @@
             echo ""
           '';
         };
-      });
+      }
+    );
 }

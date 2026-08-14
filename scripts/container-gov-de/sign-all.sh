@@ -49,7 +49,7 @@ generate_cosign_keys() {
     fi
 
     echo "  Generating Cosign key pair..."
-    if cosign generate-key-pair "$keys_dir/${key_name}" > /dev/null 2>&1; then
+    if cosign generate-key-pair "$keys_dir/${key_name}" >/dev/null 2>&1; then
         chmod 600 "$private_key"
         chmod 644 "$public_key"
         echo "  Cosign key pair generated"
@@ -94,17 +94,17 @@ sign_image() {
     fi
 
     if [ "$force" != "true" ]; then
-        if cosign verify --key "$public_key" "$image_ref" > /dev/null 2>&1; then
+        if cosign verify --key "$public_key" "$image_ref" >/dev/null 2>&1; then
             echo "  Already signed, skipping"
             return 0
         fi
     fi
 
-    if cosign sign --key "$private_key" "$image_ref" > /dev/null 2>&1; then
+    if cosign sign --key "$private_key" "$image_ref" >/dev/null 2>&1; then
         echo "  Signed: ${image_ref}"
         if [ "$version" != "latest" ] && [ "$tag" = "latest" ]; then
             local version_ref="${registry}/${image_name}:${version}"
-            cosign sign --key "$private_key" "$version_ref" > /dev/null 2>&1
+            cosign sign --key "$private_key" "$version_ref" >/dev/null 2>&1
         fi
         return 0
     else
@@ -133,11 +133,11 @@ verify_image() {
         return 1
     fi
 
-    if cosign verify --key "$public_key" "$image_ref" > /dev/null 2>&1; then
+    if cosign verify --key "$public_key" "$image_ref" >/dev/null 2>&1; then
         echo "  Verified: ${image_ref}"
         if [ "$version" != "latest" ] && [ "$tag" = "latest" ]; then
             local version_ref="${registry}/${image_name}:${version}"
-            cosign verify --key "$public_key" "$version_ref" > /dev/null 2>&1
+            cosign verify --key "$public_key" "$version_ref" >/dev/null 2>&1
         fi
         return 0
     else
@@ -160,18 +160,56 @@ main() {
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            --services) services_arg="$2"; shift 2 ;;
-            --registry) custom_registry="$2"; shift 2 ;;
-            --keys-dir) keys_dir="$2"; shift 2 ;;
-            --key-name) key_name="$2"; shift 2 ;;
-            --tag) custom_tag="$2"; shift 2 ;;
-            --force) force=true; shift ;;
-            --dry-run) dry_run=true; shift ;;
-            --generate-keys) generate_keys=true; shift ;;
-            --verify) verify_only=true; shift ;;
-            --help|-h) usage; exit 0 ;;
-            -*) echo "Unknown option: $1"; usage; exit 1 ;;
-            *) echo "Unexpected argument: $1"; usage; exit 1 ;;
+        --services)
+            services_arg="$2"
+            shift 2
+            ;;
+        --registry)
+            custom_registry="$2"
+            shift 2
+            ;;
+        --keys-dir)
+            keys_dir="$2"
+            shift 2
+            ;;
+        --key-name)
+            key_name="$2"
+            shift 2
+            ;;
+        --tag)
+            custom_tag="$2"
+            shift 2
+            ;;
+        --force)
+            force=true
+            shift
+            ;;
+        --dry-run)
+            dry_run=true
+            shift
+            ;;
+        --generate-keys)
+            generate_keys=true
+            shift
+            ;;
+        --verify)
+            verify_only=true
+            shift
+            ;;
+        --help | -h)
+            usage
+            exit 0
+            ;;
+        -*)
+            echo "Unknown option: $1"
+            usage
+            exit 1
+            ;;
+        *)
+            echo "Unexpected argument: $1"
+            usage
+            exit 1
+            ;;
         esac
     done
 
@@ -179,7 +217,7 @@ main() {
     mkdir -p "$LOG_DIR" "$keys_dir"
 
     # Check for cosign
-    if ! command -v cosign > /dev/null; then
+    if ! command -v cosign >/dev/null; then
         echo "Error: cosign is not installed"
         exit 1
     fi
@@ -203,7 +241,7 @@ main() {
     # Get services
     local services=()
     if [ -n "$services_arg" ]; then
-        IFS=',' read -ra services <<< "$services_arg"
+        IFS=',' read -ra services <<<"$services_arg"
     else
         local all_services=($(get_all_services | tr ',' '\n'))
         services=("${all_services[@]}")

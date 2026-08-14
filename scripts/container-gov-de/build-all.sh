@@ -67,41 +67,41 @@ build_service() {
     local output_dir="$2"
     local log_dir="$3"
     local dry_run="$4"
-    
+
     local log_file="$log_dir/${service}.log"
     local output_file="$output_dir/${service}.tar.gz"
-    
+
     mkdir -p "$output_dir" "$log_dir"
-    
+
     if [ "$dry_run" = "true" ]; then
         echo -e "${BLUE}[DRY RUN]${NC} Would build: ${CYAN}${service}${NC}"
         return 0
     fi
-    
+
     echo -e "${BLUE}Building:${NC} ${CYAN}${service}${NC}"
-    
+
     cd "$PROJECT_ROOT"
-    
+
     # Build the container
     if ! nix build -f "$TEMPLATE_FILE" --argstr service "$service" 2>&1 | tee "$log_file"; then
         echo -e "${RED}✗ Failed to build: ${service}${NC}"
         return 1
     fi
-    
+
     # Get the result path
     local result_path
     result_path=$(grep -oE '/nix/store/[a-z0-9]+-container-gov-de-[a-z0-9-]+' "$log_file" | head -1)
-    
+
     if [ -z "$result_path" ]; then
         echo -e "${RED}✗ Could not find result path for: ${service}${NC}"
         return 1
     fi
-    
+
     # Copy to output directory
     cp "$result_path" "$output_file"
-    
+
     echo -e "${GREEN}✓ Built:${NC} ${CYAN}${service}${NC} -> ${output_file}"
-    
+
     return 0
 }
 
@@ -109,12 +109,12 @@ build_service() {
 clean_build() {
     local output_dir="$1"
     local log_dir="$2"
-    
+
     echo -e "${YELLOW}Cleaning build directories...${NC}"
-    
+
     rm -rf "$output_dir" "$log_dir"
     mkdir -p "$output_dir" "$log_dir"
-    
+
     echo -e "${GREEN}✓ Cleaned:${NC} $output_dir and $log_dir"
 }
 
@@ -127,55 +127,55 @@ main() {
     local clean=false
     local custom_output_dir=""
     local custom_log_dir=""
-    
+
     # Parse arguments
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            --services)
-                services="$2"
-                shift 2
-                ;;
-            --parallel)
-                parallel="$2"
-                shift 2
-                ;;
-            --dry-run)
-                dry_run=true
-                shift
-                ;;
-            --output-dir)
-                custom_output_dir="$2"
-                shift 2
-                ;;
-            --log-dir)
-                custom_log_dir="$2"
-                shift 2
-                ;;
-            --skip-existing)
-                skip_existing=true
-                shift
-                ;;
-            --clean)
-                clean=true
-                shift
-                ;;
-            --help|-h)
-                usage
-                exit 0
-                ;;
-            -*)
-                echo -e "${RED}Unknown option: $1${NC}"
-                usage
-                exit 1
-                ;;
-            *)
-                echo -e "${RED}Unexpected argument: $1${NC}"
-                usage
-                exit 1
-                ;;
+        --services)
+            services="$2"
+            shift 2
+            ;;
+        --parallel)
+            parallel="$2"
+            shift 2
+            ;;
+        --dry-run)
+            dry_run=true
+            shift
+            ;;
+        --output-dir)
+            custom_output_dir="$2"
+            shift 2
+            ;;
+        --log-dir)
+            custom_log_dir="$2"
+            shift 2
+            ;;
+        --skip-existing)
+            skip_existing=true
+            shift
+            ;;
+        --clean)
+            clean=true
+            shift
+            ;;
+        --help | -h)
+            usage
+            exit 0
+            ;;
+        -*)
+            echo -e "${RED}Unknown option: $1${NC}"
+            usage
+            exit 1
+            ;;
+        *)
+            echo -e "${RED}Unexpected argument: $1${NC}"
+            usage
+            exit 1
+            ;;
         esac
     done
-    
+
     # Set directories
     if [ -n "$custom_output_dir" ]; then
         OUTPUT_DIR="$custom_output_dir"
@@ -183,35 +183,35 @@ main() {
     if [ -n "$custom_log_dir" ]; then
         LOG_DIR="$custom_log_dir"
     fi
-    
+
     # Absolute paths
     OUTPUT_DIR="$(cd "$PROJECT_ROOT" && realpath "$OUTPUT_DIR")"
     LOG_DIR="$(cd "$PROJECT_ROOT" && realpath "$LOG_DIR")"
-    
+
     cd "$PROJECT_ROOT"
-    
+
     # Check if we're in a Nix flake directory
     if [ ! -f "flake.nix" ]; then
         echo -e "${RED}Error: Not in a Nix flake directory${NC}"
         exit 1
     fi
-    
+
     # Clean if requested
     if [ "$clean" = "true" ]; then
         clean_build "$OUTPUT_DIR" "$LOG_DIR"
     fi
-    
+
     # Create directories
     mkdir -p "$OUTPUT_DIR" "$LOG_DIR"
-    
+
     # Get services to build
     if [ -z "$services" ]; then
         services=$(get_all_services)
     fi
-    
+
     # Convert comma-separated to array
-    IFS=',' read -ra service_array <<< "$services"
-    
+    IFS=',' read -ra service_array <<<"$services"
+
     echo -e "${BLUE}container.gov.de Compliant Image Builder${NC}"
     echo -e "=============================================="
     echo -e "${BLUE}Services to build:${NC} ${#service_array[@]}"
@@ -222,16 +222,16 @@ main() {
         echo -e "${YELLOW}Dry run mode - no actual builds will be performed${NC}"
     fi
     echo ""
-    
+
     # Build all services
     local success_count=0
     local failure_count=0
     local skip_count=0
-    
+
     if [ "$parallel" -gt 1 ] && [ "$parallel" -le ${#service_array[@]} ]; then
         # Parallel build using GNU parallel or xargs
-        if command -v parallel &> /dev/null; then
-            seq 0 $(( ${#service_array[@]} - 1 )) | parallel -j "$parallel" --will-cite --progress --eta --halt now,fail=1 'build_service "${service_array[{}]}" "$OUTPUT_DIR" "$LOG_DIR" "$dry_run"'
+        if command -v parallel &>/dev/null; then
+            seq 0 $((${#service_array[@]} - 1)) | parallel -j "$parallel" --will-cite --progress --eta --halt now,fail=1 'build_service "${service_array[{}]}" "$OUTPUT_DIR" "$LOG_DIR" "$dry_run"'
         else
             echo -e "${YELLOW}Warning: GNU parallel not found, falling back to sequential build${NC}"
             echo -e "${YELLOW}Install parallel with: nix-env -iA nixpkgs.parallel${NC}"
@@ -252,7 +252,7 @@ main() {
                 ((skip_count++))
                 continue
             fi
-            
+
             if build_service "$service" "$OUTPUT_DIR" "$LOG_DIR" "$dry_run"; then
                 ((success_count++))
             else
@@ -260,7 +260,7 @@ main() {
             fi
         done
     fi
-    
+
     echo ""
     echo -e "${BLUE}==============================================${NC}"
     echo -e "${BLUE}Build Summary${NC}"
@@ -271,22 +271,22 @@ main() {
         echo -e "${YELLOW}Skipped:     ${skip_count}${NC}"
     fi
     echo -e "${BLUE}Total:       $((success_count + failure_count + skip_count))${NC}"
-    
+
     if [ "$dry_run" = "true" ]; then
         echo -e "${YELLOW}Note: This was a dry run - no images were actually built${NC}"
     fi
-    
+
     if [ "$failure_count" -gt 0 ]; then
         echo -e ""
         echo -e "${RED}✗ Some services failed to build${NC}"
         echo -e "Check logs in:${NC} $LOG_DIR"
         exit 1
     fi
-    
+
     echo -e ""
     echo -e "${GREEN}✓ All services built successfully!${NC}"
     echo -e "Images are available in:${NC} $OUTPUT_DIR"
-    
+
     # Show next steps
     echo -e ""
     echo -e "${BLUE}Next steps:${NC}"

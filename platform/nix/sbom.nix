@@ -23,68 +23,115 @@ let
   ];
 
   # Generate SPDX 2.3 document
-  mkSPDX = { name, version, downloadLocation, licenseID
-    , copyrightText ? "NOASSERTION" }:
-    pkgs.writeText "${name}-spdx.json" (builtins.toJSON {
-      spdxVersion = "SPDX-2.3";
-      dataLicense = "CC0-1.0";
-      SPDXID = "SPDXRef-DOCUMENT";
-      name = name;
-      documentNamespace =
-        "https://opendesk.hrz.uni-marburg.de/spdx/${name}/${version}";
-      creationInfo = {
-        created = "2026-01-01T00:00:00Z";
-        creators = [ "Tool: opendesk-nix" "Organization: openDesk Edu" ];
-        licenseListVersion = "3.22";
-      };
-      documentDescribes = [ "SPDXRef-Package" ];
-      packages = [{
-        SPDXID = "SPDXRef-Package";
-        name = name;
-        versionInfo = version;
-        downloadLocation = downloadLocation;
-        filesAnalyzed = false;
-        licenseConcluded = licenseID;
-        licenseDeclared = licenseID;
-        copyrightText = copyrightText;
-      }];
-    });
+  mkSPDX =
+    {
+      name,
+      version,
+      downloadLocation,
+      licenseID,
+      copyrightText ? "NOASSERTION",
+    }:
+    pkgs.writeText "${name}-spdx.json" (
+      builtins.toJSON {
+        spdxVersion = "SPDX-2.3";
+        dataLicense = "CC0-1.0";
+        SPDXID = "SPDXRef-DOCUMENT";
+        inherit name;
+        documentNamespace = "https://opendesk.internal/spdx/${name}/${version}";
+        creationInfo = {
+          created = "2026-01-01T00:00:00Z";
+          creators = [
+            "Tool: opendesk-nix"
+            "Organization: openDesk Edu"
+          ];
+          licenseListVersion = "3.22";
+        };
+        documentDescribes = [ "SPDXRef-Package" ];
+        packages = [
+          {
+            SPDXID = "SPDXRef-Package";
+            inherit name;
+            versionInfo = version;
+            inherit downloadLocation;
+            filesAnalyzed = false;
+            licenseConcluded = licenseID;
+            licenseDeclared = licenseID;
+            inherit copyrightText;
+          }
+        ];
+      }
+    );
 
   # Generate CycloneDX 1.4 document
-  mkCycloneDX = { name, version, description ? "", purl ? null, licenseID }:
-    pkgs.writeText "${name}-cyclonedx.json" (builtins.toJSON {
-      bomFormat = "CycloneDX";
-      specVersion = "1.4";
-      version = 1;
-      metadata = {
-        timestamp = "2026-01-01T00:00:00Z";
-        tools = [{
-          vendor = "openDesk Edu";
-          name = "opendesk-nix";
-          version = "1.0";
-        }];
-      };
-      components = [{
-        type = "library";
-        name = name;
-        version = version;
-        description = description;
-        purl = purl;
-        licenses = [{ license = { id = licenseID; }; }];
-      }];
-    });
+  mkCycloneDX =
+    {
+      name,
+      version,
+      description ? "",
+      purl ? null,
+      licenseID,
+    }:
+    pkgs.writeText "${name}-cyclonedx.json" (
+      builtins.toJSON {
+        bomFormat = "CycloneDX";
+        specVersion = "1.4";
+        version = 1;
+        metadata = {
+          timestamp = "2026-01-01T00:00:00Z";
+          tools = [
+            {
+              vendor = "openDesk Edu";
+              name = "opendesk-nix";
+              version = "1.0";
+            }
+          ];
+        };
+        components = [
+          {
+            type = "library";
+            inherit name;
+            inherit version;
+            inherit description;
+            inherit purl;
+            licenses = [
+              {
+                license = {
+                  id = licenseID;
+                };
+              }
+            ];
+          }
+        ];
+      }
+    );
 
   # SBOM format types
-  sbomFormats = [ "spdx" "cyclonedx" "both" ];
+  sbomFormats = [
+    "spdx"
+    "cyclonedx"
+    "both"
+  ];
 
   # Scan a Nix package
-  scanNixPackage = { pkg, licenseID ? "NOASSERTION" }:
+  scanNixPackage =
+    {
+      pkg,
+      licenseID ? "NOASSERTION",
+    }:
     let
       name = pkg.pname or "unknown";
       version = pkg.version or "latest";
       downloadLocation = pkg.meta.homepage or "NOASSERTION";
-    in {
-      spdx = mkSPDX { inherit name version downloadLocation licenseID; };
+    in
+    {
+      spdx = mkSPDX {
+        inherit
+          name
+          version
+          downloadLocation
+          licenseID
+          ;
+      };
       cyclonedx = mkCycloneDX {
         inherit name version;
         description = pkg.meta.description or "";
@@ -94,15 +141,30 @@ let
     };
 
   # Generate SBOM for all packages
-  scanAllPackages = { pkgsToScan, licenseMap ? { } }:
-    map (pkg:
-      let licenseID = licenseMap.${pkg.pname} or "NOASSERTION";
-      in scanNixPackage {
-        pkg = pkg;
-        licenseID = licenseID;
-      }) pkgsToScan;
+  scanAllPackages =
+    {
+      pkgsToScan,
+      licenseMap ? { },
+    }:
+    map (
+      pkg:
+      let
+        licenseID = licenseMap.${pkg.pname} or "NOASSERTION";
+      in
+      scanNixPackage {
+        inherit pkg;
+        inherit licenseID;
+      }
+    ) pkgsToScan;
 
-in {
-  inherit spdxLicenses mkSPDX mkCycloneDX sbomFormats scanNixPackage
-    scanAllPackages;
+in
+{
+  inherit
+    spdxLicenses
+    mkSPDX
+    mkCycloneDX
+    sbomFormats
+    scanNixPackage
+    scanAllPackages
+    ;
 }

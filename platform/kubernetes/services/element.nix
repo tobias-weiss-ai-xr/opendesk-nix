@@ -4,7 +4,11 @@
 # Element Web — Matrix web client
 # Image: docker.io/vectorim/element-web:latest
 
-{ lib, env ? import ../environments/scs/default.nix { inherit lib; }, ... }:
+{
+  lib,
+  env ? import ../environments/scs/default.nix { inherit lib; },
+  ...
+}:
 
 let
   name = "element";
@@ -34,8 +38,12 @@ let
     runAsUser = 1000;
     runAsGroup = 1000;
     readOnlyRootFilesystem = false;
-    capabilities = { drop = [ "ALL" ]; };
-    seccompProfile = { type = "RuntimeDefault"; };
+    capabilities = {
+      drop = [ "ALL" ];
+    };
+    seccompProfile = {
+      type = "RuntimeDefault";
+    };
   };
 
   podSecurityContext = {
@@ -82,55 +90,73 @@ let
     }
   '';
 
-in [
+in
+[
   (lib.deployment {
-    inherit name image tag port resources labels;
-    securityContext = securityContext;
-    podSecurityContext = podSecurityContext;
+    inherit
+      name
+      image
+      tag
+      port
+      resources
+      labels
+      ;
+    inherit securityContext;
+    inherit podSecurityContext;
     liveness = livenessProbe;
     readiness = readinessProbe;
-    namespace = env.namespace;
+    inherit (env) namespace;
     replicas = env.replicas.default;
 
-    volumeMounts = [{
-      name = "config";
-      mountPath = "/app/config.json";
-      subPath = "config.json";
-      readOnly = true;
-    }];
+    volumeMounts = [
+      {
+        name = "config";
+        mountPath = "/app/config.json";
+        subPath = "config.json";
+        readOnly = true;
+      }
+    ];
 
-    volumes = [{
-      name = "config";
-      configMap = {
-        name = "${name}-config";
-        items = [{
-          key = "config.json";
-          path = "config.json";
-        }];
-      };
-    }];
+    volumes = [
+      {
+        name = "config";
+        configMap = {
+          name = "${name}-config";
+          items = [
+            {
+              key = "config.json";
+              path = "config.json";
+            }
+          ];
+        };
+      }
+    ];
 
-    annotations = { "checksum/config" = "element-config-v1"; };
+    annotations = {
+      "checksum/config" = "element-config-v1";
+    };
   })
 
   (lib.service {
     inherit name port labels;
-    namespace = env.namespace;
+    inherit (env) namespace;
   })
 
   (lib.ingressWithCert {
     inherit name;
     host = env.hosts.element;
-    port = port;
-    className = env.ingress.className;
+    inherit port;
+    inherit (env.ingress) className;
     tlsSecretName = env.tls.secretName;
-    namespace = env.namespace;
+    inherit (env) namespace;
   })
 
   (lib.configMap {
     name = "${name}-config";
-    namespace = env.namespace;
-    labels = labels;
-    data = { "config.json" = elementConfig; };
+    inherit (env) namespace;
+    inherit labels;
+    data = {
+      "config.json" = elementConfig;
+    };
   })
 ]

@@ -1,19 +1,23 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
 
-# 
+#
 # code-server NixOS Container Image
 # Version: latest
 # OpenSpec: FR-BUILD-001 through FR-BUILD-007
-# 
+#
 
-{ pkgs ? import <nixpkgs> { system = "x86_64-linux"; }
-, docks ? import ../../../../../opendesk-nix/lib/docks.nix { inherit pkgs; }
-, ... }:
+{
+  pkgs ? import <nixpkgs> { system = "x86_64-linux"; },
+  docks ? import ../../../../../opendesk-nix/lib/docks.nix { inherit pkgs; },
+  ...
+}:
 
-let lib = pkgs.lib;
+let
+  inherit (pkgs) lib;
 
-in docks.mkImage {
+in
+docks.mkImage {
   name = "code-server-opendesk";
   tag = "latest-nixos";
 
@@ -22,7 +26,9 @@ in docks.mkImage {
 
   # Container configuration
   containerConfig = {
-    ExposedPorts = { "8080/tcp" = { }; };
+    ExposedPorts = {
+      "8080/tcp" = { };
+    };
 
     Volumes = {
       "/var/lib/code-server" = { };
@@ -38,7 +44,10 @@ in docks.mkImage {
     ];
 
     HealthCheck = {
-      Test = [ "CMD-SHELL" "exit 0" ];
+      Test = [
+        "CMD-SHELL"
+        "exit 0"
+      ];
       Interval = 30000000000; # 30s
       Timeout = 10000000000; # 10s
       Retries = 3;
@@ -48,27 +57,35 @@ in docks.mkImage {
     User = "code-server";
     WorkingDir = "/var/lib/code-server";
 
-    Cmd = [ "/usr/bin/env" "bash" "-c" "echo Service code-server ready" ];
+    Cmd = [
+      "/usr/bin/env"
+      "bash"
+      "-c"
+      "echo Service code-server ready"
+    ];
 
     StopSignal = "SIGTERM";
     StopTimeout = 30;
   };
 
   # Additional packages for runtime
-  extraPackages = p: with p; [ openssl curl procps coreutils ];
+  extraPackages =
+    p: with p; [
+      openssl
+      curl
+      procps
+      coreutils
+    ];
 
   # OCI Labels for OpenSpec compliance
   ociLabels = {
     "org.opencontainers.image.title" = "code-server-opendesk";
-    "org.opencontainers.image.description" =
-      "code-server latest for openDesk Edu with NixOS";
+    "org.opencontainers.image.description" = "code-server latest for openDesk Edu with NixOS";
     "org.opencontainers.image.version" = "latest-nixos";
     "org.opencontainers.image.authors" = "openDesk Edu Team";
-    "org.opencontainers.image.url" = "https://opendesk.hrz.uni-marburg.de";
-    "org.opencontainers.image.documentation" =
-      "https://github.com/opendesk-edu/opendesk-nix";
-    "org.opencontainers.image.source" =
-      "https://github.com/opendesk-edu/opendesk-nix";
+    "org.opencontainers.image.url" = "https://opendesk.internal";
+    "org.opencontainers.image.documentation" = "https://github.com/opendesk-edu/opendesk-nix";
+    "org.opencontainers.image.source" = "https://github.com/opendesk-edu/opendesk-nix";
     "org.opencontainers.image.licenses" = "Apache-2.0";
     "com.opendesk.service" = "code-server";
     "com.opendesk.environment" = "production";

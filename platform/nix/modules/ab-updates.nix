@@ -9,10 +9,17 @@
 # - Automatic rollback on boot failure
 # - Secure boot integration support
 
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
-let cfg = config.services.abUpdates;
-in {
+let
+  cfg = config.services.abUpdates;
+in
+{
   meta.maintainers = [ "opendesk-edu" ];
 
   ###### interface
@@ -22,7 +29,10 @@ in {
       enable = lib.mkEnableOption "A/B OTA updates with systemd-sysupdate";
 
       slots = lib.mkOption {
-        type = lib.types.enum [ "a" "b" ];
+        type = lib.types.enum [
+          "a"
+          "b"
+        ];
         default = "a";
         description = "Current active slot";
       };

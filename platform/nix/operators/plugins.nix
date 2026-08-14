@@ -1,4 +1,4 @@
-{ lib, ... }:
+_:
 
 # =============================================================================
 # OPERATORS PLUGIN LIBRARY
@@ -18,8 +18,16 @@
       "attestation"
       "policy"
     ];
-    action =
-      [ "create" "update" "delete" "validate" "scan" "sign" "attest" "block" ];
+    action = [
+      "create"
+      "update"
+      "delete"
+      "validate"
+      "scan"
+      "sign"
+      "attest"
+      "block"
+    ];
     resource = [
       "Pod"
       "Deployment"
@@ -29,7 +37,14 @@
       "CronJob"
       "Namespace"
     ];
-    phase = [ "Pending" "Running" "Succeeded" "Failed" "Unknown" "Completed" ];
+    phase = [
+      "Pending"
+      "Running"
+      "Succeeded"
+      "Failed"
+      "Unknown"
+      "Completed"
+    ];
   };
 
   # default namespace for operators

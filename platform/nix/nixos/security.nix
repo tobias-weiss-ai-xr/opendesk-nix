@@ -42,7 +42,9 @@ let
       kill = true;
     };
 
-    database = default // { chown = true; };
+    database = default // {
+      chown = true;
+    };
 
     web = {
       net_bind_service = true;
@@ -52,7 +54,9 @@ let
 
     cache = default;
 
-    minimal = { net_bind_service = true; };
+    minimal = {
+      net_bind_service = true;
+    };
   };
 
   # Seccomp profiles
@@ -150,7 +154,10 @@ let
       capabilities = capabilities.database;
       readOnlyRootFilesystem = false; # Databases need to write data
       seccomp = seccompProfiles.database;
-      tmpfs = [ "/tmp" "/var/run/mysqld" ];
+      tmpfs = [
+        "/tmp"
+        "/var/run/mysqld"
+      ];
 
       # Database-specific limits
       limits = securityProfiles.default.limits // {
@@ -165,7 +172,10 @@ let
       capabilities = capabilities.web;
       readOnlyRootFilesystem = true; # Web apps should be read-only
       seccomp = seccompProfiles.web;
-      tmpfs = [ "/tmp" "/var/lib/nginx/tmp" ];
+      tmpfs = [
+        "/tmp"
+        "/var/lib/nginx/tmp"
+      ];
     };
 
     cache = securityProfiles.default // {
@@ -184,31 +194,39 @@ let
   };
 
   # Function to apply security profile to a configuration
-  applySecurityProfile = profile: config:
-    let secProfile = builtins.getAttr profile securityProfiles;
-    in config // rec {
+  applySecurityProfile =
+    profile: config:
+    let
+      secProfile = builtins.getAttr profile securityProfiles;
+    in
+    config
+    // rec {
       # Apply capabilities
       security.containerFeatures = secProfile.capabilities;
 
       # Apply read-only filesystem
-      boot.kernelPackages = if secProfile.readOnlyRootFilesystem then
-        pkgs.linuxPackages_hardened
-      else
-        pkgs.linuxPackages;
+      boot.kernelPackages =
+        if secProfile.readOnlyRootFilesystem then pkgs.linuxPackages_hardened else pkgs.linuxPackages;
 
       # Apply seccomp
       security.seccomp = secProfile.seccomp;
 
       # Apply tmpfs
-      fileSystems = (config.fileSystems or { }) // builtins.listToAttrs (map
-        (path: {
-          name = path;
-          value = {
-            device = "tmpfs";
-            fsType = "tmpfs";
-            options = [ "size=100M" "mode=1777" ];
-          };
-        }) secProfile.tmpfs);
+      fileSystems =
+        (config.fileSystems or { })
+        // builtins.listToAttrs (
+          map (path: {
+            name = path;
+            value = {
+              device = "tmpfs";
+              fsType = "tmpfs";
+              options = [
+                "size=100M"
+                "mode=1777"
+              ];
+            };
+          }) secProfile.tmpfs
+        );
 
       # Apply limits
       security.limits = secProfile.limits;
@@ -243,47 +261,79 @@ let
   # Cache server security
   cacheSecurity = applySecurityProfile "cache";
 
-in rec {
+in
+rec {
   inherit capabilities seccompProfiles securityProfiles;
   inherit applySecurityProfile;
-  inherit standardSecurity databaseSecurity webSecurity cacheSecurity;
+  inherit
+    standardSecurity
+    databaseSecurity
+    webSecurity
+    cacheSecurity
+    ;
 
   # Function to create a secure container configuration
-  mkSecureContainer = { config, profile ? "default", ... }:
+  mkSecureContainer =
+    {
+      config,
+      profile ? "default",
+      ...
+    }:
     applySecurityProfile profile config;
 
   # Function to add security to existing services
-  withSecurity = { name, serviceConfig }:
-    serviceConfig // rec {
+  withSecurity =
+    { name, serviceConfig }:
+    serviceConfig
+    // rec {
       imports = (serviceConfig.imports or [ ]) ++ [ ./security.nix ];
       services.${name}.openFirewall = false;
     };
 
   # Function to create a security-hardened user
-  mkSecureUser = { name, uid ? 1000, gid ? 1000, home ? "/home/${name}"
-    , shell ? pkgs.bash, systemUser ? true, ... }: {
+  mkSecureUser =
+    {
+      name,
+      uid ? 1000,
+      gid ? 1000,
+      home ? "/home/${name}",
+      shell ? pkgs.bash,
+      systemUser ? true,
+      ...
+    }:
+    {
       users.users.${name} = {
         isSystemUser = systemUser;
-        uid = uid;
-        gid = gid;
+        inherit uid;
+        inherit gid;
         group = name;
-        home = home;
-        shell = shell;
+        inherit home;
+        inherit shell;
         description = "${name} service user";
         passwords = [ "!" ]; # Disable password login
         lockPasswd = true;
         openssh.authorizedKeys.keys = [ ]; # No SSH keys by default
       };
 
-      users.groups.${name} = { gid = gid; };
+      users.groups.${name} = {
+        inherit gid;
+      };
     };
 
   # Function to create secure directories
   mkSecureDirs =
-    { paths ? [ ], owner ? "nobody", group ? "nogroup", mode ? "750", ... }:
-    lib.mkAfter (builtins.concatMap (path: ''
-      mkdir -p ${path}
-      chown -R ${owner}:${group} ${path}
-      chmod -R ${mode} ${path}
-    '') paths);
+    {
+      paths ? [ ],
+      owner ? "nobody",
+      group ? "nogroup",
+      mode ? "750",
+      ...
+    }:
+    lib.mkAfter (
+      builtins.concatMap (path: ''
+        mkdir -p ${path}
+        chown -R ${owner}:${group} ${path}
+        chmod -R ${mode} ${path}
+      '') paths
+    );
 }
