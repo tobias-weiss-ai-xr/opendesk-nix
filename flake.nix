@@ -376,6 +376,8 @@
                 trivy
                 grype
                 syft
+                # Nix-native SBOM generation (CycloneDX/SPDX from derivations)
+                sbomnix
                 # Image signing
                 cosign
                 # Kubernetes secrets
@@ -538,6 +540,14 @@
             inherit (security-scanning.policies) development;
             inherit (security-scanning.policies) staging;
           };
+
+          # Nix-native SBOM generation via sbomnix (CycloneDX + SPDX)
+          generate-sbom-nix =
+            target:
+            pkgs.runCommand "sbom-${builtins.baseNameOf target}" { } ''
+              mkdir -p $out
+              ${pkgs.sbomnix}/bin/sbomnix --cdx $out/bom.cdx.json --spdx $out/bom.spdx.json ${target}
+            '';
         };
 
         # NOTE: formats section removed - use packages.* for individual images
