@@ -691,5 +691,32 @@
       overlays = {
         opendesk = import ./overlays/opendesk.nix;
       };
+
+      # NixOS system configurations
+      nixosConfigurations.k3s-node = nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        modules = [
+          ./configurations/k3s-node.nix
+          {
+            opendesk.k3s-node.enable = true;
+            opendesk.k3s-node.role = "server";
+            # clusterTokenFile = /run/secrets/k3s-token;
+
+            # Minimal boot config so the system evaluates as bootable
+            # (adjust to match disko layout for real deployments)
+            boot.loader.grub.enable = true;
+            boot.loader.grub.devices = [ "/dev/sda" ];
+            fileSystems."/" = {
+              device = "/dev/sda1";
+              fsType = "ext4";
+            };
+            fileSystems."/boot" = {
+              device = "/dev/sda2";
+              fsType = "vfat";
+            };
+            system.stateVersion = "24.11";
+          }
+        ];
+      };
     };
 }
