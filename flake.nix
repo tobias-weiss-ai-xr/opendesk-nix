@@ -434,14 +434,15 @@
         # ======================================================================
 
         cicd-tools = {
-          inherit (cicd) github-actions gitlab-ci concourse;
+          github-actions = cicd.buildWorkflow;
+          gitlab-ci = cicd.gitlabBuild;
+          deploy = cicd.deployWorkflow;
 
           # Combined CI configuration
           all-cicd = pkgs.writeText "all-cicd-config.json" (
             builtins.toJSON {
-              github = cicd.github-actions.defaultConfig;
-              gitlab = cicd.gitlab-ci.defaultConfig;
-              concourse = cicd.concourse.defaultConfig;
+              availableBuilders = builtins.attrNames cicd;
+              description = "CI/CD workflow builders from platform/nix/cicd.nix";
             }
           );
         };
@@ -491,33 +492,18 @@
         # ======================================================================
 
         security-scanning-pkgs = {
-          inherit (security-scanning)
-            grype-pkg
-            trivy-pkg
-            syft-pkg
-            semgrep-pkg
-            gosec-pkg
-            ;
+          # Scanner packages (from the scanners config)
+          grype = security-scanning.scanners.grype.package;
+          trivy = security-scanning.scanners.trivy.package;
+          semgrep = security-scanning.scanners.semgrep.package;
+          syft = pkgs.syft;
+          gosec = pkgs.gosec;
 
           # Scan utilities
-          scan-all =
-            pkgs.callPackage
-              (import ./platform/nix/security-scanning.nix {
-                inherit pkgs lib;
-              }).scanAll
-              { };
-          scan-container =
-            pkgs.callPackage
-              (import ./platform/nix/security-scanning.nix {
-                inherit pkgs lib;
-              }).scanContainer
-              { };
-          generate-sbom =
-            pkgs.callPackage
-              (import ./platform/nix/security-scanning.nix {
-                inherit pkgs lib;
-              }).generateSBOM
-              { };
+          scan-all = security-scanning.scanAllImages;
+          scan-container = security-scanning.scanImage;
+          generate-sbom = security-scanning.generateImageSbom;
+          scan-directory = security-scanning.scanDirectory;
 
           # Policy definitions
           policies = {
