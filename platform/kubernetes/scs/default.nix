@@ -64,6 +64,31 @@ let
     };
   };
 
+  # Security operators (SCS K3s cluster hardening)
+  trivyOperator = import ./trivy-operator.nix {
+    lib = k8sLib;
+    inherit env;
+  };
+  kyverno = import ./kyverno.nix {
+    lib = k8sLib;
+    inherit env;
+  };
+  kyvernoPolicies = import ./kyverno-policies.nix {
+    lib = k8sLib;
+  };
+  sealedSecrets = import ./sealed-secrets.nix {
+    lib = k8sLib;
+    inherit env;
+  };
+  falco = import ./falco.nix {
+    lib = k8sLib;
+    inherit env;
+  };
+  cosignPolicies = import ./cosign-policies.nix {
+    lib = k8sLib;
+    inherit env;
+  };
+
   # Nix builder (builds Nix container images inside the cluster)
   nixBuilder = import ../services/nix-builder.nix {
     lib = k8sLib;
@@ -83,7 +108,14 @@ let
     # Edu services (opendesk-edu namespace)
     ++ sogo ++ stalwart ++ opencloud
     # Nix builder (nix-builder namespace)
-    ++ nixBuilder;
+    ++ nixBuilder
+    # Security operators (separate namespaces)
+    ++ trivyOperator
+    ++ kyverno
+    ++ kyvernoPolicies
+    ++ sealedSecrets
+    ++ falco
+    ++ cosignPolicies;
 
   # Convert manifests to YAML
 
@@ -164,6 +196,49 @@ let
 
     # Also write a combined file
     cp ${allYaml} $out/all-manifests.yaml
+
+    # Security operators
+    ${builtins.concatStringsSep "\n" (map (m: ''
+      cat >> $out/50-trivy-operator.yaml << 'YAMLEOF'
+      ---
+      ${builtins.toJSON m}
+      YAMLEOF
+    '') trivyOperator)}
+
+    ${builtins.concatStringsSep "\n" (map (m: ''
+      cat >> $out/51-kyverno.yaml << 'YAMLEOF'
+      ---
+      ${builtins.toJSON m}
+      YAMLEOF
+    '') kyverno)}
+
+    ${builtins.concatStringsSep "\n" (map (m: ''
+      cat >> $out/52-kyverno-policies.yaml << 'YAMLEOF'
+      ---
+      ${builtins.toJSON m}
+      YAMLEOF
+    '') kyvernoPolicies)}
+
+    ${builtins.concatStringsSep "\n" (map (m: ''
+      cat >> $out/53-sealed-secrets.yaml << 'YAMLEOF'
+      ---
+      ${builtins.toJSON m}
+      YAMLEOF
+    '') sealedSecrets)}
+
+    ${builtins.concatStringsSep "\n" (map (m: ''
+      cat >> $out/54-falco.yaml << 'YAMLEOF'
+      ---
+      ${builtins.toJSON m}
+      YAMLEOF
+    '') falco)}
+
+    ${builtins.concatStringsSep "\n" (map (m: ''
+      cat >> $out/55-cosign-policies.yaml << 'YAMLEOF'
+      ---
+      ${builtins.toJSON m}
+      YAMLEOF
+    '') cosignPolicies)}
   '';
 
 in {
@@ -174,4 +249,7 @@ in {
 
   # Namespaces
   inherit opendeskNamespace opendeskEduNamespace;
+
+  # Security operators
+  inherit trivyOperator kyverno kyvernoPolicies sealedSecrets falco cosignPolicies;
 }

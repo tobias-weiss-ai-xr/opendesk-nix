@@ -225,6 +225,38 @@
 
             # Combined manifest for all SCS services
             scs-all = pkgs.writeText "scs-all.yaml" scsDeploy.allYaml;
+
+            # SCS Security operator manifests (individual for selective deploy)
+            scs-trivy-operator = pkgs.writeText "trivy-operator.yaml"
+              (builtins.concatStringsSep ''
+
+                ---
+              '' (map (m: builtins.toJSON m) scsDeploy.trivyOperator));
+            scs-kyverno = pkgs.writeText "kyverno.yaml"
+              (builtins.concatStringsSep ''
+
+                ---
+              '' (map (m: builtins.toJSON m) scsDeploy.kyverno));
+            scs-kyverno-policies = pkgs.writeText "kyverno-policies.yaml"
+              (builtins.concatStringsSep ''
+
+                ---
+              '' (map (m: builtins.toJSON m) scsDeploy.kyvernoPolicies));
+            scs-sealed-secrets = pkgs.writeText "sealed-secrets.yaml"
+              (builtins.concatStringsSep ''
+
+                ---
+              '' (map (m: builtins.toJSON m) scsDeploy.sealedSecrets));
+            scs-falco = pkgs.writeText "falco.yaml"
+              (builtins.concatStringsSep ''
+
+                ---
+              '' (map (m: builtins.toJSON m) scsDeploy.falco));
+            scs-cosign-policies = pkgs.writeText "cosign-policies.yaml"
+              (builtins.concatStringsSep ''
+
+                ---
+              '' (map (m: builtins.toJSON m) scsDeploy.cosignPolicies));
           };
 
         # Overlays (commented out temporarily - needs proper overlay syntax)
@@ -233,12 +265,96 @@
         # };
 
         # ======================================================================
-        # DEV SHELLS - Disable for now due to bugs in 94756333
+        # DEV SHELLS - SCS Security + Default
         # ======================================================================
-        # devShells = {
-        #   ...
-        # };
-        devShells = {};
+        devShells = {
+          default = pkgs.mkShell {
+            name = "opendesk-nix";
+            buildInputs = with pkgs; [
+              git
+              kubectl
+              kustomize
+              helm
+              yq
+              jq
+              openssl
+              gnupg
+              curl
+              wget
+            ];
+            shellHook = ''
+              echo "🧩 openDesk-Nix Default Shell"
+              echo "================================"
+              echo ""
+              echo "Tools: kubectl, kustomize, helm, yq, jq"
+              echo ""
+              alias k=kubectl
+              alias kg='kubectl get'
+              alias kgp='kubectl get pods -A'
+              alias kl='kubectl logs -f --tail=50'
+              alias kad='kubectl apply -f'
+            '';
+          };
+
+          scs-security = pkgs.mkShell {
+            name = "scs-security";
+            buildInputs = with pkgs; [
+              # Security scanning (from security-scanning.nix)
+              security-scanning.trivy-pkg
+              security-scanning.grype-pkg
+              security-scanning.syft-pkg
+              # Image signing
+              cosign
+              # Kubernetes secrets
+              kubeseal
+              # K8s CLI tools
+              kubectl
+              kustomize
+              helm
+              yq
+              jq
+              # Container tools
+              skopeo
+              crane
+              # General
+              git
+              openssl
+              gnupg
+              curl
+              wget
+            ];
+            shellHook = ''
+              echo "🔒 SCS K3s Security Shell"
+              echo "============================"
+              echo ""
+              echo "Security tools:"
+              echo "  🔍 Scanning: trivy, grype, syft"
+              echo "  ✍️  Signing: cosign"
+              echo "  🔐 Secrets: kubeseal"
+              echo "  🐳 Images: skopeo, crane"
+              echo "  ☸️  K8s: kubectl, kustomize, helm"
+              echo ""
+              echo "Workflows:"
+              echo "  Scan image: trivy image <image>"
+              echo "  Sign image: cosign sign --key cosign.key <image>"
+              echo "  Verify: cosign verify --key cosign.pub <image>"
+              echo "  Seal secret: kubeseal -f secret.yaml -w sealed.yaml"
+              echo ""
+              export TRIVY_DB_AUTO_UPDATE=true
+              export COSIGN_EXPERIMENTAL=1
+
+              alias k=kubectl
+              alias kg='kubectl get'
+              alias kgp='kubectl get pods -A'
+              alias kl='kubectl logs -f --tail=50'
+              alias kad='kubectl apply -f'
+              alias scan='trivy image'
+              alias sign='cosign sign --key cosign.key'
+              alias verify='cosign verify --key cosign.pub'
+              alias seal='kubeseal -f'
+            '';
+          };
+        };
 
         # ======================================================================
         # DEVGUARD PATTERN: Compliance Gates as Packages
