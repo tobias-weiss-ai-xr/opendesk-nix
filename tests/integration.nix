@@ -19,6 +19,12 @@
         enable = true;
         package = pkgs.mariadb;
         initialDatabases = [ { name = "opendesk"; } ];
+        initialScript = pkgs.writeText "mariadb-init.sql" ''
+          CREATE USER IF NOT EXISTS 'opendesk'@'%' IDENTIFIED BY 'opendesk';
+          GRANT ALL PRIVILEGES ON opendesk.* TO 'opendesk'@'%';
+          FLUSH PRIVILEGES;
+        '';
+        settings.mysqld."bind-address" = "0.0.0.0";
       };
       networking.firewall.allowedTCPPorts = [ 3306 ];
     };
@@ -35,24 +41,20 @@
     server.wait_for_unit("mysql.service")
     server.wait_for_open_port(3306)
 
-    # Client must be able to connect
-    client.systemctl("start network-online.target")
-    client.wait_for_unit("network-online.target")
-
-    # Test database connectivity
+    # Test database connectivity with the opendesk user
     client.succeed(
-      "mysql -h server -P 3306 -u root -e 'SHOW DATABASES;' | grep opendesk"
+      "mysql -h server -P 3306 -u opendesk -popendesk -e 'SHOW DATABASES;' | grep opendesk"
     )
 
     # Test creating a table
     client.succeed(
-      "mysql -h server -P 3306 -u root opendesk -e 'CREATE TABLE test (id INT);'"
+      "mysql -h server -P 3306 -u opendesk -popendesk opendesk -e 'CREATE TABLE test (id INT);'"
     )
     client.succeed(
-      "mysql -h server -P 3306 -u root opendesk -e 'INSERT INTO test VALUES (1);'"
+      "mysql -h server -P 3306 -u opendesk -popendesk opendesk -e 'INSERT INTO test VALUES (1);'"
     )
     result = client.succeed(
-      "mysql -h server -P 3306 -u root opendesk -e 'SELECT * FROM test;'"
+      "mysql -h server -P 3306 -u opendesk -popendesk opendesk -e 'SELECT * FROM test;'"
     )
     assert "1" in result, "Database write/read failed"
   '';

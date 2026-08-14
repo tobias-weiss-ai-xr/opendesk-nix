@@ -193,14 +193,6 @@ in
     # Open firewall if requested
     networking.firewall = lib.mkIf cfg.openFirewall { allowedTCPPorts = [ cfg.firewallPort ]; };
 
-    # Prometheus metrics endpoint
-    services.prometheus.exporters.custom = lib.mkIf cfg.enableMetrics {
-      enable = true;
-      name = "attic-metrics";
-      port = cfg.metricsPort;
-      script = "${cfg.package}/bin/attic metrics";
-    };
-
     # Nix configuration for server
     nix.settings = {
       trusted-users = [

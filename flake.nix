@@ -36,6 +36,12 @@
             allowUnfree = true;
             permittedInsecurePackages = [ "keycloak-23.0.6" ];
           };
+          # Provide the attic package from the flake input (not in nixpkgs 24.11)
+          overlays = [
+            (final: _prev: {
+              attic = inputs.attic.packages.${final.system}.attic;
+            })
+          ];
         };
         inherit (pkgs) lib;
         docks = import ./platform/nix/docks.nix { inherit pkgs; };
@@ -131,9 +137,12 @@
           };
 
           # Integration tests (slower - validate service behavior)
-          # integration = pkgs.testers.runNixOSTest ./tests/integration.nix;
+          integration = pkgs.testers.runNixOSTest ./tests/integration.nix;
 
-          # Phase 2: Binary cache tests (disabled until attic is fully ready)
+          # Binary cache test (attic server module)
+          # NOTE: attic builds from source via crane and needs crates.io network
+          # access, unavailable in this environment. Enable once attic is
+          # available prebuilt (e.g. via attic release binary or a local cache).
           # attic-server = pkgs.testers.runNixOSTest ./tests/attic-server.nix;
         } // (builtins.mapAttrs (_name: test: test) tests);
 
