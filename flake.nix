@@ -151,6 +151,11 @@
           # Compliance report generation (DevGuard CI gate)
           compliance-report = pkgs.callPackage ./tests/compliance-report.nix { };
 
+          # Keycloak declarative-runtime (OpenTofu reconciliation)
+          keycloak-runtime = pkgs.callPackage ./tests/keycloak-runtime.nix {
+            inherit nixpkgs;
+          };
+
           # Integration tests (slower - validate service behavior)
           integration = pkgs.testers.runNixOSTest ./tests/integration.nix;
 
@@ -741,6 +746,7 @@
         binary-cache-client = import ./modules/binary-cache-client.nix;
         post-build-hook = import ./modules/post-build-hook.nix;
         remote-builders = import ./modules/remote-builders.nix;
+        keycloak-runtime = import ./modules/keycloak-runtime.nix;
       };
 
       # NixOS system configurations
