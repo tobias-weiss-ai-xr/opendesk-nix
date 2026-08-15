@@ -280,6 +280,7 @@ _:
   # Service hosts
   hosts = {
     keycloak = "id.home.opendesk-edu.org";
+    intercom = "intercom.home.opendesk-edu.org";
     matrix = "matrix.home.opendesk-edu.org";
     element = "chat.home.opendesk-edu.org";
     sogo = "mail.home.opendesk-edu.org";

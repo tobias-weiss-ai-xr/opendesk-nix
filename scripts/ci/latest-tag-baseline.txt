@@ -11,8 +11,6 @@ excalidraw.nix
 f13.nix
 grommunio.nix
 ilias.nix
-intercom.nix
-intercom-service.nix
 jitsi.nix
 jupyterhub.nix
 kasmvnc.nix
@@ -27,7 +25,6 @@ overleaf.nix
 planka.nix
 portal-entries.nix
 postgresql.nix
-redis.nix
 rstudio.nix
 seaweedfs.nix
 self-service-password.nix

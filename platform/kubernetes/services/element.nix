@@ -79,6 +79,10 @@ let
           "server_name": "${env.hosts.matrix}"
         }
       },
+      "banner": {
+        "ics_navigation_json_url": "https://${env.hosts.intercom}/navigation.json",
+        "ics_silent_url": "https://${env.hosts.intercom}/silent"
+      },
       "brand": "openDesk Edu Chat",
       "disable_guests": false,
       "disable_3pid_login": false,

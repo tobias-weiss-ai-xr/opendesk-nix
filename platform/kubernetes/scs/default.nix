@@ -35,6 +35,14 @@ let
     lib = k8sLib;
     inherit env;
   };
+  redis = import ../services/redis.nix {
+    lib = k8sLib;
+    inherit env;
+  };
+  intercomService = import ../services/intercom-service.nix {
+    lib = k8sLib;
+    inherit env;
+  };
   synapse = import ../services/synapse.nix {
     lib = k8sLib;
     inherit env;
@@ -129,6 +137,8 @@ let
     ++ sogo
     ++ stalwart
     ++ opencloud
+    ++ redis
+    ++ intercomService
     # Nix builder (nix-builder namespace)
     ++ nixBuilder
     # Security operators (separate namespaces)
@@ -275,6 +285,26 @@ let
       '') opencloud
     )}
 
+    # Redis (ICS session store)
+    ${builtins.concatStringsSep "\n" (
+      map (m: ''
+        cat >> $out/43-redis.yaml << 'YAMLEOF'
+        ---
+        ${serialize m}
+        YAMLEOF
+      '') redis
+    )}
+
+    # Intercom-Service (OIDC broker)
+    ${builtins.concatStringsSep "\n" (
+      map (m: ''
+        cat >> $out/44-intercom-service.yaml << 'YAMLEOF'
+        ---
+        ${serialize m}
+        YAMLEOF
+      '') intercomService
+    )}
+
     # Also write a combined file
     cp ${allYaml} $out/all-manifests.yaml
 
@@ -354,6 +384,8 @@ in
     sogo
     stalwart
     opencloud
+    redis
+    intercomService
     nixBuilder
     ;
 

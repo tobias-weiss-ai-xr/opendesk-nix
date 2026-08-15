@@ -92,6 +92,20 @@ let
       args:
         database: /data/homeserver.db
     macaroon_secret_key: "__SYNAPSE_MACAROON_SECRET__"
+    # OIDC SSO via Keycloak realm `opendesk` (client opendesk-matrix, created
+    # by the keycloak-bootstrap Job). The client secret is rendered at startup
+    # by the init-config initContainer from the sealed synapse-oidc Secret.
+    oidc_config:
+      enable: true
+      discovery_method: "oidc"
+      issuer: "https://${env.hosts.keycloak}/realms/${env.keycloak.realm}"
+      client_id: "opendesk-matrix"
+      client_secret: "__SYNAPSE_OIDC_CLIENT_SECRET__"
+      scopes: ["openid", "profile", "email"]
+      user_mapping_provider:
+        config:
+          localpart_template: "{{ user.preferred_username }}"
+          display_name_template: "{{ user.preferred_username }}"
     log_config: "/data/log.config"
     media_store_path: "/data/media"
     uploads_path: "/data/uploads"
@@ -187,12 +201,17 @@ in
         command = [
           "/bin/sh"
           "-c"
-          ''sed "s|__SYNAPSE_MACAROON_SECRET__|$(cat /mnt/secrets/macaroon-secret-key)|g" /mnt/config/homeserver.yaml > /config/homeserver.yaml''
+          ''sed -e "s|__SYNAPSE_MACAROON_SECRET__|$(cat /mnt/secrets/macaroon-secret-key)|g" -e "s|__SYNAPSE_OIDC_CLIENT_SECRET__|$(cat /mnt/secrets-oidc/oidc-client-secret)|g" /mnt/config/homeserver.yaml > /config/homeserver.yaml''
         ];
         volumeMounts = [
           {
             name = "secrets";
             mountPath = "/mnt/secrets";
+            readOnly = true;
+          }
+          {
+            name = "secrets-oidc";
+            mountPath = "/mnt/secrets-oidc";
             readOnly = true;
           }
           {
@@ -232,6 +251,12 @@ in
         };
       }
       {
+        name = "secrets-oidc";
+        secret = {
+          secretName = "${name}-oidc";
+        };
+      }
+      {
         name = "log-config";
         configMap = {
           name = "${name}-config";
@@ -252,7 +277,7 @@ in
     ];
 
     annotations = {
-      "checksum/config" = "synapse-config-v2";
+      "checksum/config" = "synapse-config-v3";
     };
   })
 
@@ -310,6 +335,18 @@ in
     inherit labels;
     stringData = {
       "macaroon-secret-key" = "opendesk-synapse-macaroon-secret-change-me";
+    };
+  })
+
+  # OIDC client secret for the Keycloak `opendesk-matrix` client — sealed at
+  # build time. Rendered into homeserver.yaml oidc_config by the init-config
+  # initContainer (see plan/2026-08-15-intercom-oidc-plan.md §5).
+  (lib.secret {
+    name = "${name}-oidc";
+    inherit (env) namespace;
+    inherit labels;
+    stringData = {
+      "oidc-client-secret" = "synapse-oidc-client-secret-change-me";
     };
   })
 ]

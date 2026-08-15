@@ -277,7 +277,7 @@ in
       volumeClaims
       ;
     image = "nixos/nix";
-    tag = "latest";
+    tag = "2.35.2";
     port = null;
     probes = false;
     replicas = 1;
