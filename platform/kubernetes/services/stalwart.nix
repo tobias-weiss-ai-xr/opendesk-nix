@@ -13,7 +13,7 @@
 let
   name = "stalwart";
   image = "docker.io/stalwartlabs/stalwart";
-  tag = "latest";
+  tag = "v0.16.16";
   port = 8080;
 
   labels = lib.mkLabels { inherit name; } // {

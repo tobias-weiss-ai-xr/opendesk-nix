@@ -14,7 +14,7 @@
 let
   name = "synapse";
   image = "docker.io/matrixdotorg/synapse";
-  tag = "latest";
+  tag = "v1.158.0";
   port = 8008;
 
   labels = lib.mkLabels { inherit name; } // {
