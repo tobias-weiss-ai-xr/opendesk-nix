@@ -4,7 +4,7 @@
 # Nix Builder — Kubernetes StatefulSet for building Nix container images
 # inside the cluster using Ceph-backed PVCs.
 #
-# The nix-builder provides a persistent Nix environment (nixos/nix:latest)
+# The nix-builder provides a persistent Nix environment (nixos/nix:2.35.2)
 # with /nix on Ceph RBD and /workspace on CephFS. Build scripts are mounted
 # from a ConfigMap. Use `kubectl exec` to run builds.
 #
@@ -137,7 +137,7 @@ let
   # Main container
   nixContainer = {
     name = "nix";
-    image = "nixos/nix:latest";
+    image = "nixos/nix:2.35.2";
     imagePullPolicy = "IfNotPresent";
     command = [
       "sh"

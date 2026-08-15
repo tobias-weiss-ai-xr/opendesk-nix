@@ -20,7 +20,6 @@ limesurvey.nix
 memcached.nix
 moodle.nix
 nextcloud.nix
-nix-builder.nix
 notes.nix
 ollama.nix
 openproject.nix
