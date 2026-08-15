@@ -112,3 +112,35 @@ Applied in `hrz/kubernetes/scs.git` (`k8s/network-policies/`):
 Ingress to ICS (kube-system → :8080) is covered by the existing
 `allow-haproxy-ingress` policy in `opendesk-edu`; ICS → OpenCloud/Redis/SOGo
 (same namespace) is covered by `allow-same-namespace`.
+
+## 8. Live deployment notes & lessons learned (2026-08-15)
+
+Facts verified on the live cluster that are not obvious from the manifests:
+
+- **HAProxy serves its kube-system DEFAULT cert for every host**, not the
+  per-ingress `opendesk-certificates-tls` secret (verified: all three of
+  `id.`/`cloud.`/`matrix.` return the default-cert fingerprint). The default
+  cert is itself a self-signed wildcard `CN=home.opendesk-edu.org`, so
+  browsers work, but the ICS must trust **both** certs for OIDC
+  discovery/token exchange: the `cluster-ca` ConfigMap
+  (`platform/kubernetes/certs/cluster-ca-bundle.crt`, public data) + the
+  `NODE_EXTRA_CA_CERTS` env. Root cause of the fix in commit `f33e3dc`.
+- **Kubernetes pods cannot mount Secrets from another namespace.** The ICS
+  `CLIENT_SECRET` env (`valueFrom`) reads the `keycloak-clients` Secret in
+  `opendesk`; the `intercom` Secret in `opendesk-edu` carries the same
+  `intercom-client-secret` value. Keep the two in sync when rotating.
+- **keycloak:26.0 has no `curl`/`wget`.** The bootstrap Job's readiness loop
+  uses a bash `/dev/tcp` probe; the liveness probe uses `exec`.
+- **Element config changes need a rollout restart** — the deployment has no
+  config checksum annotation, so ConfigMap updates don't trigger a new pod.
+  Run `kubectl -n opendesk rollout restart deploy/element` after banner
+  changes.
+- **Live `/oc/` verification**: `GET /oc/` returns `302` to Keycloak
+  (`client_id=opendesk-intercom`, PKCE `code_challenge_method=S256`,
+  `redirect_uri=https://intercom.home.opendesk-edu.org/callback`) — the full
+  silent-login chain works. `GET /health` returns `{"status":"ok"}`.
+- **Known debt (pre-existing)**: the out-of-band `argocd` ingress references
+  `opendesk-certificates-tls` which does not exist in the `argocd` namespace;
+  HAProxy logs a warning and serves the default cert for
+  `argocd.opendesk.internal`. Fix: copy the wildcard secret into `argocd`
+  (out-of-band, not part of this repo) or drop the `tls` block.
