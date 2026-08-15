@@ -319,10 +319,11 @@ let
               inherit priorityClassName;
             });
         };
-        strategy = {
-          type = strategyType;
-          rollingUpdate = { inherit maxSurge maxUnavailable; };
-        };
+        strategy =
+          { type = strategyType; }
+          // lib.optionalAttrs (strategyType == "RollingUpdate") {
+            rollingUpdate = { inherit maxSurge maxUnavailable; };
+          };
       };
     };
 

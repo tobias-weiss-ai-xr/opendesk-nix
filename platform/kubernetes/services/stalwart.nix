@@ -162,6 +162,10 @@ in
     readiness = readinessProbe;
     namespace = env.namespaceEdu;
     replicas = env.replicas.default;
+    # RWO PVC (stalwart-data, ceph-rbd): RollingUpdate can Multi-Attach the volume
+    # across nodes during a rollout. Recreate terminates the old pod first so the
+    # new pod can exclusively own the ReadWriteOnce volume.
+    strategyType = "Recreate";
 
     ports = [
       {
