@@ -21,7 +21,7 @@ let
     serviceType = "web";
     component = "backend";
   };
- name = "minio"; image = "quay.io/minio/minio"; tag = "latest";
+ name = "minio"; image = "quay.io/minio/minio"; tag = "RELEASE.2025-09-07T16-13-09Z";
 
   # Security configuration
   containerSecurity = security.mkContainerSecurityContext { profile = "storage"; };

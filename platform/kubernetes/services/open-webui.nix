@@ -21,7 +21,7 @@ let
     serviceType = "web";
     component = "backend";
   };
- name = "open-webui"; image = "ghcr.io/open-webui/open-webui"; tag = "latest";
+ name = "open-webui"; image = "ghcr.io/open-webui/open-webui"; tag = "v0.11.0";
   port = 8080;
 
   # Security configuration

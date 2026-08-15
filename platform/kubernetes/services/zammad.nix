@@ -21,7 +21,7 @@ let
     serviceType = "web";
     component = "backend";
   };
- name = "zammad"; image = "ghcr.io/zammad/zammad"; tag = "latest";
+ name = "zammad"; image = "ghcr.io/zammad/zammad"; tag = "7.1.2-0013";
   port = 3000;
 
   # Security configuration

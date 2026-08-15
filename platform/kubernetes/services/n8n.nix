@@ -21,7 +21,7 @@ let
     serviceType = "web";
     component = "backend";
   };
- name = "n8n"; image = "n8nio/n8n"; tag = "latest";
+ name = "n8n"; image = "n8nio/n8n"; tag = "1.99.1";
   port = 5678;
 
   # Security configuration
