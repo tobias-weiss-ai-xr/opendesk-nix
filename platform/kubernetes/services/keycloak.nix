@@ -131,6 +131,7 @@ let
 in
 [
   (lib.deployment {
+    strategyType = "Recreate";
     inherit
       name
       image
