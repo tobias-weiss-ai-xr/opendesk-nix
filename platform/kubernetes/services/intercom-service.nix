@@ -209,11 +209,15 @@ in
           };
         }
         {
+          # Same value as keycloak-clients/intercom-client-secret (the Keycloak
+          # client secret the bootstrap Job creates) — duplicated into the
+          # `intercom` Secret because a pod can only mount secrets from its own
+          # namespace (opendesk-edu).
           name = "CLIENT_SECRET";
           valueFrom = {
             secretKeyRef = {
-              name = "keycloak-clients";
-              key = "intercom-client-secret";
+              name = "intercom";
+              key = "client-secret";
             };
           };
         }
@@ -270,6 +274,7 @@ in
     stringData = {
       "session-secret" = "intercom-session-secret-change-me-0123456789";
       "matrix-as-token" = "intercom-matrix-as-token-change-me-0123456789";
+      "client-secret" = "intercom-client-secret-change-me";
     };
   })
 ]
