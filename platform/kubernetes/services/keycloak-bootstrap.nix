@@ -181,7 +181,7 @@ let
     '';
 
   bootstrapScript = ''
-    #!/bin/sh
+    #!/bin/bash
     # SPDX-License-Identifier: Apache-2.0
     #
     # Idempotent Keycloak bootstrap: realm + LDAP federation + OIDC clients.
@@ -197,8 +197,12 @@ let
     ADMIN_PASSWORD_FILE=/mnt/secrets-admin/admin-password
 
     echo "[bootstrap] waiting for Keycloak at $KCHOST ..."
+    # The keycloak:26.0 image has no curl/wget — use a bash /dev/tcp probe.
+    # (sh is bash on this image; /dev/tcp needs a bash shell.)
+    KC_HOST="$(echo "$KCHOST" | sed 's|.*://||; s|:.*||')"
+    KC_PORT="$(echo "$KCHOST" | sed 's|.*:||')"
     i=0
-    until curl -fsS -o /dev/null "$KCHOST/realms/master"; do
+    until (echo > "/dev/tcp/$KC_HOST/$KC_PORT") 2>/dev/null; do
       i=$((i + 1))
       if [ "$i" -ge 120 ]; then
         echo "[bootstrap] Keycloak not ready after 120s" >&2
@@ -207,6 +211,8 @@ let
       sleep 1
     done
     echo "[bootstrap] Keycloak is ready."
+    # Give the HTTP layer a moment, then authenticate (retries if needed).
+    sleep 3
 
     # Authenticate against the master realm (sealed keycloak-db secret,
     # key `admin-password`, mounted read-only at /mnt/secrets-admin).
