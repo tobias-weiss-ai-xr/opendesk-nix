@@ -347,7 +347,7 @@ Do NOT vendor node_modules into git. The README documents that the upstream
 - **Secret env** (via `valueFrom.secretKeyRef`, sealed secrets):
   | env | secret | key |
   |---|---|---|
-  | `SECRET` | `intercom` | `session-secret` (value `intercom-session-secret-change-me`) |
+  | `SECRET` | `intercom` | `session-secret` (value `intercom-session-secret-change-me-0123456789` — MUST be >=32 chars, express-openid-connect requires it) |
   | `CLIENT_SECRET` | `keycloak-clients` | `intercom-client-secret` |
   | `MATRIX_AS_SECRET` | `intercom` | `matrix-as-token` (value `intercom-matrix-as-token-change-me`) |
   | `REDIS_PASSWORD` | `redis` | `password` |
@@ -545,7 +545,7 @@ nix build .#scs-manifests 2>&1 | tail -2
 |---|---|---|---|
 | `keycloak-clients` | opendesk | `intercom-client-secret`, `matrix-client-secret`, `sogo-client-secret` | `*-change-me` |
 | `redis` | opendesk-edu | `password` | `redis-password-change-me` |
-| `intercom` | opendesk-edu | `session-secret`, `matrix-as-token` | `intercom-*-change-me` |
+| `intercom` | opendesk-edu | `session-secret`, `matrix-as-token` | `intercom-session-secret-change-me-0123456789`, `intercom-matrix-as-token-change-me-0123456789` |
 | `synapse-oidc` | opendesk | `oidc-client-secret` | `synapse-oidc-client-secret-change-me` |
 
 ## Appendix C — Dependencies & ordering
