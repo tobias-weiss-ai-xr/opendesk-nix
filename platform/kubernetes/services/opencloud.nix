@@ -10,7 +10,7 @@
 
 {
   lib,
-  secrets ? { service_account_secret = "__CHANGE_ME__"; },
+  secrets ? {},
   env ? import ../environments/scs/default.nix { inherit lib; },
   ...
 }:
@@ -331,7 +331,7 @@ in
     namespace = env.namespaceEdu;
     inherit labels;
     stringData = {
-      "opencloud.yaml" = builtins.replaceStrings ["__SERVICE_ACCOUNT_SECRET__"] [secrets.service_account_secret] opencloudConfig;
+      "opencloud.yaml" = builtins.replaceStrings ["__SERVICE_ACCOUNT_SECRET__"] [(secrets.opencloud or {}).service_account_secret or "__CHANGE_ME__"] opencloudConfig;
     };
   })
 

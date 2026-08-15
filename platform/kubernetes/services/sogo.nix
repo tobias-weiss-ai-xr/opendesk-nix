@@ -122,7 +122,12 @@ let
     }
     {
       name = "DB_PASSWORD";
-      value = db.sogo.password;
+      valueFrom = {
+        secretKeyRef = {
+          name = "sogo-db";
+          key = "db-password";
+        };
+      };
     }
   ];
 
@@ -215,5 +220,16 @@ in
     accessModes = [ "ReadWriteOnce" ];
     namespace = env.namespaceEdu;
     inherit labels;
+  })
+
+  # DB password Secret — sealed at build time (see scs/default.nix `serialize`).
+  # The container references it via secretKeyRef (DB_PASSWORD env), so the
+  # password is never in cleartext in the pod spec.
+  (lib.secret {
+    name = "${name}-db";
+    namespace = env.namespaceEdu;
+    stringData = {
+      "db-password" = db.sogo.password;
+    };
   })
 ]

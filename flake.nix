@@ -259,43 +259,43 @@
               builtins.concatStringsSep ''
 
                 ---
-              '' (map (m: builtins.toJSON m) scsDeploy.galera)
+              '' (map (m: scsDeploy.serialize m) scsDeploy.galera)
             );
             scs-keycloak = pkgs.writeText "keycloak.yaml" (
               builtins.concatStringsSep ''
 
                 ---
-              '' (map (m: builtins.toJSON m) scsDeploy.keycloak)
+              '' (map (m: scsDeploy.serialize m) scsDeploy.keycloak)
             );
             scs-synapse = pkgs.writeText "synapse.yaml" (
               builtins.concatStringsSep ''
 
                 ---
-              '' (map (m: builtins.toJSON m) scsDeploy.synapse)
+              '' (map (m: scsDeploy.serialize m) scsDeploy.synapse)
             );
             scs-element = pkgs.writeText "element.yaml" (
               builtins.concatStringsSep ''
 
                 ---
-              '' (map (m: builtins.toJSON m) scsDeploy.element)
+              '' (map (m: scsDeploy.serialize m) scsDeploy.element)
             );
             scs-sogo = pkgs.writeText "sogo.yaml" (
               builtins.concatStringsSep ''
 
                 ---
-              '' (map (m: builtins.toJSON m) scsDeploy.sogo)
+              '' (map (m: scsDeploy.serialize m) scsDeploy.sogo)
             );
             scs-stalwart = pkgs.writeText "stalwart.yaml" (
               builtins.concatStringsSep ''
 
                 ---
-              '' (map (m: builtins.toJSON m) scsDeploy.stalwart)
+              '' (map (m: scsDeploy.serialize m) scsDeploy.stalwart)
             );
             scs-opencloud = pkgs.writeText "opencloud.yaml" (
               builtins.concatStringsSep ''
 
                 ---
-              '' (map (m: builtins.toJSON m) scsDeploy.opencloud)
+              '' (map (m: scsDeploy.serialize m) scsDeploy.opencloud)
             );
 
             # Nix builder
@@ -303,7 +303,7 @@
               builtins.concatStringsSep ''
 
                 ---
-              '' (map (m: builtins.toJSON m) scsDeploy.nixBuilder)
+              '' (map (m: scsDeploy.serialize m) scsDeploy.nixBuilder)
             );
 
             # Combined manifest for all SCS services
@@ -314,37 +314,37 @@
               builtins.concatStringsSep ''
 
                 ---
-              '' (map (m: builtins.toJSON m) scsDeploy.trivyOperator)
+              '' (map (m: scsDeploy.serialize m) scsDeploy.trivyOperator)
             );
             scs-kyverno = pkgs.writeText "kyverno.yaml" (
               builtins.concatStringsSep ''
 
                 ---
-              '' (map (m: builtins.toJSON m) scsDeploy.kyverno)
+              '' (map (m: scsDeploy.serialize m) scsDeploy.kyverno)
             );
             scs-kyverno-policies = pkgs.writeText "kyverno-policies.yaml" (
               builtins.concatStringsSep ''
 
                 ---
-              '' (map (m: builtins.toJSON m) scsDeploy.kyvernoPolicies)
+              '' (map (m: scsDeploy.serialize m) scsDeploy.kyvernoPolicies)
             );
             scs-sealed-secrets = pkgs.writeText "sealed-secrets.yaml" (
               builtins.concatStringsSep ''
 
                 ---
-              '' (map (m: builtins.toJSON m) scsDeploy.sealedSecrets)
+              '' (map (m: scsDeploy.serialize m) scsDeploy.sealedSecrets)
             );
             scs-falco = pkgs.writeText "falco.yaml" (
               builtins.concatStringsSep ''
 
                 ---
-              '' (map (m: builtins.toJSON m) scsDeploy.falco)
+              '' (map (m: scsDeploy.serialize m) scsDeploy.falco)
             );
             scs-cosign-policies = pkgs.writeText "cosign-policies.yaml" (
               builtins.concatStringsSep ''
 
                 ---
-              '' (map (m: builtins.toJSON m) scsDeploy.cosignPolicies)
+              '' (map (m: scsDeploy.serialize m) scsDeploy.cosignPolicies)
             );
           };
 

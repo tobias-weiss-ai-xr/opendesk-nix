@@ -162,7 +162,7 @@ let
 
   livenessProbe = lib.mkProbe {
     type = "exec";
-    path = "mariadb-admin ping -h localhost -u root -p'ChangeMeGalera123!' 2>/dev/null || exit 1";
+    path = "mariadb-admin ping -h localhost -u root -p\"$(MYSQL_ROOT_PASSWORD)\" 2>/dev/null || exit 1";
     initialDelaySeconds = 180;
     periodSeconds = 15;
     failureThreshold = 10;
@@ -170,7 +170,7 @@ let
 
   readinessProbe = lib.mkProbe {
     type = "exec";
-    path = "mariadb -h localhost -u root -p'ChangeMeGalera123!' -e 'SELECT 1' 2>/dev/null || exit 1";
+    path = "mariadb -h localhost -u root -p\"$(MYSQL_ROOT_PASSWORD)\" -e 'SELECT 1' 2>/dev/null || exit 1";
     initialDelaySeconds = 30;
     periodSeconds = 10;
     failureThreshold = 6;
@@ -241,11 +241,21 @@ in
     env = [
       {
         name = "MYSQL_ROOT_PASSWORD";
-        value = "ChangeMeGalera123!";
+        valueFrom = {
+          secretKeyRef = {
+            name = "galera-secrets";
+            key = "mysql-root-password";
+          };
+        };
       }
       {
         name = "MARIADB_ROOT_PASSWORD";
-        value = "ChangeMeGalera123!";
+        valueFrom = {
+          secretKeyRef = {
+            name = "galera-secrets";
+            key = "mariadb-root-password";
+          };
+        };
       }
       {
         name = "MARIADB_AUTO_UPGRADE";

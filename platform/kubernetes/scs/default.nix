@@ -47,22 +47,12 @@ let
     lib = k8sLib;
     inherit env;
   };
-  # Decrypt OpenCloud secrets via sops (age). Requires SOPS_AGE_KEY in the
-  # build environment (CI secret / local ~/.config/sops/age/keys.txt).
-  # Falls back to a placeholder when the key is absent so evaluation
-  # (e.g. nix flake check) still succeeds; the real secret is only
-  # materialized when the key is present (i.e. at deploy time).
-  opencloudSecrets = builtins.fromJSON (builtins.readFile (pkgs.runCommand "opencloud-secrets" {
-    nativeBuildInputs = [ pkgs.sops ];
-    SOPS_AGE_KEY = builtins.getEnv "SOPS_AGE_KEY";
-  } ''
-    export SOPS_AGE_KEY="$SOPS_AGE_KEY"
-    if [ -n "$SOPS_AGE_KEY" ]; then
-      sops -d ${../services/opencloud-secrets.enc.json} > $out
-    else
-      echo '{"service_account_secret":"__CHANGE_ME__"}' > $out
-    fi
-  ''));
+  # Decrypt the per-environment sops+age secrets store. Requires SOPS_AGE_KEY in
+  # the build environment (CI secret) or ~/.config/sops/age/keys.txt. Falls back
+  # to an empty attrset when the key is absent so evaluation (nix flake check)
+  # still passes; real secrets materialize only at deploy time. See
+  # platform/nix/secrets.nix and scripts/secrets/rotate.sh.
+  opencloudSecrets = (import ../../nix/secrets.nix { inherit pkgs; }) ../secrets/scs.enc.json;
   opencloud = import ../services/opencloud.nix {
     lib = k8sLib;
     inherit env;
@@ -144,6 +134,36 @@ let
     ++ falco
     ++ cosignPolicies;
 
+  # ---------------------------------------------------------------------------
+  # Sealed Secrets — encrypt service Secrets at build time
+  # ---------------------------------------------------------------------------
+  # Each Secret resource is sealed with the sealed-secrets controller's public
+  # key (committed at ../sealed-secrets-pub.pem) using `kubeseal`. The resulting
+  # SealedSecret is what gets written to the manifests, so the committed/deployed
+  # artifact never contains cleartext. The controller (running in kube-system)
+  # decrypts SealedSecrets into real Secrets at apply time.
+  #
+  # Public key only — safe to commit. The private key lives only in the cluster
+  # (the sealed-secrets controller key secret) and is never exported.
+  sealedSecretsCert = ../sealed-secrets-pub.pem;
+
+  sealSecret = m:
+    let
+      secretFile = pkgs.writeText "${m.metadata.name}-secret.json" (builtins.toJSON m);
+    in
+    pkgs.runCommand "${m.metadata.name}-sealed.json" {
+      nativeBuildInputs = [ pkgs.kubeseal ];
+    } ''
+      kubeseal --cert ${sealedSecretsCert} -n ${m.metadata.namespace or "default"} --name ${m.metadata.name} -o yaml < ${secretFile} > $out
+    '';
+
+  # Serialize a resource to YAML. Secrets become SealedSecrets; everything else
+  # is emitted verbatim.
+  serialize = m:
+    if (m.kind or "") == "Secret"
+    then builtins.readFile (sealSecret m)
+    else builtins.toJSON m;
+
   # Convert manifests to YAML
 
   # Build a single YAML file with all manifests
@@ -151,7 +171,7 @@ let
     builtins.concatStringsSep ''
 
       ---
-    '' (map (m: builtins.toJSON m) allManifests)
+    '' (map (m: serialize m) allManifests)
   );
 
   # Build a directory with individual YAML files
@@ -172,7 +192,7 @@ let
       map (m: ''
         cat >> $out/10-galera.yaml << 'YAMLEOF'
         ---
-        ${builtins.toJSON m}
+        ${serialize m}
         YAMLEOF
       '') galera
     )}
@@ -182,7 +202,7 @@ let
       map (m: ''
         cat >> $out/20-keycloak.yaml << 'YAMLEOF'
         ---
-        ${builtins.toJSON m}
+        ${serialize m}
         YAMLEOF
       '') keycloak
     )}
@@ -192,7 +212,7 @@ let
       map (m: ''
         cat >> $out/30-synapse.yaml << 'YAMLEOF'
         ---
-        ${builtins.toJSON m}
+        ${serialize m}
         YAMLEOF
       '') synapse
     )}
@@ -202,7 +222,7 @@ let
       map (m: ''
         cat >> $out/31-element.yaml << 'YAMLEOF'
         ---
-        ${builtins.toJSON m}
+        ${serialize m}
         YAMLEOF
       '') element
     )}
@@ -212,7 +232,7 @@ let
       map (m: ''
         cat >> $out/40-sogo.yaml << 'YAMLEOF'
         ---
-        ${builtins.toJSON m}
+        ${serialize m}
         YAMLEOF
       '') sogo
     )}
@@ -222,7 +242,7 @@ let
       map (m: ''
         cat >> $out/41-stalwart.yaml << 'YAMLEOF'
         ---
-        ${builtins.toJSON m}
+        ${serialize m}
         YAMLEOF
       '') stalwart
     )}
@@ -232,7 +252,7 @@ let
       map (m: ''
         cat >> $out/42-opencloud.yaml << 'YAMLEOF'
         ---
-        ${builtins.toJSON m}
+        ${serialize m}
         YAMLEOF
       '') opencloud
     )}
@@ -245,7 +265,7 @@ let
       map (m: ''
         cat >> $out/50-trivy-operator.yaml << 'YAMLEOF'
         ---
-        ${builtins.toJSON m}
+        ${serialize m}
         YAMLEOF
       '') trivyOperator
     )}
@@ -254,7 +274,7 @@ let
       map (m: ''
         cat >> $out/51-kyverno.yaml << 'YAMLEOF'
         ---
-        ${builtins.toJSON m}
+        ${serialize m}
         YAMLEOF
       '') kyverno
     )}
@@ -263,7 +283,7 @@ let
       map (m: ''
         cat >> $out/52-kyverno-policies.yaml << 'YAMLEOF'
         ---
-        ${builtins.toJSON m}
+        ${serialize m}
         YAMLEOF
       '') kyvernoPolicies
     )}
@@ -272,7 +292,7 @@ let
       map (m: ''
         cat >> $out/53-sealed-secrets.yaml << 'YAMLEOF'
         ---
-        ${builtins.toJSON m}
+        ${serialize m}
         YAMLEOF
       '') sealedSecrets
     )}
@@ -281,7 +301,7 @@ let
       map (m: ''
         cat >> $out/54-falco.yaml << 'YAMLEOF'
         ---
-        ${builtins.toJSON m}
+        ${serialize m}
         YAMLEOF
       '') falco
     )}
@@ -290,7 +310,7 @@ let
       map (m: ''
         cat >> $out/55-cosign-policies.yaml << 'YAMLEOF'
         ---
-        ${builtins.toJSON m}
+        ${serialize m}
         YAMLEOF
       '') cosignPolicies
     )}
@@ -303,6 +323,7 @@ in
     allManifests
     allYaml
     manifestDir
+    serialize
     ;
 
   # Individual services

@@ -80,7 +80,12 @@ let
     }
     {
       name = "KC_BOOTSTRAP_ADMIN_PASSWORD";
-      value = "admin";
+      valueFrom = {
+        secretKeyRef = {
+          name = "keycloak-db";
+          key = "admin-password";
+        };
+      };
     }
     {
       name = "KC_HOSTNAME";
@@ -116,7 +121,12 @@ let
     }
     {
       name = "KC_DB_PASSWORD";
-      value = db.keycloak.password;
+      valueFrom = {
+        secretKeyRef = {
+          name = "keycloak-db";
+          key = "db-password";
+        };
+      };
     }
     {
       name = "KC_LOG_LEVEL";
@@ -200,6 +210,8 @@ in
     inherit labels;
     stringData = {
       "db-password" = db.keycloak.password;
+      # Keycloak bootstrap admin password (first-boot only)
+      "admin-password" = "admin";
     };
   })
 ]
