@@ -20,7 +20,7 @@ let
 
   operatorBaseImage = pkgs.dockerTools.buildImage {
     name = "opendesk-edu/operator-base";
-    tag = "latest";
+    tag = "0.1.0";
     fromImage = pkgs.dockerTools.pullImage {
       imageName = "gcr.io/distroless/static-debian11";
       imageDigest = "sha256:9d7619fd40aae13a9123f87b237596709f4689b07e2d8f40c5f8e8e9a3c2e8f1";
