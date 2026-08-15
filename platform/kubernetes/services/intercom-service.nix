@@ -187,7 +187,7 @@ let
       # Trust the cluster's self-signed wildcard cert for OIDC discovery +
       # token exchange against the public service URLs (id./cloud./matrix.).
       name = "NODE_EXTRA_CA_CERTS";
-      value = "/etc/ssl/certs/cluster-ca.crt";
+      value = "/etc/ssl/certs/cluster-ca-bundle.crt";
     }
   ];
 
@@ -249,20 +249,20 @@ in
     volumeMounts = [
       {
         name = "cluster-ca";
-        mountPath = "/etc/ssl/certs/cluster-ca.crt";
-        subPath = "cluster-ca.crt";
+        mountPath = "/etc/ssl/certs/cluster-ca-bundle.crt";
+        subPath = "cluster-ca-bundle.crt";
         readOnly = true;
       }
     ];
     volumes = [
       {
         name = "cluster-ca";
-        secret = {
-          secretName = env.tls.secretName;
+        configMap = {
+          name = "cluster-ca";
           items = [
             {
-              key = "tls.crt";
-              path = "cluster-ca.crt";
+              key = "cluster-ca-bundle.crt";
+              path = "cluster-ca-bundle.crt";
             }
           ];
         };
@@ -290,6 +290,19 @@ in
     tlsSecretName = env.tls.secretName;
     annotations = env.ingress.annotations;
     namespace = env.namespaceEdu;
+  })
+
+  # Cluster CA bundle (public certs) — the HAProxy ingress serves its DEFAULT
+  # self-signed wildcard cert (kube-system) rather than the per-ingress TLS
+  # secret, so the ICS must trust BOTH certs for OIDC discovery/token exchange
+  # against the public service URLs. Public data → ConfigMap, not Secret.
+  (lib.configMap {
+    name = "cluster-ca";
+    namespace = env.namespaceEdu;
+    inherit labels;
+    data = {
+      "cluster-ca-bundle.crt" = builtins.readFile ../certs/cluster-ca-bundle.crt;
+    };
   })
 
   # ICS session/secret material — sealed at build time. `session-secret` MUST
