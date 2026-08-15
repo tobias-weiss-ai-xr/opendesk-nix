@@ -4,7 +4,9 @@
 # OpenCloud — File storage & collaboration (OpenCloud/oCIS)
 # Uses embedded storage (NATS, filesystem) — no external database needed.
 # Config is generated via `opencloud init` and mounted as a Secret.
-# Image: docker.io/opencloudeu/opencloud:latest
+# Image: docker.io/opencloudeu/opencloud:7.2.2
+# Pinned to a stable release tag. Using :latest caused recurrent BoltDB/Bleve
+# corruption (search service) on every image pull / pod restart — see incident 2026-08-15.
 
 {
   lib,
@@ -15,7 +17,9 @@
 let
   name = "opendesk-opencloud";
   image = "docker.io/opencloudeu/opencloud";
-  tag = "latest";
+  # Pinned: :latest pulled shifting builds that re-corrupted the BoltDB/Bleve
+  # stores on restart. 7.2.2 is the version verified running on the SCS cluster.
+  tag = "7.2.2";
   port = 8080;
 
   labels = lib.mkLabels { inherit name; } // {
@@ -301,11 +305,18 @@ in
     namespace = env.namespaceEdu;
   })
 
+  # PVC storage fix (incident 2026-08-15): switched RWX(ceph-cephfs) -> RWO(ceph-rbd).
+  # A single-replica workload on a multi-writer filesystem invited the recurrent
+  # BoltDB/Bleve corruption in the search service. NOTE: storageClassName and
+  # accessModes are IMMUTABLE on a bound PVC, so to apply this change delete the
+  # existing PVC and let it be recreated (OpenCloud regenerates idm/search/nats/
+  # storage on startup):
+  #   kubectl -n opendesk-edu delete pvc opendesk-opencloud-data
   (lib.pvc {
     name = "${name}-data";
     size = "50Gi";
-    storageClass = env.storage.rwx;
-    accessModes = [ "ReadWriteMany" ];
+    storageClass = env.storage.rwo;
+    accessModes = [ "ReadWriteOnce" ];
     namespace = env.namespaceEdu;
     inherit labels;
   })
