@@ -36,6 +36,7 @@ mapfile -t bad < <(grep -rEn 'tag[[:space:]]*=[[:space:]]*"latest"' "$ROOT" 2>/d
 declare -A allowed
 if [ -f "$BASELINE" ]; then
   while IFS= read -r f; do
+    f="${f%$''}"  # strip CR (baseline file is checked out with CRLF)
     [ -n "$f" ] && allowed["$f"]=1
   done < "$BASELINE"
 fi
@@ -45,8 +46,17 @@ new_bad=()
 for entry in "${bad[@]:-}"; do
   [ -z "$entry" ] && continue
   f="${entry%%:*}"
-  # Normalise to a path relative to platform/kubernetes/services/
-  rel="${f#*"platform/kubernetes/services/"}"
+  # Normalise to a path relative to the scanned root. The root is a Nix
+  # store path when invoked from flake.nix (${./platform/kubernetes/services}
+  # is copied to /nix/store/<hash>-services), so the literal
+  # 'platform/kubernetes/services/' prefix never appears there and the
+  # baseline could never match — every tracked :latest file was reported
+  # as new. Strip the actual root prefix instead; fall back to the bare
+  # filename for store-path copies.
+  rel="${f#*"$ROOT/"}"
+  if [ -z "$rel" ] || [ "$rel" = "$f" ]; then
+    rel="${f##*/}"
+  fi
   if [ -z "${allowed[$rel]:-}" ]; then
     new_bad+=("$entry")
   fi
