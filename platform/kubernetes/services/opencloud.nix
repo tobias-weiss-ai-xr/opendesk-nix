@@ -243,6 +243,16 @@ let
       name = "OC_LOG_LEVEL";
       value = "info";
     }
+    # OpenCloud 7.x gateway (proxy) defaults to 0.0.0.0:9200 with a generated
+    # self-signed TLS cert; the Service/Ingress expect plain HTTP on 8080.
+    {
+      name = "PROXY_HTTP_ADDR";
+      value = "0.0.0.0:8080";
+    }
+    {
+      name = "PROXY_TLS";
+      value = "false";
+    }
   ];
 
 in

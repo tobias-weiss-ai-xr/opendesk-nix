@@ -90,6 +90,20 @@ in
     ];
     inherit securityContext;
     inherit podSecurityContext;
+    # /data must be a k8s-managed emptyDir: the redis image's anonymous volume
+    # was unwritable (MISCONF RDB save errors broke the ICS session store).
+    volumes = [
+      {
+        name = "data";
+        emptyDir = { };
+      }
+    ];
+    volumeMounts = [
+      {
+        name = "data";
+        mountPath = "/data";
+      }
+    ];
     namespace = env.namespaceEdu;
     # Single replica, no PVC — Recreate keeps the deployment simple and avoids
     # any volume Multi-Attach concerns if persistence is added later.

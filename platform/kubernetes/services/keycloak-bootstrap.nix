@@ -108,7 +108,6 @@ let
       (kcadmArg "name" ldap.name)
       (kcadmArg "providerId" ldap.providerId)
       (kcadmArg "providerType" ldap.providerType)
-      (kcadmArg "parentId" realm)
     ]
     ++ (lib.mapAttrsToList (k: v: kcadmArg "config.${k}" v) ldap.config)
   );
