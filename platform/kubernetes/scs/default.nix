@@ -31,6 +31,10 @@ let
     lib = k8sLib;
     inherit env;
   };
+  keycloakBootstrap = import ../services/keycloak-bootstrap.nix {
+    lib = k8sLib;
+    inherit env;
+  };
   synapse = import ../services/synapse.nix {
     lib = k8sLib;
     inherit env;
@@ -118,6 +122,7 @@ let
     ++ galera
     # Core services (opendesk namespace)
     ++ keycloak
+    ++ keycloakBootstrap
     ++ synapse
     ++ element
     # Edu services (opendesk-edu namespace)
@@ -154,14 +159,17 @@ let
     pkgs.runCommand "${m.metadata.name}-sealed.json" {
       nativeBuildInputs = [ pkgs.kubeseal ];
     } ''
-      kubeseal --cert ${sealedSecretsCert} -n ${m.metadata.namespace or "default"} --name ${m.metadata.name} -o yaml < ${secretFile} > $out
+      kubeseal --cert ${sealedSecretsCert} -n ${m.metadata.namespace or "default"} --name ${m.metadata.name} -o json < ${secretFile} > $out
     '';
 
   # Serialize a resource to YAML. Secrets become SealedSecrets; everything else
-  # is emitted verbatim.
+  # is emitted verbatim. SealedSecrets are re-serialized as compact JSON
+  # (kubeseal -o json pretty-prints) so every manifest in the output uses the
+  # same toJSON format; JSON is a subset of YAML, so kubectl apply is
+  # unaffected.
   serialize = m:
     if (m.kind or "") == "Secret"
-    then builtins.readFile (sealSecret m)
+    then builtins.toJSON (builtins.fromJSON (builtins.readFile (sealSecret m)))
     else builtins.toJSON m;
 
   # Convert manifests to YAML
@@ -205,6 +213,16 @@ let
         ${serialize m}
         YAMLEOF
       '') keycloak
+    )}
+
+    # Keycloak bootstrap (realm + LDAP federation + OIDC clients)
+    ${builtins.concatStringsSep "\n" (
+      map (m: ''
+        cat >> $out/21-keycloak-bootstrap.yaml << 'YAMLEOF'
+        ---
+        ${serialize m}
+        YAMLEOF
+      '') keycloakBootstrap
     )}
 
     # Synapse
@@ -330,6 +348,7 @@ in
   inherit
     galera
     keycloak
+    keycloakBootstrap
     synapse
     element
     sogo

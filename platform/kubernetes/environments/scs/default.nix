@@ -144,6 +144,137 @@ _:
     realm = "opendesk";
     url = "https://id.home.opendesk-edu.org";
     internalUrl = "http://keycloak.opendesk.svc.cluster.local:8080";
+
+    # Realm bootstrap model — pure DATA for the keycloak-bootstrap Job
+    # (platform/kubernetes/services/keycloak-bootstrap.nix). The Job renders
+    # this into an idempotent kcadm.sh script (get-or-create everywhere), so
+    # the provisioning spec lives here as data, not in the script code.
+    bootstrap = {
+      # Admin user of the master realm (password: sealed keycloak-db secret,
+      # key `admin-password`, mounted read-only at /mnt/secrets-admin).
+      adminUser = "admin";
+
+      # The `opendesk` realm (currently MISSING — only `master` exists).
+      realm = {
+        realm = "opendesk";
+        enabled = true;
+        sslRequired = "external";
+      };
+
+      # OpenLDAP user federation (see Appendix A: openldap.opendesk-edu,
+      # base dc=opendesk-edu,dc=org, admin cn=admin / adminpassword).
+      # Keycloak component config values are string arrays.
+      ldap = {
+        name = "openldap";
+        providerId = "ldap";
+        providerType = "org.keycloak.storage.UserStorageProvider";
+        config = {
+          vendor = [ "ldap" ];
+          enabled = [ "true" ];
+          usernameLDAPAttribute = [ "uid" ];
+          rdnLDAPAttribute = [ "uid" ];
+          uuidLDAPAttribute = [ "entryUUID" ];
+          userObjectClasses = [ "inetOrgPerson, posixAccount" ];
+          connectionUrl = [ "ldap://openldap.opendesk-edu.svc.cluster.local:389" ];
+          usersDn = [ "ou=people,dc=opendesk-edu,dc=org" ];
+          bindDn = [ "cn=admin,dc=opendesk-edu,dc=org" ];
+          bindCredential = [ "adminpassword" ];
+          authType = [ "simple" ];
+          searchScope = [ "1" ];
+          useTruststoreSpi = [ "ldapsOnly" ];
+          connectionPooling = [ "false" ];
+          importEnabled = [ "true" ];
+          syncRegistrations = [ "false" ];
+          editMode = [ "READ_ONLY" ];
+          cachePolicy = [ "DEFAULT" ];
+        };
+      };
+
+      # Protocol mappers attached to EVERY client (same for all).
+      protocolMappers = [
+        {
+          name = "opendesk_username";
+          protocolMapper = "oidc-usermodel-attribute-mapper";
+          config = {
+            "user.attribute" = "uid";
+            "claim.name" = "opendesk_username";
+            "id.token.claim" = "true";
+            "access.token.claim" = "true";
+            "userinfo.token.claim" = "true";
+            "jsonType.label" = "String";
+          };
+        }
+        {
+          name = "opendesk_useruuid";
+          protocolMapper = "oidc-usermodel-attribute-mapper";
+          config = {
+            "user.attribute" = "entryUUID";
+            "claim.name" = "opendesk_useruuid";
+            "id.token.claim" = "true";
+            "access.token.claim" = "true";
+            "userinfo.token.claim" = "true";
+            "jsonType.label" = "String";
+          };
+        }
+      ];
+
+      # OIDC clients. `secretKey` is the key inside the sealed
+      # `keycloak-clients` Secret (mounted at /mnt/secrets). The opencloud
+      # value matches the existing sealed secret
+      # opendesk-opencloud-db / oidc-client-secret ("opencloud-secret-change-me").
+      clients = [
+        {
+          clientId = "opendesk-intercom";
+          secretKey = "intercom-client-secret";
+          redirectUris = [ "https://intercom.home.opendesk-edu.org/callback" ];
+          attributes = {
+            "use.refresh.tokens" = true;
+            "backchannel.logout.session.required" = true;
+            "standard.token.exchange.enabled" = true;
+            "standard.token.exchange.enableRefreshRequestedTokenType" = "SAME_SESSION";
+            "backchannel.logout.revoke.offline.tokens" = true;
+            "backchannel.logout.url" = "https://intercom.home.opendesk-edu.org/backchannel-logout";
+          };
+          mappers = [
+            {
+              name = "intercom-audience";
+              protocolMapper = "oidc-audience-mapper";
+              config = {
+                "included.client.audience" = "opendesk-intercom";
+                "access.token.claim" = "true";
+                "id.token.claim" = "false";
+              };
+            }
+          ];
+        }
+        {
+          clientId = "opendesk-opencloud";
+          secretKey = "opencloud-client-secret";
+          redirectUris = [ "https://cloud.home.opendesk-edu.org/*" ];
+          attributes = {
+            "use.refresh.tokens" = true;
+            "standard.token.exchange.enabled" = true;
+          };
+        }
+        {
+          clientId = "opendesk-matrix";
+          secretKey = "matrix-client-secret";
+          redirectUris = [ "https://matrix.home.opendesk-edu.org/_synapse/client/oidc/callback" ];
+          attributes = {
+            "use.refresh.tokens" = true;
+            "backchannel.logout.session.required" = true;
+          };
+        }
+        {
+          clientId = "opendesk-sogo";
+          secretKey = "sogo-client-secret";
+          redirectUris = [ "https://mail.home.opendesk-edu.org/SOGo/oidc/callback" ];
+          attributes = {
+            "use.refresh.tokens" = true;
+          };
+        }
+      ];
+    };
   };
 
   # Service hosts
