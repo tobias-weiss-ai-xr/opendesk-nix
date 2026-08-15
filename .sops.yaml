@@ -1,0 +1,6 @@
+# sops-nix configuration for opendesk-edu
+# Secrets are encrypted with age. The PRIVATE key must NOT be committed;
+# it is provided at build/deploy time via SOPS_AGE_KEY (CI secret) or
+# ~/.config/sops/age/keys.txt (local).
+creation_rules:
+  - age: age1le9k5ju24wftwwrcr0k4nrzuv60gh29wjne4fsg6uwn52dagugvqn278pt

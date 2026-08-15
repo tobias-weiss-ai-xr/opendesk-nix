@@ -47,9 +47,26 @@ let
     lib = k8sLib;
     inherit env;
   };
+  # Decrypt OpenCloud secrets via sops (age). Requires SOPS_AGE_KEY in the
+  # build environment (CI secret / local ~/.config/sops/age/keys.txt).
+  # Falls back to a placeholder when the key is absent so evaluation
+  # (e.g. nix flake check) still succeeds; the real secret is only
+  # materialized when the key is present (i.e. at deploy time).
+  opencloudSecrets = builtins.fromJSON (builtins.readFile (pkgs.runCommand "opencloud-secrets" {
+    nativeBuildInputs = [ pkgs.sops ];
+    SOPS_AGE_KEY = builtins.getEnv "SOPS_AGE_KEY";
+  } ''
+    export SOPS_AGE_KEY="$SOPS_AGE_KEY"
+    if [ -n "$SOPS_AGE_KEY" ]; then
+      sops -d ${../services/opencloud-secrets.enc.json} > $out
+    else
+      echo '{"service_account_secret":"__CHANGE_ME__"}' > $out
+    fi
+  ''));
   opencloud = import ../services/opencloud.nix {
     lib = k8sLib;
     inherit env;
+    secrets = opencloudSecrets;
   };
 
   # Namespace definitions

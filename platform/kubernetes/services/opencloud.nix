@@ -10,6 +10,7 @@
 
 {
   lib,
+  secrets ? { service_account_secret = "__CHANGE_ME__"; },
   env ? import ../environments/scs/default.nix { inherit lib; },
   ...
 }:
@@ -99,7 +100,7 @@ let
           bind_password: H@S^M57vsVro6ElM+d!YH8rRW&F6*8Sn
       service_account:
         service_account_id: 140f97b5-a094-4656-a5b4-59765eb00593
-        service_account_secret: ibMpTTl6iynMxnn0P%sS*-^u*QOD20Db
+        service_account_secret: __SERVICE_ACCOUNT_SECRET__
     idp:
       ldap:
         bind_password: KYZhAv2ytqjZkHP*+ND2CLk96G-p%=s.
@@ -120,7 +121,7 @@ let
       insecure_backends: true
       service_account:
         service_account_id: 140f97b5-a094-4656-a5b4-59765eb00593
-        service_account_secret: ibMpTTl6iynMxnn0P%sS*-^u*QOD20Db
+        service_account_secret: __SERVICE_ACCOUNT_SECRET__
     frontend:
       app_handler:
         insecure: true
@@ -128,7 +129,7 @@ let
         insecure: true
       service_account:
         service_account_id: 140f97b5-a094-4656-a5b4-59765eb00593
-        service_account_secret: ibMpTTl6iynMxnn0P%sS*-^u*QOD20Db
+        service_account_secret: __SERVICE_ACCOUNT_SECRET__
       ocdav:
         insecure: true
     auth_basic:
@@ -150,7 +151,7 @@ let
     ocm:
       service_account:
         service_account_id: 140f97b5-a094-4656-a5b4-59765eb00593
-        service_account_secret: ibMpTTl6iynMxnn0P%sS*-^u*QOD20Db
+        service_account_secret: __SERVICE_ACCOUNT_SECRET__
     thumbnails:
       thumbnail:
         transfer_secret: 71C&8-4ny&q4Xfk+fx.gOafD2B&NTGGc
@@ -161,7 +162,7 @@ let
         tls_insecure: true
       service_account:
         service_account_id: 140f97b5-a094-4656-a5b4-59765eb00593
-        service_account_secret: ibMpTTl6iynMxnn0P%sS*-^u*QOD20Db
+        service_account_secret: __SERVICE_ACCOUNT_SECRET__
     audit:
       events:
         tls_insecure: true
@@ -173,21 +174,21 @@ let
         tls_insecure: true
       service_account:
         service_account_id: 140f97b5-a094-4656-a5b4-59765eb00593
-        service_account_secret: ibMpTTl6iynMxnn0P%sS*-^u*QOD20Db
+        service_account_secret: __SERVICE_ACCOUNT_SECRET__
     storage_users:
       events:
         tls_insecure: true
       mount_id: cc6a315d-5262-488e-a9f0-1cca1463a8bc
       service_account:
         service_account_id: 140f97b5-a094-4656-a5b4-59765eb00593
-        service_account_secret: ibMpTTl6iynMxnn0P%sS*-^u*QOD20Db
+        service_account_secret: __SERVICE_ACCOUNT_SECRET__
     notifications:
       notifications:
         events:
           tls_insecure: true
       service_account:
         service_account_id: 140f97b5-a094-4656-a5b4-59765eb00593
-        service_account_secret: ibMpTTl6iynMxnn0P%sS*-^u*QOD20Db
+        service_account_secret: __SERVICE_ACCOUNT_SECRET__
     nats:
       nats:
         tls_skip_verify_client_cert: true
@@ -197,19 +198,19 @@ let
     userlog:
       service_account:
         service_account_id: 140f97b5-a094-4656-a5b4-59765eb00593
-        service_account_secret: ibMpTTl6iynMxnn0P%sS*-^u*QOD20Db
+        service_account_secret: __SERVICE_ACCOUNT_SECRET__
     auth_service:
       service_account:
         service_account_id: 140f97b5-a094-4656-a5b4-59765eb00593
-        service_account_secret: ibMpTTl6iynMxnn0P%sS*-^u*QOD20Db
+        service_account_secret: __SERVICE_ACCOUNT_SECRET__
     clientlog:
       service_account:
         service_account_id: 140f97b5-a094-4656-a5b4-59765eb00593
-        service_account_secret: ibMpTTl6iynMxnn0P%sS*-^u*QOD20Db
+        service_account_secret: __SERVICE_ACCOUNT_SECRET__
     activitylog:
       service_account:
         service_account_id: 140f97b5-a094-4656-a5b4-59765eb00593
-        service_account_secret: ibMpTTl6iynMxnn0P%sS*-^u*QOD20Db
+        service_account_secret: __SERVICE_ACCOUNT_SECRET__
   '';
 
   containerEnv = [
@@ -330,7 +331,7 @@ in
     namespace = env.namespaceEdu;
     inherit labels;
     stringData = {
-      "opencloud.yaml" = opencloudConfig;
+      "opencloud.yaml" = builtins.replaceStrings ["__SERVICE_ACCOUNT_SECRET__"] [secrets.service_account_secret] opencloudConfig;
     };
   })
 
