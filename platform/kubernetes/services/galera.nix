@@ -41,29 +41,36 @@ let
     + env.namespace
     + ".svc.cluster.local:4567";
 
-  # Database init SQL — creates databases and users for all services
+  # Database init — runs as a .sh in /docker-entrypoint-initdb.d
+  # Reads DB user passwords from the mounted galera-secrets Secret (no cleartext here).
   initSql = ''
-    -- Galera cluster initialization
-    -- Databases for all openDesk services
-    CREATE DATABASE IF NOT EXISTS keycloak CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-    CREATE DATABASE IF NOT EXISTS synapse CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-    CREATE DATABASE IF NOT EXISTS sogo CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-    CREATE DATABASE IF NOT EXISTS opencloud CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    #!/bin/bash
+    set -e
+    ROOT_PW="$(cat /mnt/secrets/mysql-root-password)"
+    KC_PW="$(cat /mnt/secrets/keycloak)"
+    SY_PW="$(cat /mnt/secrets/synapse)"
+    SO_PW="$(cat /mnt/secrets/sogo)"
+    OC_PW="$(cat /mnt/secrets/opencloud)"
+    mysql -u root -p"$ROOT_PW" <<SQL
+      CREATE DATABASE IF NOT EXISTS keycloak CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+      CREATE DATABASE IF NOT EXISTS synapse CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+      CREATE DATABASE IF NOT EXISTS sogo CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+      CREATE DATABASE IF NOT EXISTS opencloud CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
-    -- Service users
-    CREATE USER IF NOT EXISTS 'keycloak'@'%' IDENTIFIED BY 'keycloak-db-password-change-me';
-    GRANT ALL PRIVILEGES ON keycloak.* TO 'keycloak'@'%';
+      CREATE USER IF NOT EXISTS 'keycloak'@'%' IDENTIFIED BY '$KC_PW';
+      GRANT ALL PRIVILEGES ON keycloak.* TO 'keycloak'@'%';
 
-    CREATE USER IF NOT EXISTS 'synapse'@'%' IDENTIFIED BY 'synapse-db-password-change-me';
-    GRANT ALL PRIVILEGES ON synapse.* TO 'synapse'@'%';
+      CREATE USER IF NOT EXISTS 'synapse'@'%' IDENTIFIED BY '$SY_PW';
+      GRANT ALL PRIVILEGES ON synapse.* TO 'synapse'@'%';
 
-    CREATE USER IF NOT EXISTS 'sogo'@'%' IDENTIFIED BY 'sogo-db-password-change-me';
-    GRANT ALL PRIVILEGES ON sogo.* TO 'sogo'@'%';
+      CREATE USER IF NOT EXISTS 'sogo'@'%' IDENTIFIED BY '$SO_PW';
+      GRANT ALL PRIVILEGES ON sogo.* TO 'sogo'@'%';
 
-    CREATE USER IF NOT EXISTS 'opencloud'@'%' IDENTIFIED BY 'opencloud-db-password-change-me';
-    GRANT ALL PRIVILEGES ON opencloud.* TO 'opencloud'@'%';
+      CREATE USER IF NOT EXISTS 'opencloud'@'%' IDENTIFIED BY '$OC_PW';
+      GRANT ALL PRIVILEGES ON opencloud.* TO 'opencloud'@'%';
 
-    FLUSH PRIVILEGES;
+      FLUSH PRIVILEGES;
+    SQL
   '';
 
   # Galera my.cnf configuration
@@ -75,7 +82,7 @@ let
     wsrep_cluster_name="opendesk-galera"
     wsrep_cluster_address="${wsrepClusterAddress}"
     wsrep_sst_method=rsync
-    wsrep_sst_auth=root:ChangeMeGalera123!
+    wsrep_sst_auth=root:__GALERA_ROOT_PW__
 
     # Binlog
     binlog_format=ROW
@@ -113,26 +120,28 @@ let
     set -e
     ORDINAL=$(hostname | rev | cut -d'-' -f1 | rev)
     echo "Galera pod ordinal: $ORDINAL"
+    # SST auth from the mounted galera-secrets Secret (overrides placeholder in my.cnf)
+    SST_AUTH="root:$(cat /mnt/secrets/mysql-root-password)"
 
     if [ "$ORDINAL" = "0" ]; then
       # Pod 0: check if we need to bootstrap a new cluster
       if [ ! -f /var/lib/mysql/grastate.dat ]; then
         # First boot: no grastate.dat, bootstrap new cluster with empty address
         echo "Bootstrap: galera-0 first boot, starting new cluster (gcomm://)"
-        exec docker-entrypoint.sh mariadbd --wsrep-new-cluster --wsrep-cluster-address=gcomm://
+        exec docker-entrypoint.sh mariadbd --wsrep-new-cluster --wsrep-cluster-address=gcomm:// --wsrep-sst-auth="$SST_AUTH"
       elif grep -q "safe_to_bootstrap: 1" /var/lib/mysql/grastate.dat; then
         # Cluster was stopped, this node is safe to bootstrap
         echo "Bootstrap: galera-0 starting new cluster (safe_to_bootstrap=1)"
-        exec docker-entrypoint.sh mariadbd --wsrep-new-cluster --wsrep-cluster-address=gcomm://
+        exec docker-entrypoint.sh mariadbd --wsrep-new-cluster --wsrep-cluster-address=gcomm:// --wsrep-sst-auth="$SST_AUTH"
       else
         # Normal start: join existing cluster
         echo "Galera-0: starting normally, joining cluster"
-        exec docker-entrypoint.sh mariadbd
+        exec docker-entrypoint.sh mariadbd --wsrep-sst-auth="$SST_AUTH"
       fi
     else
       # Pod 1+: join existing cluster
       echo "Galera-$ORDINAL: joining cluster"
-      exec docker-entrypoint.sh mariadbd
+      exec docker-entrypoint.sh mariadbd --wsrep-sst-auth="$SST_AUTH"
     fi
   '';
 
@@ -288,6 +297,11 @@ in
         mountPath = "/scripts";
         readOnly = true;
       }
+      {
+        name = "secrets";
+        mountPath = "/mnt/secrets";
+        readOnly = true;
+      }
     ];
 
     volumes = [
@@ -308,6 +322,12 @@ in
         configMap = {
           name = "${name}-bootstrap";
           defaultMode = 493;
+        };
+      }
+      {
+        name = "secrets";
+        secret = {
+          secretName = "${name}-secrets";
         };
       }
     ];
@@ -400,8 +420,9 @@ in
     name = "${name}-initdb";
     inherit (env) namespace;
     inherit labels;
+    defaultMode = 493;
     data = {
-      "01-init-databases.sql" = initSql;
+      "01-init-databases.sh" = initSql;
     };
   })
 
@@ -428,6 +449,12 @@ in
       "mysql-root-password" = "ChangeMeGalera123!";
       "mariadb-root-password" = "ChangeMeGalera123!";
       "galera-cluster-name" = wsrepClusterName;
+      # Per-service DB user passwords — consumed by the init-SQL script
+      # (mounted as files) and by each service's own connection Secret.
+      "keycloak" = "keycloak-db-password-change-me";
+      "synapse" = "synapse-db-password-change-me";
+      "sogo" = "sogo-db-password-change-me";
+      "opencloud" = "opencloud-db-password-change-me";
     };
   })
 

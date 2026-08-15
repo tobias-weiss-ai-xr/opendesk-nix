@@ -225,6 +225,7 @@ let
       podSecurityContext ? defaultPodSecurityContext,
       volumes ? [ ],
       volumeMounts ? [ ],
+      initContainers ? [ ],
       imagePullSecrets ? [ ],
       command ? null,
       cmdArgs ? null,
@@ -307,6 +308,7 @@ let
                 ];
               };
             }
+            // (lib.optionalAttrs (initContainers != [ ]) { inherit initContainers; })
             // (lib.optionalAttrs (affinity != null) { inherit affinity; })
             // (lib.optionalAttrs (nodeSelector != { }) {
               inherit nodeSelector;

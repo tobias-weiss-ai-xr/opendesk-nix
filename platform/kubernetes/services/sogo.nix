@@ -77,10 +77,10 @@ let
       WOListenQueueSize = 5;
       SxVMemLimit = 400;
       SOGoMemcachedHost = "memcached.opendesk.svc.cluster.local:11211";
-      SOGoProfileURL = "mysql://${db.sogo.user}:${db.sogo.password}@${db.host}:${toString db.port}/${db.sogo.name}/sogo_user_profile";
-      OCSAclURL = "mysql://${db.sogo.user}:${db.sogo.password}@${db.host}:${toString db.port}/${db.sogo.name}/sogo_acl";
-      OCSFolderInfoURL = "mysql://${db.sogo.user}:${db.sogo.password}@${db.host}:${toString db.port}/${db.sogo.name}/sogo_folder_profile";
-      OCSSessionsFolderURL = "mysql://${db.sogo.user}:${db.sogo.password}@${db.host}:${toString db.port}/${db.sogo.name}/sogo_sessions_folder";
+      SOGoProfileURL = "mysql://${db.sogo.user}:__SOGO_DB_PASSWORD__@${db.host}:${toString db.port}/${db.sogo.name}/sogo_user_profile";
+      OCSAclURL = "mysql://${db.sogo.user}:__SOGO_DB_PASSWORD__@${db.host}:${toString db.port}/${db.sogo.name}/sogo_acl";
+      OCSFolderInfoURL = "mysql://${db.sogo.user}:__SOGO_DB_PASSWORD__@${db.host}:${toString db.port}/${db.sogo.name}/sogo_folder_profile";
+      OCSSessionsFolderURL = "mysql://${db.sogo.user}:__SOGO_DB_PASSWORD__@${db.host}:${toString db.port}/${db.sogo.name}/sogo_sessions_folder";
       SOGoIMAPServer = "imaps://stalwart-stalwart.opendesk-edu.svc.cluster.local:993";
       SOGoSMTPServer = "smtp://stalwart-stalwart.opendesk-edu.svc.cluster.local:587";
       SOGoSieveServer = "sieve://stalwart-stalwart.opendesk-edu.svc.cluster.local:4190";
@@ -151,6 +151,36 @@ in
     namespace = env.namespaceEdu;
     replicas = env.replicas.default;
 
+    # Render sogo.conf from the template, injecting the DB password from the
+    # (sealed) sogo-db Secret — avoids cleartext in the ConfigMap.
+    initContainers = [
+      {
+        name = "init-config";
+        image = "${image}:${tag}";
+        command = [
+          "/bin/sh"
+          "-c"
+          ''sed "s|__SOGO_DB_PASSWORD__|$(cat /mnt/secrets/db-password)|g" /mnt/config/sogo.conf > /etc/sogo/sogo.conf''
+        ];
+        volumeMounts = [
+          {
+            name = "secrets";
+            mountPath = "/mnt/secrets";
+            readOnly = true;
+          }
+          {
+            name = "config-src";
+            mountPath = "/mnt/config";
+            readOnly = true;
+          }
+          {
+            name = "config";
+            mountPath = "/etc/sogo";
+          }
+        ];
+      }
+    ];
+
     volumeMounts = [
       {
         name = "config";
@@ -167,6 +197,10 @@ in
     volumes = [
       {
         name = "config";
+        emptyDir = { };
+      }
+      {
+        name = "config-src";
         configMap = {
           name = "${name}-config";
           items = [
@@ -175,6 +209,12 @@ in
               path = "sogo.conf";
             }
           ];
+        };
+      }
+      {
+        name = "secrets";
+        secret = {
+          secretName = "${name}-db";
         };
       }
       {

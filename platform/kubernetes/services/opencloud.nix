@@ -232,7 +232,12 @@ let
     }
     {
       name = "OIDC_CLIENT_SECRET";
-      value = "opencloud-secret-change-me";
+      valueFrom = {
+        secretKeyRef = {
+          name = "opendesk-opencloud-db";
+          key = "oidc-client-secret";
+        };
+      };
     }
     {
       name = "OC_LOG_LEVEL";
