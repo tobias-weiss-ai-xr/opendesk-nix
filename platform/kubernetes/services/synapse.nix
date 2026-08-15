@@ -91,7 +91,7 @@ let
       name: sqlite3
       args:
         database: /data/homeserver.db
-    macaroon_secret_key: "opendesk-synapse-macaroon-secret-change-me"
+    macaroon_secret_key: "__SYNAPSE_MACAROON_SECRET__"
     log_config: "/data/log.config"
     media_store_path: "/data/media"
     uploads_path: "/data/uploads"
@@ -164,7 +164,8 @@ in
     volumeMounts = [
       {
         name = "config";
-        mountPath = "/config";
+        mountPath = "/config/homeserver.yaml";
+        subPath = "homeserver.yaml";
         readOnly = true;
       }
       {
@@ -179,11 +180,55 @@ in
       }
     ];
 
+    initContainers = [
+      {
+        name = "init-config";
+        image = "${image}:${tag}";
+        command = [
+          "/bin/sh"
+          "-c"
+          ''sed "s|__SYNAPSE_MACAROON_SECRET__|$(cat /mnt/secrets/macaroon-secret-key)|g" /mnt/config/homeserver.yaml > /config/homeserver.yaml''
+        ];
+        volumeMounts = [
+          {
+            name = "secrets";
+            mountPath = "/mnt/secrets";
+            readOnly = true;
+          }
+          {
+            name = "config-src";
+            mountPath = "/mnt/config";
+            readOnly = true;
+          }
+          {
+            name = "config";
+            mountPath = "/config";
+          }
+        ];
+      }
+    ];
+
     volumes = [
       {
         name = "config";
+        emptyDir = { };
+      }
+      {
+        name = "config-src";
         configMap = {
           name = "${name}-config";
+          items = [
+            {
+              key = "homeserver.yaml";
+              path = "homeserver.yaml";
+            }
+          ];
+        };
+      }
+      {
+        name = "secrets";
+        secret = {
+          secretName = "${name}-macaroon";
         };
       }
       {
@@ -207,7 +252,7 @@ in
     ];
 
     annotations = {
-      "checksum/config" = "synapse-config-v1";
+      "checksum/config" = "synapse-config-v2";
     };
   })
 
@@ -253,6 +298,18 @@ in
     inherit labels;
     stringData = {
       "db-password" = db.synapse.password;
+    };
+  })
+
+  # Macaroon signing key Secret — sealed at build time. Rendered into
+  # homeserver.yaml by the init-config initContainer (no cleartext in the
+  # ConfigMap). Value unchanged (behavior-preserving).
+  (lib.secret {
+    name = "${name}-macaroon";
+    inherit (env) namespace;
+    inherit labels;
+    stringData = {
+      "macaroon-secret-key" = "opendesk-synapse-macaroon-secret-change-me";
     };
   })
 ]

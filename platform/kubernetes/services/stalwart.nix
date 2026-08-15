@@ -117,7 +117,7 @@ let
     [authentication.fallback]
     type = "password"
     [authentication.fallback.password]
-    secret = "stalwart-admin-change-me"
+    secret = "__STALWART_FALLBACK_PASSWORD__"
 
     [tracer]
     level = "info"
@@ -213,9 +213,41 @@ in
       }
     ];
 
+    initContainers = [
+      {
+        name = "init-config";
+        image = "${image}:${tag}";
+        command = [
+          "/bin/sh"
+          "-c"
+          ''sed "s|__STALWART_FALLBACK_PASSWORD__|$(cat /mnt/secrets/fallback-password)|g" /mnt/config/config.toml > /etc/stalwart/config.toml''
+        ];
+        volumeMounts = [
+          {
+            name = "secrets";
+            mountPath = "/mnt/secrets";
+            readOnly = true;
+          }
+          {
+            name = "config-src";
+            mountPath = "/mnt/config";
+            readOnly = true;
+          }
+          {
+            name = "config";
+            mountPath = "/etc/stalwart";
+          }
+        ];
+      }
+    ];
+
     volumes = [
       {
         name = "config";
+        emptyDir = { };
+      }
+      {
+        name = "config-src";
         configMap = {
           name = "${name}-config";
           items = [
@@ -224,6 +256,12 @@ in
               path = "config.toml";
             }
           ];
+        };
+      }
+      {
+        name = "secrets";
+        secret = {
+          secretName = "${name}-admin";
         };
       }
       {
@@ -303,5 +341,17 @@ in
     accessModes = [ "ReadWriteOnce" ];
     namespace = env.namespaceEdu;
     inherit labels;
+  })
+
+  # Fallback/admin password Secret — sealed at build time. Rendered into
+  # config.toml by the init-config initContainer (no cleartext in the
+  # ConfigMap). Value unchanged (behavior-preserving).
+  (lib.secret {
+    name = "${name}-admin";
+    namespace = env.namespaceEdu;
+    inherit labels;
+    stringData = {
+      "fallback-password" = "stalwart-admin-change-me";
+    };
   })
 ]
