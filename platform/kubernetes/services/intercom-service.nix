@@ -183,6 +183,12 @@ let
       name = "REDIS_USER";
       value = "default";
     }
+    {
+      # Trust the cluster's self-signed wildcard cert for OIDC discovery +
+      # token exchange against the public service URLs (id./cloud./matrix.).
+      name = "NODE_EXTRA_CA_CERTS";
+      value = "/etc/ssl/certs/cluster-ca.crt";
+    }
   ];
 
 in
@@ -240,6 +246,28 @@ in
           };
         }
       ];
+    volumeMounts = [
+      {
+        name = "cluster-ca";
+        mountPath = "/etc/ssl/certs/cluster-ca.crt";
+        subPath = "cluster-ca.crt";
+        readOnly = true;
+      }
+    ];
+    volumes = [
+      {
+        name = "cluster-ca";
+        secret = {
+          secretName = env.tls.secretName;
+          items = [
+            {
+              key = "tls.crt";
+              path = "cluster-ca.crt";
+            }
+          ];
+        };
+      }
+    ];
     inherit securityContext;
     inherit podSecurityContext;
     liveness = livenessProbe;
