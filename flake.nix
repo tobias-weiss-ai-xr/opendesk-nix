@@ -161,12 +161,15 @@
 
           # Forbid pinning container images to the non-reproducible "latest" tag
           # (root cause of the OpenCloud Bleve/BoltDB corruption incident, 2026-08-15).
-          no-latest-image-tag = pkgs.runCommand "check-no-latest-image-tag" {
-            nativeBuildInputs = [ pkgs.bash ];
-          } ''
-            bash ${./scripts/ci/check-no-latest-tag.sh} ${./platform/kubernetes/services} ${./scripts/ci/latest-tag-baseline.txt}
-            touch $out
-          '';
+          no-latest-image-tag =
+            pkgs.runCommand "check-no-latest-image-tag"
+              {
+                nativeBuildInputs = [ pkgs.bash ];
+              }
+              ''
+                bash ${./scripts/ci/check-no-latest-tag.sh} ${./platform/kubernetes/services} ${./scripts/ci/latest-tag-baseline.txt}
+                touch $out
+              '';
 
           # Binary cache test (attic server module)
           # NOTE: attic builds from source via crane and needs crates.io network

@@ -27,7 +27,7 @@
 #
 # Aligns with ZKI checkpoint P0-DATA-001 (encryption at rest).
 
-{ lib, env ? import ../environments/scs/default.nix { inherit lib; }, ... }:
+{ ... }:
 [
   # No resources: the controller is deployed out-of-band (see header comment).
   # Service Secrets are sealed at serialization time in default.nix (`serialize`).

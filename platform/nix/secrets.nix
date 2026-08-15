@@ -17,14 +17,20 @@
 
 envSecretsPath:
 
-  builtins.fromJSON (builtins.readFile (pkgs.runCommand "env-secrets" {
-    nativeBuildInputs = [ pkgs.sops ];
-    SOPS_AGE_KEY = builtins.getEnv "SOPS_AGE_KEY";
-  } ''
-    export SOPS_AGE_KEY="$SOPS_AGE_KEY"
-    if [ -n "$SOPS_AGE_KEY" ]; then
-      sops -d ${envSecretsPath} > $out
-    else
-      echo '{}' > $out
-    fi
-  ''))
+builtins.fromJSON (
+  builtins.readFile (
+    pkgs.runCommand "env-secrets"
+      {
+        nativeBuildInputs = [ pkgs.sops ];
+        SOPS_AGE_KEY = builtins.getEnv "SOPS_AGE_KEY";
+      }
+      ''
+        export SOPS_AGE_KEY="$SOPS_AGE_KEY"
+        if [ -n "$SOPS_AGE_KEY" ]; then
+          sops -d ${envSecretsPath} > $out
+        else
+          echo '{}' > $out
+        fi
+      ''
+  )
+)

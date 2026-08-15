@@ -322,7 +322,9 @@ let
             });
         };
         strategy =
-          { type = strategyType; }
+          {
+            type = strategyType;
+          }
           // lib.optionalAttrs (strategyType == "RollingUpdate") {
             rollingUpdate = { inherit maxSurge maxUnavailable; };
           };
