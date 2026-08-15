@@ -277,7 +277,7 @@ in
     ];
 
     annotations = {
-      "checksum/config" = "synapse-config-v3";
+      "checksum/config" = "synapse-config-v4";
     };
   })
 
