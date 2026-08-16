@@ -104,7 +104,12 @@ let
       scopes: ["openid", "profile", "email"]
       user_mapping_provider:
         config:
-          localpart_template: "{{ user.preferred_username }}"
+          # The Intercom-Service impersonates users via the appservice login
+          # as opendesk_useruuid (USER_UNIQUE_MAPPER=opendesk_useruuid) — the
+          # OIDC-created mxids MUST use the same localpart or the appservice
+          # login 404s ("No row found (users)"). Upstream openDesk ties both
+          # via the same toggle (useImmutableIdentifierForLocalpart).
+          localpart_template: "{{ user.opendesk_useruuid }}"
           display_name_template: "{{ user.preferred_username }}"
     log_config: "/data/log.config"
     media_store_path: "/data/media"
