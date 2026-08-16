@@ -148,6 +148,10 @@ let
           (kcadmArg "frontchannelLogout" false)
           (kcadmArg "authorizationServicesEnabled" false)
           (kcadmArg "defaultClientScopes" [ "offline_access" ])
+          # Standard OIDC scopes as OPTIONAL client scopes: providers that
+          # request profile/email (e.g. synapse OIDC: openid profile email)
+          # would otherwise hit Keycloak 'invalid_scope'.
+          (kcadmArg "optionalClientScopes" [ "profile" "email" ])
           (kcadmArg "redirectUris" c.redirectUris)
         ]
         ++ attrArgs
