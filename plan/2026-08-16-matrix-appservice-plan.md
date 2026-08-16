@@ -46,7 +46,9 @@ namespaces:
 ```
 
 Notes:
-- `url` omitted — the ICS only performs appservice **login**, never receives pushes.
+- `url` is **explicit null** — Synapse REQUIRES the key (string or explicit null)
+  even for login-only appservices (`KeyError: Required string field or explicit
+  null: 'url'` otherwise); the ICS never receives pushes.
 - The `users` namespace is non-exclusive with a catch-all regex so the AS may log in as any
   user (ghost users are created on demand; real OIDC users still take precedence).
 - `homeserver.yaml` gains `app_service_config_files: ["/config/appservice/intercom.yaml"]`.
