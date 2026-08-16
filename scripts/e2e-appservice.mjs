@@ -36,6 +36,7 @@
 //   MATRIX_AS_SECRET       appservice as_token — enables the live login phase
 //   E2E_MATRIX_USER        localpart to log in as (default: testuser)
 //   E2E_MATRIX_HOMESERVER  homeserver base URL (default: https://matrix.home.opendesk-edu.org)
+//   E2E_TIMEOUT_MS         live-login timeout in ms (default: 15000)
 //
 // Exit codes: 0 = all assertions passed (or live phase skipped),
 //             1 = an assertion failed or the manifest is missing/unreadable.
@@ -46,6 +47,7 @@ import { argv, env, exit } from "node:process";
 const MANIFEST_PATH = argv[2] ?? "result/30-synapse.yaml";
 const HOMESERVER = env.E2E_MATRIX_HOMESERVER ?? "https://matrix.home.opendesk-edu.org";
 const MATRIX_USER = env.E2E_MATRIX_USER ?? "testuser";
+const TIMEOUT_MS = Number(env.E2E_TIMEOUT_MS ?? 15000);
 const LOGIN_URL = `${HOMESERVER}/_matrix/client/v3/login`;
 
 const GREEN = "\x1b[32m";
@@ -95,17 +97,24 @@ async function liveLogin() {
     console.log("  (skipped — MATRIX_AS_SECRET not set; manifest-only mode)");
     return;
   }
-  const res = await fetch(LOGIN_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      type: "m.login.application_service",
-      identifier: { type: "m.id.user", user: MATRIX_USER },
-    }),
-  });
+  let res;
+  try {
+    res = await fetch(LOGIN_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        type: "m.login.application_service",
+        identifier: { type: "m.id.user", user: MATRIX_USER },
+      }),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+  } catch (err) {
+    bad(`login request failed (${err.name === "TimeoutError" ? `${TIMEOUT_MS}ms timeout` : err.message})`);
+    return;
+  }
   const body = await res.text();
   if (res.status !== 200) {
     bad(`login as "${MATRIX_USER}" -> HTTP ${res.status}: ${body}`);
