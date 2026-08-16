@@ -183,6 +183,18 @@ let
       name = "SYNAPSE_CONFIG_PATH";
       value = "/config/homeserver.yaml";
     }
+    # Trust the cluster's self-signed wildcard cert (CN=home.opendesk-edu.org)
+    # for the OIDC discovery fetch against https://id.home.opendesk-edu.org —
+    # without it the OIDC provider silently fails to load at startup (no
+    # m.login.sso flow). Same bundle the ICS uses via NODE_EXTRA_CA_CERTS.
+    {
+      name = "SSL_CERT_FILE";
+      value = "/etc/ssl/certs/cluster-ca-bundle.crt";
+    }
+    {
+      name = "REQUESTS_CA_BUNDLE";
+      value = "/etc/ssl/certs/cluster-ca-bundle.crt";
+    }
   ];
 
 in
@@ -227,6 +239,12 @@ in
       {
         name = "data";
         mountPath = "/data";
+      }
+      {
+        name = "cluster-ca";
+        mountPath = "/etc/ssl/certs/cluster-ca-bundle.crt";
+        subPath = "cluster-ca-bundle.crt";
+        readOnly = true;
       }
     ];
 
@@ -280,6 +298,20 @@ in
       {
         name = "config";
         emptyDir = { };
+      }
+      {
+        # Cluster self-signed wildcard bundle (public certs) — the OIDC
+        # discovery fetch must trust https://id.home.opendesk-edu.org.
+        name = "cluster-ca";
+        configMap = {
+          name = "cluster-ca";
+          items = [
+            {
+              key = "cluster-ca-bundle.crt";
+              path = "cluster-ca-bundle.crt";
+            }
+          ];
+        };
       }
       {
         name = "config-src";
@@ -428,6 +460,19 @@ in
     stringData = {
       "matrix-as-token" = "opendesk-synapse-appservice-as-token-change-me";
       "matrix-hs-token" = "opendesk-synapse-appservice-hs-token-change-me";
+    };
+  })
+
+  # Cluster self-signed wildcard CA bundle (PUBLIC certs — ConfigMap, never a
+  # Secret). Synapse must trust it for the OIDC discovery fetch; the ICS uses
+  # the same bundle via NODE_EXTRA_CA_CERTS. Same content as the out-of-band
+  # cluster-ca ConfigMap in opendesk-edu.
+  (lib.configMap {
+    name = "cluster-ca";
+    inherit (env) namespace;
+    inherit labels;
+    data = {
+      "cluster-ca-bundle.crt" = builtins.readFile ../cluster-ca-bundle.crt;
     };
   })
 ]
