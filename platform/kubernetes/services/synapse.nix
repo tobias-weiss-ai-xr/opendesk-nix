@@ -205,16 +205,12 @@ in
 
     volumeMounts = [
       {
+        # Full /config mount (read-only): the init-config initContainer
+        # renders homeserver.yaml + appservice/intercom.yaml into the shared
+        # emptyDir; the main container reads both from here. (SubPath mounts
+        # of individual files proved fragile; full mount is reliable.)
         name = "config";
-        mountPath = "/config/homeserver.yaml";
-        subPath = "homeserver.yaml";
-        readOnly = true;
-      }
-      {
-        # Rendered registration file (app_service_config_files target).
-        name = "config";
-        mountPath = "/config/appservice/intercom.yaml";
-        subPath = "appservice/intercom.yaml";
+        mountPath = "/config";
         readOnly = true;
       }
       {
@@ -243,7 +239,7 @@ in
                 /mnt/config/homeserver.yaml > /config/homeserver.yaml
             sed -e "s|__MATRIX_AS_TOKEN__|$(cat /mnt/secrets-appservice/matrix-as-token)|g" \
                 -e "s|__MATRIX_HS_TOKEN__|$(cat /mnt/secrets-appservice/matrix-hs-token)|g" \
-                /mnt/config/appservice/intercom.yaml > /config/appservice/intercom.yaml
+                /mnt/config/intercom.yaml > /config/appservice/intercom.yaml
           ''
         ];
         volumeMounts = [
@@ -291,10 +287,12 @@ in
             }
             {
               # ConfigMap keys cannot contain "/" (k8s validation), so the
-              # template is stored under a dash key and projected onto the
-              # appservice/ subdirectory here.
+              # template is stored under a dash key and projected at a FLAT
+              # path (no subdirectory — subdirectory projections proved
+              # unreliable on this kubelet; the init-config initContainer
+              # writes the rendered file to /config/appservice/ itself).
               key = "appservice-intercom.yaml";
-              path = "appservice/intercom.yaml";
+              path = "intercom.yaml";
             }
           ];
         };
