@@ -482,3 +482,17 @@ Apache-2.0 - See [LICENSE](../../LICENSE)
 > **"With GitLab Container Registry, you own your artifacts."**
 
 > **"With Kustomize, deployment is declarative and repeatable."**
+
+---
+
+## ⚠️ Repo-line note (2026-08-15)
+
+Two divergent `opendesk-nix` repositories exist; this one is the **canonical line**:
+
+| Repo | Role | HEAD |
+|---|---|---|
+| `tobias-weiss-ai-xr/opendesk-nix` (**this**) | **Production / cluster ops** — SCS K3s platform (intercom-service/OIDC, sealed secrets, sops, CI). The `umr` mirror on opencode.de tracks this line. | `main` (active) |
+| `opendesk-edu/opendesk-nix` (org) | **Research / staging** — Phase 2–5 NixOS appliance images, systemd-sysupdate A/B OTA, Attic binary cache, remote builders (`DEPLOYMENT-READY.md`). Not deployed; kept for reference. | `main` @ `d629a6f7` (2026-08-12) |
+
+**Merge decision:** kept separate (a merge would conflict on `flake.nix` / `README.md` / `.sops.yaml`, and the org line's experimental content is not wanted in the production repo). If the research matures, port it selectively; do not merge wholesale.
+
