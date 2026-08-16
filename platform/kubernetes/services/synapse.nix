@@ -96,7 +96,7 @@ let
     # by the keycloak-bootstrap Job). The client secret is rendered at startup
     # by the init-config initContainer from the sealed synapse-oidc Secret.
     oidc_config:
-      enable: true
+      enabled: true
       discovery_method: "oidc"
       issuer: "https://${env.hosts.keycloak}/realms/${env.keycloak.realm}"
       client_id: "opendesk-matrix"
