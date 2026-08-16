@@ -240,6 +240,30 @@ let
         ${ldapArgs}
     fi
 
+    # --- LDAP attribute mapper: entryUUID -------------------------------------
+    # Maps the OpenLDAP operational attribute entryUUID to the Keycloak user
+    # attribute so the opendesk_useruuid claim (client protocol mapper, source
+    # user.attribute=entryUUID) is populated — the Synapse OIDC localpart
+    # (and the Intercom-Service's appservice login user) depend on it.
+    if "$KC" get components -r "$REALM" 2>/dev/null | grep -q '"name"[[:space:]]*:[[:space:]]*"entryUUID"'; then
+      echo "[bootstrap] LDAP mapper 'entryUUID' already exists"
+    else
+      echo "[bootstrap] creating LDAP mapper 'entryUUID'"
+      FED_ID=$("$KC" get components -r "$REALM" 2>/dev/null \
+        | sed -n 's/.*"id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+        | head -n 1)
+      "$KC" create components -r "$REALM" \
+        -s 'name="entryUUID"' \
+        -s 'providerId="user-attribute-ldap-mapper"' \
+        -s 'providerType="org.keycloak.storage.ldap.mappers.LDAPStorageMapper"' \
+        -s 'parentId="'$FED_ID'"' \
+        -s 'config."read.only"=["true"]' \
+        -s 'config."ldap.attribute"=["entryUUID"]' \
+        -s 'config."user.model.attribute"=["entryUUID"]' \
+        -s 'config."always.read.value.from.ldap"=["true"]' \
+        -s 'config."is.mandatory.in.ldap"=["false"]'
+    fi
+
     # --- OIDC clients ----------------------------------------------------------
     ${lib.concatMapStringsSep "\n" renderClient bootstrap.clients}
 
