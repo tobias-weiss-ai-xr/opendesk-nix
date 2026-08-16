@@ -128,15 +128,18 @@ let
   # Appservice registration for the Intercom-Service — templated with the
   # as/hs tokens; rendered to /config/appservice/intercom.yaml at startup by
   # the init-config initContainer from the mounted synapse-appservice Secret.
-  # `url` omitted: the ICS only performs appservice login, never receives
-  # pushes. Non-exclusive catch-all user namespace so the AS may log in as
-  # any user (ghost users created on demand; real OIDC users take
-  # precedence).
+  # `url` is explicit null: Synapse requires the key (string or null) even for
+  # login-only appservices, and the ICS never receives pushes. Non-exclusive
+  # catch-all user namespace so the AS may log in as any user (ghost users
+  # created on demand; real OIDC users take precedence).
   appserviceConfig = ''
     id: intercom
     hs_token: "__MATRIX_HS_TOKEN__"
     as_token: "__MATRIX_AS_TOKEN__"
     sender_localpart: intercom
+    # Synapse requires the url key (string or explicit null) even for
+    # login-only appservices — explicit null: the ICS never receives pushes.
+    url:
     namespaces:
       users:
         - exclusive: false
