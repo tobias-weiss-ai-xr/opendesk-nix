@@ -116,6 +116,31 @@ let
     enable_registration: false
     max_upload_size: 50M
     report_stats: false
+    # Application services (plan/2026-08-16-matrix-appservice-plan.md): the
+    # Intercom-Service is registered as an appservice so it can fetch
+    # per-user tokens via m.login.application_service. The registration file
+    # is rendered at startup by the init-config initContainer from the sealed
+    # synapse-appservice Secret (token placeholders in the template).
+    app_service_config_files:
+      - /config/appservice/intercom.yaml
+  '';
+
+  # Appservice registration for the Intercom-Service — templated with the
+  # as/hs tokens; rendered to /config/appservice/intercom.yaml at startup by
+  # the init-config initContainer from the mounted synapse-appservice Secret.
+  # `url` omitted: the ICS only performs appservice login, never receives
+  # pushes. Non-exclusive catch-all user namespace so the AS may log in as
+  # any user (ghost users created on demand; real OIDC users take
+  # precedence).
+  appserviceConfig = ''
+    id: intercom
+    hs_token: "__MATRIX_HS_TOKEN__"
+    as_token: "__MATRIX_AS_TOKEN__"
+    sender_localpart: intercom
+    namespaces:
+      users:
+        - exclusive: false
+          regex: "@.*"
   '';
 
   logConfig = ''
@@ -183,6 +208,13 @@ in
         readOnly = true;
       }
       {
+        # Rendered registration file (app_service_config_files target).
+        name = "config";
+        mountPath = "/config/appservice/intercom.yaml";
+        subPath = "appservice/intercom.yaml";
+        readOnly = true;
+      }
+      {
         name = "log-config";
         mountPath = "/data/log.config";
         subPath = "log.config";
@@ -201,7 +233,15 @@ in
         command = [
           "/bin/sh"
           "-c"
-          ''sed -e "s|__SYNAPSE_MACAROON_SECRET__|$(cat /mnt/secrets/macaroon-secret-key)|g" -e "s|__SYNAPSE_OIDC_CLIENT_SECRET__|$(cat /mnt/secrets-oidc/oidc-client-secret)|g" /mnt/config/homeserver.yaml > /config/homeserver.yaml''
+          ''
+            mkdir -p /config/appservice
+            sed -e "s|__SYNAPSE_MACAROON_SECRET__|$(cat /mnt/secrets/macaroon-secret-key)|g" \
+                -e "s|__SYNAPSE_OIDC_CLIENT_SECRET__|$(cat /mnt/secrets-oidc/oidc-client-secret)|g" \
+                /mnt/config/homeserver.yaml > /config/homeserver.yaml
+            sed -e "s|__MATRIX_AS_TOKEN__|$(cat /mnt/secrets-appservice/matrix-as-token)|g" \
+                -e "s|__MATRIX_HS_TOKEN__|$(cat /mnt/secrets-appservice/matrix-hs-token)|g" \
+                /mnt/config/appservice/intercom.yaml > /config/appservice/intercom.yaml
+          ''
         ];
         volumeMounts = [
           {
@@ -212,6 +252,11 @@ in
           {
             name = "secrets-oidc";
             mountPath = "/mnt/secrets-oidc";
+            readOnly = true;
+          }
+          {
+            name = "secrets-appservice";
+            mountPath = "/mnt/secrets-appservice";
             readOnly = true;
           }
           {
@@ -241,6 +286,13 @@ in
               key = "homeserver.yaml";
               path = "homeserver.yaml";
             }
+            {
+              # ConfigMap keys cannot contain "/" (k8s validation), so the
+              # template is stored under a dash key and projected onto the
+              # appservice/ subdirectory here.
+              key = "appservice-intercom.yaml";
+              path = "appservice/intercom.yaml";
+            }
           ];
         };
       }
@@ -254,6 +306,12 @@ in
         name = "secrets-oidc";
         secret = {
           secretName = "${name}-oidc";
+        };
+      }
+      {
+        name = "secrets-appservice";
+        secret = {
+          secretName = "${name}-appservice";
         };
       }
       {
@@ -277,7 +335,7 @@ in
     ];
 
     annotations = {
-      "checksum/config" = "synapse-config-v4";
+      "checksum/config" = "synapse-config-v5";
     };
   })
 
@@ -305,6 +363,7 @@ in
     data = {
       "homeserver.yaml" = homeserverConfig;
       "log.config" = logConfig;
+      "appservice-intercom.yaml" = appserviceConfig;
     };
   })
 
@@ -347,6 +406,22 @@ in
     inherit labels;
     stringData = {
       "oidc-client-secret" = "synapse-oidc-client-secret-change-me";
+    };
+  })
+
+  # Appservice tokens for the Intercom-Service registration (see
+  # plan/2026-08-16-matrix-appservice-plan.md) — sealed at build time,
+  # real values applied out-of-band by the operator: matrix-as-token = the
+  # token the ICS presents (intercom Secret key matrix-as-token);
+  # matrix-hs-token = newly generated. Rendered into
+  # appservice/intercom.yaml by the init-config initContainer.
+  (lib.secret {
+    name = "${name}-appservice";
+    inherit (env) namespace;
+    inherit labels;
+    stringData = {
+      "matrix-as-token" = "opendesk-synapse-appservice-as-token-change-me";
+      "matrix-hs-token" = "opendesk-synapse-appservice-hs-token-change-me";
     };
   })
 ]
