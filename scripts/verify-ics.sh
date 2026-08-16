@@ -14,6 +14,7 @@
 #   6. Element banner config served
 #   7. Synapse OIDC config present in the rendered homeserver.yaml
 #   8. Redis auth (AUTH round-trip via the ICS env or direct PING w/ password)
+#   9. Matrix appservice registration (result/30-synapse.yaml manifest + synapse-appservice Secret)
 #
 # Usage: bash scripts/verify-ics.sh   (kubectl context scs-k3s via tunnel)
 
@@ -102,6 +103,34 @@ if [ -n "$REDIS_PW" ]; then
   case "$r" in PONG) ok "redis AUTH PING -> PONG";; *) bad "redis PING -> $r";; esac
 else
   bad "redis secret not readable"
+fi
+
+step "9. Matrix appservice registration"
+
+# Manifest check — the rendered Synapse manifest must wire the appservice
+SYNAPSE_MANIFEST="result/30-synapse.yaml"
+if [ -f "$SYNAPSE_MANIFEST" ] \
+  && grep -q 'app_service_config_files' "$SYNAPSE_MANIFEST" \
+  && grep -q 'intercom.yaml' "$SYNAPSE_MANIFEST"; then
+  ok "manifest $SYNAPSE_MANIFEST: app_service_config_files + intercom.yaml present"
+else
+  bad "manifest $SYNAPSE_MANIFEST: app_service_config_files/intercom.yaml missing (run: nix build .#scs-manifests)"
+fi
+
+# Live check — the appservice Secret must exist in opendesk with both tokens
+if kubectl get secret synapse-appservice -n opendesk >/dev/null 2>&1; then
+  missing=""
+  for k in matrix-as-token matrix-hs-token; do
+    v=$(kubectl get secret synapse-appservice -n opendesk -o jsonpath="{.data.$k}" 2>/dev/null || true)
+    [ -n "$v" ] || missing="$missing $k"
+  done
+  if [ -z "$missing" ]; then
+    ok "secret synapse-appservice present (matrix-as-token + matrix-hs-token)"
+  else
+    bad "secret synapse-appservice missing keys:$missing"
+  fi
+else
+  bad "secret synapse-appservice not found in opendesk"
 fi
 
 printf '\n\033[1mResult: %d passed, %d failed\033[0m\n' "$PASS" "$FAIL"
