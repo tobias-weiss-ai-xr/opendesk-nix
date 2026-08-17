@@ -1,0 +1,17 @@
+# SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+# Profile configuration for argunix-builder
+
+export NIX_REMOTE="daemon"
+export NIX_USER_CONF_FILES="/etc/nix/nix.conf"
+
+# Configure Nix to use the daemon socket
+export NIX_GLOBAL_CONF="/etc/nix/nix.conf"
+
+# Configure argunix-builder environment
+export ARGUNIX_BUILDER_DIR="/var/lib/argunix-builder"
+export ARGUNIX_ENROLLMENT_TOKEN_FILE="/var/lib/argunix-builder/enrollment-token"
+
+# Path for Nix
+export PATH="/nix/var/nix/profiles/default/bin:/nix/var/nix/profiles/default/sbin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
