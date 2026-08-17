@@ -291,6 +291,18 @@ let
       user = "argocd";
       uid = 1000;
     };
+    argunix = {
+      package = pkgs.callPackage (builtins.fetchGit {
+        url = "https://codeberg.org/tfc/argunix";
+        ref = "refs/tags/v0.0.1-dev";
+        sha256 = "0000000000000000000000000000000000000000000000000000";
+      }) {};
+      version = "0.0.1-dev";
+      port = 8080;
+      type = "ci";
+      user = "argunix";
+      uid = 1000;
+    };
     kube-prometheus-stack = {
       package = null;
       version = "0.80.0";
@@ -778,11 +790,12 @@ let
       web = countByType "web";
       lms = countByType "lms";
       monitoring = countByType "monitoring";
+      ci = countByType "ci";
     };
     byTier = {
       tier1 = countByType "database" + countByType "cache";
       tier2 = countByType "web";
-      tier3 = countByType "lms" + countByType "monitoring";
+      tier3 = countByType "lms" + countByType "monitoring" + countByType "ci";
     };
   };
 
