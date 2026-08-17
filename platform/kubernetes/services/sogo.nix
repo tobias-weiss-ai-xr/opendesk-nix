@@ -167,12 +167,17 @@ in
         command = [
           "/bin/sh"
           "-c"
-          ''sed -e "s|__SOGO_DB_PASSWORD__|$(cat /mnt/secrets/db-password)|g" -e "s|__SOGO_OIDC_CLIENT_SECRET__|$(cat /mnt/secrets/oidc-client-secret)|g" /mnt/config/sogo.conf > /etc/sogo/sogo.conf''
+          ''sed -e "s|__SOGO_DB_PASSWORD__|$(cat /mnt/secrets-db/db-password)|g" -e "s|__SOGO_OIDC_CLIENT_SECRET__|$(cat /mnt/secrets-oidc/oidc-client-secret)|g" /mnt/config/sogo.conf > /etc/sogo/sogo.conf''
         ];
         volumeMounts = [
           {
-            name = "secrets";
-            mountPath = "/mnt/secrets";
+            name = "secrets-db";
+            mountPath = "/mnt/secrets-db";
+            readOnly = true;
+          }
+          {
+            name = "secrets-oidc";
+            mountPath = "/mnt/secrets-oidc";
             readOnly = true;
           }
           {
@@ -219,7 +224,13 @@ in
         };
       }
       {
-        name = "secrets";
+        name = "secrets-db";
+        secret = {
+          secretName = "${name}-db";
+        };
+      }
+      {
+        name = "secrets-oidc";
         secret = {
           secretName = "${name}-secrets";
         };
