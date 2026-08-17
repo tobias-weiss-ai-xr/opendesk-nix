@@ -100,8 +100,6 @@ let
       SOGoDebugMessagesEnabled = NO;
       SOGoDefaultCalendar = "personal";
       SOGoDefaultLanguage = "English";
-      
-      // OIDC/SSO Configuration
       SOGoOpenIdConnectURL = "https://keycloak.home.opendesk-edu.org/realms/opendesk/.well-known/openid-configuration";
       SOGoOpenIdClientId = "opendesk-sogo";
       SOGoOpenIdClientSecret = "__SOGO_OIDC_CLIENT_SECRET__";
