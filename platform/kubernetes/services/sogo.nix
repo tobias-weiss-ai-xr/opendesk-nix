@@ -104,7 +104,7 @@ let
       SOGoOpenIdClientId = "opendesk-sogo";
       SOGoOpenIdClientSecret = "__SOGO_OIDC_CLIENT_SECRET__";
       SOGoOpenIdResponseType = "code";
-      SOGoOpenIdScopes = [ "openid" "email" "profile" ];
+      SOGoOpenIdScopes = ( "openid", "email", "profile" );
       SOGoOpenIdUseNonSecureCookies = YES;
       SOGoOpenIdDisableTLSVerification = NO;
     }
