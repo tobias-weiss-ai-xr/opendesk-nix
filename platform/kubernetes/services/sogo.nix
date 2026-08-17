@@ -100,6 +100,15 @@ let
       SOGoDebugMessagesEnabled = NO;
       SOGoDefaultCalendar = "personal";
       SOGoDefaultLanguage = "English";
+      
+      // OIDC/SSO Configuration
+      SOGoOpenIdConnectURL = "https://keycloak.home.opendesk-edu.org/realms/opendesk/.well-known/openid-configuration";
+      SOGoOpenIdClientId = "opendesk-sogo";
+      SOGoOpenIdClientSecret = "__SOGO_OIDC_CLIENT_SECRET__";
+      SOGoOpenIdResponseType = "code";
+      SOGoOpenIdScopes = [ "openid" "email" "profile" ];
+      SOGoOpenIdUseNonSecureCookies = YES;
+      SOGoOpenIdDisableTLSVerification = NO;
     }
   '';
 
@@ -160,7 +169,7 @@ in
         command = [
           "/bin/sh"
           "-c"
-          ''sed "s|__SOGO_DB_PASSWORD__|$(cat /mnt/secrets/db-password)|g" /mnt/config/sogo.conf > /etc/sogo/sogo.conf''
+          ''sed -e "s|__SOGO_DB_PASSWORD__|$(cat /mnt/secrets/db-password)|g" -e "s|__SOGO_OIDC_CLIENT_SECRET__|$(cat /mnt/secrets/oidc-client-secret)|g" /mnt/config/sogo.conf > /etc/sogo/sogo.conf''
         ];
         volumeMounts = [
           {
@@ -214,7 +223,7 @@ in
       {
         name = "secrets";
         secret = {
-          secretName = "${name}-db";
+          secretName = "${name}-secrets";
         };
       }
       {
@@ -270,6 +279,15 @@ in
     namespace = env.namespaceEdu;
     stringData = {
       "db-password" = db.sogo.password;
+    };
+  })
+
+  # SOGo secrets: OIDC client secret for Keycloak SSO
+  (lib.secret {
+    name = "${name}-secrets";
+    namespace = env.namespaceEdu;
+    stringData = {
+      "oidc-client-secret" = "__SOGO_OIDC_CLIENT_SECRET__";
     };
   })
 ]
