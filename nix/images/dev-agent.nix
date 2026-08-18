@@ -23,7 +23,7 @@ let
 in
 pkgs.dockerTools.buildLayeredImage {
   name = "dev-agent";
-  tag = "latest-nix";
+  tag = "v5-nix";
 
   contents = with pkgs; [
     python3
