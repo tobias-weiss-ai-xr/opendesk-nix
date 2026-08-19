@@ -13,7 +13,7 @@ This directory contains technical specifications for openDesk Nix components.
 
 ### Technical Specifications
 - SOGo 5/6 container specifications
-- Dev-Agent specifications
+- Dev-Agent specifications (v4.0.0 — Python-based predictive Kubernetes health monitor)
 - ZOT Registry specifications
 
 ### OpenSpec Artifacts

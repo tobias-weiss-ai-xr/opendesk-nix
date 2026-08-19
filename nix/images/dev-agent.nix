@@ -1,8 +1,15 @@
 # SPDX-License-Identifier: Apache-2.0
-# Dev Agent Operator — AI-powered Kubernetes self-healing operator
-# Image: dev-agent:latest-nix
+# Dev Agent Operator v3.1.0 — AI-powered Kubernetes self-healing operator (LEGACY)
+# Image: dev-agent:v7-nix
 # Built with: Nix dockerTools.buildLayeredImage using nixpkgs
-# Registry: 172.17.0.6:5001/dev-agent:latest-nix
+# Registry: 172.17.0.6:5001/dev-agent:v7-nix
+#
+# NOTE: This is the LEGACY v3.1.0 build. The v4.0.0 predictive agent with
+# Kalman filter, Markov chain, Bayesian risk scoring, and new endpoints
+# (/predictions, /state, /reanalyze) lives in the predictive-agent repo:
+#   ~/git/predictive-agent/nix/predictive-agent.nix (image: predictive-agent:v8-nix)
+# The v4.0.0 code, tests (105+ tests), and Nix build are all in the
+# predictive-agent repo. See specs/technical/DEV-AGENT-SPEC.md for details.
 
 { pkgs ? import <nixpkgs> { system = "x86_64-linux"; } }:
 
