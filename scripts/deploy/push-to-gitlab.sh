@@ -126,14 +126,7 @@ if push_image "opendesk-edu-website" "" "" "../opendesk-edu-website"; then
     SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
 fi
 
-# 2. Dev Agent (from operator repo)
-TOTAL_COUNT=$((TOTAL_COUNT + 1))
-if push_image "dev-agent" "make docker-build" "" "../opendesk-dev-agent-operator"; then
-    docker tag opendesk-dev-agent-operator:latest $REGISTRY/dev-agent:latest 2>/dev/null || true
-    docker push $REGISTRY/dev-agent:latest 2>/dev/null && SUCCESS_COUNT=$((SUCCESS_COUNT + 1)) || true
-fi
-
-# 3. SBOM Generator
+# 2. SBOM Generator
 TOTAL_COUNT=$((TOTAL_COUNT + 1))
 if push_image "sbom-generator" "" "docker/sbom-generator/Dockerfile" "../opendesk-edu-website"; then
     SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
@@ -155,7 +148,6 @@ fi
 echo ""
 echo "Images available at:"
 echo "  $REGISTRY/opendesk-edu-website:latest"
-echo "  $REGISTRY/dev-agent:latest"
 echo "  $REGISTRY/sbom-generator:latest"
 echo ""
 

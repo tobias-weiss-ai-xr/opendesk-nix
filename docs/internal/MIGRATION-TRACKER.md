@@ -207,7 +207,6 @@ These files exist in `opendesk-nix/k8s/` but not in `opendesk-nix/k8s/services/`
 
 - collabora.nix
 - cryptpad.nix
-- dev-agent/ (directory)
 - dovecot.nix
 - element.nix
 - jitsi.nix

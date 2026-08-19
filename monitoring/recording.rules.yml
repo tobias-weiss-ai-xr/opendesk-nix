@@ -43,49 +43,7 @@ groups:
   # -----------------------------------------------------------------------------
   # Dev Agent Operator Metrics
   # -----------------------------------------------------------------------------
-  - name: dev-agent.recording
-    interval: 15s
-    
-    rules:
-      # Repair statistics
-      - record: dev_agent:repairs_total:5m_rate
-        expr: rate(dev_agent_repairs_total[5m])
-      
-      - record: dev_agent:repairs_total:1h_rate
-        expr: rate(dev_agent_repairs_total[1h])
-      
-      - record: dev_agent:repair_failures_total:5m_rate
-        expr: rate(dev_agent_repair_failures_total[5m])
-      
-      - record: dev_agent:repair_success_rate:5m
-        expr: 1 - (rate(dev_agent_repair_failures_total[5m]) / rate(dev_agent_repairs_total[5m]))
-      
-      # Repair duration percentiles
-      - record: dev_agent:repair_duration_seconds:p50
-        expr: histogram_quantile(0.50, sum(rate(dev_agent_repair_duration_seconds_bucket[5m])) by (le))
-      
-      - record: dev_agent:repair_duration_seconds:p95
-        expr: histogram_quantile(0.95, sum(rate(dev_agent_repair_duration_seconds_bucket[5m])) by (le))
-      
-      - record: dev_agent:repair_duration_seconds:p99
-        expr: histogram_quantile(0.99, sum(rate(dev_agent_repair_duration_seconds_bucket[5m])) by (le))
-      
-      # Components monitored
-      - record: dev_agent:components_monitored
-        expr: count(dev_agent_component_health_status)
-      
-      - record: dev_agent:components_healthy
-        expr: count(dev_agent_component_health_status{status="healthy"})
-      
-      - record: dev_agent:components_degraded
-        expr: count(dev_agent_component_health_status{status="degraded"})
-      
-      - record: dev_agent:components_failed
-        expr: count(dev_agent_component_health_status{status="failed"})
 
-  # -----------------------------------------------------------------------------
-  # SOGo 5 Metrics
-  # -----------------------------------------------------------------------------
   - name: sogo5.recording
     interval: 30s
     

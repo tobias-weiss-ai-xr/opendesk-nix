@@ -74,7 +74,6 @@ declare -a EDU_IMAGES=(
     "ghcr.io/opendesk-edu/planka:latest"
     "ghcr.io/opendesk-edu/self-service-password:latest"
     "ghcr.io/opendesk-edu/user-import:latest"
-    "ghcr.io/opendesk-edu/opendesk-dev-agent-operator:latest"
     "ghcr.io/opendesk-edu/moodle-shib:latest"
     "ghcr.io/opendesk-edu/ilias-shibboleth:latest"
     "ghcr.io/opendesk-edu/ilias:latest"

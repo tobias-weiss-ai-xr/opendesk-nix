@@ -349,7 +349,6 @@ kubectl create secret docker-registry opencode-registry-pull-secret \
 | **2** | sogo5 (groupware) | `k8s/groupware/sogo5/` | stalwart, mariadb |
 | **3** | sogo6 (groupware) | `k8s/groupware/sogo6/` | stalwart, mariadb |
 | **4** | opencloud (files) | `k8s/services/opencloud/` | postgresql, redis |
-| **5** | dev-agent (automation) | `k8s/automation/dev-agent/` | All above |
 
 #### Deployment-Checkliste
 
@@ -375,9 +374,6 @@ echo "=== Phase 4: opencloud ==="
 kubectl apply -k k8s/services/opencloud/ -n opendesk
 kubectl wait --for=condition=available deployment/opencloud -n opendesk --timeout=300s
 
-echo "=== Phase 5: dev-agent ==="
-kubectl apply -k k8s/automation/dev-agent/ -n opendesk
-kubectl wait --for=condition=available deployment/dev-agent -n opendesk --timeout=300s
 
 echo "=== All Production Services Deployed ==="
 kubectl get pods -n opendesk -l app=opendesk
@@ -387,7 +383,7 @@ kubectl get pods -n opendesk -l app=opendesk
 
 ```bash
 # Verify all services are running
-kubectl get pods -n opendesk | grep -E "(stalwart|sogo5|sogo6|opencloud|dev-agent)"
+kubectl get pods -n opendesk | grep -E "(stalwart|sogo5|sogo6|opencloud)"
 
 # Check logs for errors
 kubectl logs -n opendesk -l app=opendesk --tail=100 | grep -i error

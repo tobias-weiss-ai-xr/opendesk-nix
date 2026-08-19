@@ -23,7 +23,6 @@
         excludes = [
           "overlays/container-gov-de.nix"
           "templates/**"
-          "dev-agent/flake.nix"
           "examples/advanced/flake.nix"
           "platform/kubernetes/**"
           "platform/nix/integrated-devguard.nix"

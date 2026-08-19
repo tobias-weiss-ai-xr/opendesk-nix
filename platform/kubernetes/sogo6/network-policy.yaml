@@ -69,15 +69,15 @@ spec:
     - protocol: TCP
       port: 20005
   
-  # 3. Allow health checks from dev-agent-operator
+  # 3. Allow health checks from predictive-agent
   - from:
     - namespaceSelector:
         matchLabels:
           kubernetes.io/metadata.name: opendesk-operator
     - podSelector:
         matchLabels:
-          app.kubernetes.io/name: dev-agent-operator
-          app.kubernetes.io/instance: dev-agent-operator
+          app.kubernetes.io/name: predictive-agent
+          app.kubernetes.io/instance: predictive-agent
     ports:
     - protocol: TCP
       port: 8081

@@ -20,7 +20,7 @@ After completing the registry cleanup and ZKI-Compliance documentation, openDesk
 **Key Deliverables:**
 - ✅ Registry cleanup complete (5 images)
 - ⏳ ZKI-Compliance P0-Arbeiten (DPO approval, Kyverno webhook auth, policy backup)
-- ⏳ K3s Production Deployment (stalwart, sogo5, sogo6, opencloud, dev-agent)
+- ⏳ K3s Production Deployment (stalwart, sogo5, sogo6, opencloud)
 - ⏳ Monitoring & Alerting setup
 
 **See:** `IMPLEMENTATION-PLAN-PRIORITY-1.md`

@@ -22,7 +22,7 @@
 
 All 77 services now in the catalog:
 - **Databases (6):** mariadb, postgresql, redis, memcached, mariadb-enhanced, timescale, minio, seaweedfs
-- **Web (56):** nginx, traefik, keycloak, nextcloud, collabora, etherpad, cryptpad, moodle, ilias, ilias-full, element, openproject, planka, bookstack, code-server, drawio, excalidraw, jitsi, xwiki, sogo, sogo5, sogo6, argocd, bigbluebutton, opencloud, open-webui, overleaf, notes, slidev, typo3, limesurvey, dovecot, stalwart, intercom, intercom-service, coderd, jupyterhub, kasmvnc, rstudio, ttyd, dev-agent, dask, f13, n8n, clamav, eudi-issuer, self-service-password, nubus-ldap, nubus-portal, nubus-provisioning, nubus-udm, ollama, collab-dashboard, grommunio, open-xchange, portal-entries, semester-provisioning, snipr, zammad
+- **Web (56):** nginx, traefik, keycloak, nextcloud, collabora, etherpad, cryptpad, moodle, ilias, ilias-full, element, openproject, planka, bookstack, code-server, drawio, excalidraw, jitsi, xwiki, sogo, sogo5, sogo6, argocd, bigbluebutton, opencloud, open-webui, overleaf, notes, slidev, typo3, limesurvey, dovecot, stalwart, intercom, intercom-service, coderd, jupyterhub, kasmvnc, rstudio, ttyd, dask, f13, n8n, clamav, eudi-issuer, self-service-password, nubus-ldap, nubus-portal, nubus-provisioning, nubus-udm, ollama, collab-dashboard, grommunio, open-xchange, portal-entries, semester-provisioning, snipr, zammad
 - **Monitoring (9):** grafana, prometheus, loki, elasticsearch, kibana, filebeat, promtail, kube-prometheus-stack, monitoring
 - **Cache (2):** redis, memcached (duplicate with databases)
 - **LMS (3):** moodle, ilias, ilias-full

@@ -139,7 +139,6 @@ The **complete openDesk Edu platform** is now ready for production deployment on
 | drawio | 24.0.0 | ✅ | Pushed |
 | excalidraw | latest | ✅ | Pushed |
 | cryptpad | latest | ✅ | Pushed |
-| dev-agent | latest | ✅ | Pushed |
 | dask | latest | ✅ | Pushed |
 | f13 | latest | ✅ | Pushed |
 | kasmvnc | latest | ✅ | Pushed |

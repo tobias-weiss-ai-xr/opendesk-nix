@@ -48,12 +48,9 @@ echo "$OPENCODE_TOKEN" | docker login registry.gitlab.opencode.de -u weiss --pas
 docker tag ghcr.io/opendesk-edu/opendesk-edu-website:latest \
   registry.gitlab.opencode.de/umr/opendesk-edu-website:latest
 
-docker tag ghcr.io/tobias-weiss-ai-xr/opendesk-dev-agent-operator:latest \
-  registry.gitlab.opencode.de/umr/dev-agent:latest
 
 # Push to GitLab
 docker push registry.gitlab.opencode.de/umr/opendesk-edu-website:latest
-docker push registry.gitlab.opencode.de/umr/dev-agent:latest
 ```
 
 ---
@@ -63,7 +60,7 @@ docker push registry.gitlab.opencode.de/umr/dev-agent:latest
 | Image Name | Source | Registry URL | Build Method | Status |
 |------------|--------|--------------|--------------|--------|
 | **opendesk-edu-website** | Next.js repo | `registry.gitlab.opencode.de/umr/opendesk-edu-website:latest` | Docker | ✅ Ready |
-| **dev-agent** | Operator repo | `registry.gitlab.opencode.de/umr/dev-agent:latest` | Docker/Nix | ✅ Ready |
+
 | **sbom-generator** | Website repo | `registry.gitlab.opencode.de/umr/sbom-generator:latest` | Docker | ✅ Ready |
 | **sogo5** | Nix flake | `registry.gitlab.opencode.de/umr/sogo5:latest` | Nix/Docker | ✅ Ready |
 | **sogo6** | Nix flake | `registry.gitlab.opencode.de/umr/sogo6:latest` | Nix/Docker | ✅ Ready |
@@ -94,7 +91,6 @@ Here's the **complete Nix infrastructure** for all openDesk containers:
 # Build all images:
 nix build .#sogo5-image
 nix build .#sogo6-image
-nix build .#dev-agent-image
 nix build .#opendesk-edu-website-image  # If added
 nix build .#sbom-generator-image       # If added
 ```
@@ -104,7 +100,7 @@ nix build .#sbom-generator-image       # If added
 |---------|-------------|---------|
 | `sogo5-image` | SOGo 5 Docker image | `nix build .#sogo5-image` |
 | `sogo6-image` | SOGo 6 Docker image | `nix build .#sogo6-image` |
-| `dev-agent-image` | Dev Agent Kubernetes operator | `nix build .#dev-agent-image` |
+
 
 ---
 
@@ -116,7 +112,6 @@ opendesk-nix/
 ├── flake.lock               # Lock file
 ├── sogo/
 │   └── flake.nix           # SOGo 5 & 6 images
-├── dev-agent/
 │   └── flake.nix           # Dev Agent image
 ├── website/
 │   └── flake.nix           # Website image (optional)
@@ -131,7 +126,6 @@ opendesk-nix/
 │   │   ├── deployment.yaml
 │   │   ├── service.yaml
 │   │   └── config.yaml
-│   └── dev-agent/
 │       ├── deployment.yaml
 │       ├── rbac.yaml
 │       └── service.yaml
@@ -385,115 +379,6 @@ spec:
       - name: gitlab-registry-opencode
 ```
 
-### **dev-agent/deployment.yaml**
-```yaml
-# opendesk-nix/k8s/dev-agent/deployment.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: opendesk-dev-agent
-  namespace: opendesk
-  labels:
-    app: opendesk-dev-agent
-    component: operator
-    managed-by: nix
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: opendesk-dev-agent
-  template:
-    metadata:
-      labels:
-        app: opendesk-dev-agent
-        component: operator
-    spec:
-      serviceAccountName: opendesk-dev-agent
-      containers:
-      - name: manager
-        image: registry.gitlab.opencode.de/umr/dev-agent:latest
-        imagePullPolicy: Always
-        args:
-        - --debug
-        - --disable-pi-memory
-        - --watch-namespace=opendesk
-        - --zap-log-level=info
-        - --leader-elect=false
-        env:
-        - name: WATCH_NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
-        - name: POD_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
-        resources:
-          requests:
-            cpu: 100m
-            memory: 128Mi
-          limits:
-            cpu: 500m
-            memory: 512Mi
-        livenessProbe:
-          httpGet:
-            path: /healthz
-            port: 8080
-          initialDelaySeconds: 30
-        readinessProbe:
-          httpGet:
-            path: /readyz
-            port: 8080
-          initialDelaySeconds: 5
-      imagePullSecrets:
-      - name: gitlab-registry-opencode
-```
-
-### **dev-agent/rbac.yaml**
-```yaml
-# opendesk-nix/k8s/dev-agent/rbac.yaml
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: opendesk-dev-agent
-  namespace: opendesk
-  labels:
-    app: opendesk-dev-agent
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: opendesk-dev-agent
-  labels:
-    app: opendesk-dev-agent
-rules:
-- apiGroups: [""]
-  resources: ["pods", "services", "endpoints", "persistentvolumeclaims", "events", "configmaps", "secrets"]
-  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-- apiGroups: ["apps"]
-  resources: ["deployments", "replicasets", "statefulsets"]
-  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-- apiGroups: ["opendesk-dev-agent.tobias-weiss-ai-xr.github.com"]
-  resources: ["healthpolicies", "repairstrategies"]
-  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: opendesk-dev-agent
-  labels:
-    app: opendesk-dev-agent
-subjects:
-- kind: ServiceAccount
-  name: opendesk-dev-agent
-  namespace: opendesk
-roleRef:
-  kind: ClusterRole
-  name: opendesk-dev-agent
-  apiGroup: rbac.authorization.k8s.io
-```
-
----
 
 ## 🔥 **COMPLETE PUSH SCRIPT FOR GITLAB REGISTRY**
 
@@ -544,24 +429,15 @@ echo "  Apply with: kubectl apply -f /tmp/gitlab-registry-secret.yaml"
 
 # Push Website
 echo ""
-echo -e "${YELLOW}--- 1/3: Website ---${NC}"
+echo -e "${YELLOW}--- 1/2: Website ---${NC}"
 cd /home/weissto_local/git/opendesk_git/opendesk-edu-website
 docker build -t $REGISTRY/opendesk-edu-website:latest .
 docker push $REGISTRY/opendesk-edu-website:latest
 echo -e "${GREEN}✓ Website pushed${NC}"
 
-# Push Dev Agent
-echo ""
-echo -e "${YELLOW}--- 2/3: Dev Agent ---${NC}"
-cd /home/weissto_local/git/opendesk_git/opendesk-dev-agent-operator
-make docker-build || true
-docker tag opendesk-dev-agent-operator:latest $REGISTRY/dev-agent:latest
-docker push $REGISTRY/dev-agent:latest
-echo -e "${GREEN}✓ Dev Agent pushed${NC}"
-
 # Push SBOM Generator
 echo ""
-echo -e "${YELLOW}--- 3/3: SBOM Generator ---${NC}"
+echo -e "${YELLOW}--- 2/2: SBOM Generator ---${NC}"
 cd /home/weissto_local/git/opendesk_git/opendesk-edu-website
 docker build -t $REGISTRY/sbom-generator:latest -f docker/sbom-generator/Dockerfile .
 docker push $REGISTRY/sbom-generator:latest
@@ -574,7 +450,6 @@ echo -e "${GREEN}=====================================${NC}"
 echo ""
 echo "Images available at:"
 echo "  $REGISTRY/opendesk-edu-website:latest"
-echo "  $REGISTRY/dev-agent:latest"
 echo "  $REGISTRY/sbom-generator:latest"
 echo ""
 echo "Kubernetes pull secret:"

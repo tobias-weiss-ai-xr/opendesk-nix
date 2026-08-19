@@ -49,7 +49,6 @@ This guide provides step-by-step instructions for deploying openDesk Edu to the 
 - [ ] Deploy SOGo 5 (groupware)
 - [ ] Deploy SOGo 6 (groupware)
 - [ ] Deploy openCloud (files)
-- [ ] Deploy dev-agent (automation)
 
 ### Phase 5: Validation (Day 6-7)
 
@@ -393,19 +392,6 @@ kubectl get pods -n opendesk -l app=opencloud
 kubectl get svc -n opendesk -l app=opencloud
 ```
 
-### 4.5 Deploy dev-agent (Automation)
-
-```bash
-# Deploy from examples
-kubectl apply -k k8s/automation/dev-agent/ -n opendesk
-
-# Wait for deployment
-kubectl wait --for=condition=available deployment/dev-agent -n opendesk --timeout=300s
-
-# Verify
-kubectl get pods -n opendesk -l app=dev-agent
-kubectl get svc -n opendesk -l app=dev-agent
-```
 
 ### 4.6 Verify All Services
 
@@ -427,7 +413,6 @@ stalwart-7f8c9d5e6-n3j5l     1/1     Running   0          5m
 sogo5-6d4b8f9c7-x2k4m        1/1     Running   0          5m
 sogo6-5c6d7e8f9-a1b2c        1/1     Running   0          5m
 opencloud-4b5c6d7e8-d3e4f    1/1     Running   0          5m
-dev-agent-3a4b5c6d7-f5g6h    1/1     Running   0          5m
 ```
 
 ---

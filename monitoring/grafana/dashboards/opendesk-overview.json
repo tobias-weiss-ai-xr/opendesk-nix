@@ -3,8 +3,11 @@
     "id": null,
     "uid": "opendesk-overview",
     "title": "openDesk Overview",
-    "tags": ["opendesk", "overview"],
-    "timezone": "browser",
+    "tags": [
+      "opendesk",
+      "overview"
+    ],
+    "timezone": "",
     "schemaVersion": 30,
     "version": 1,
     "refresh": "30s",
@@ -12,14 +15,23 @@
       {
         "type": "stat",
         "title": "System Health",
-        "gridPos": { "h": 8, "w": 6, "x": 0, "y": 0 },
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 0,
+          "y": 0
+        },
         "fieldConfig": {
           "defaults": {
             "mappings": [
               {
                 "options": {
-                  "0": { "text": "Down" },
-                  "1": { "text": "Up" }
+                  "0": {
+                    "text": "Down"
+                  },
+                  "1": {
+                    "text": "Up"
+                  }
                 },
                 "type": "value"
               }
@@ -27,11 +39,19 @@
             "thresholds": {
               "mode": "absolute",
               "steps": [
-                { "color": "red", "value": null },
-                { "color": "green", "value": 1 }
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "green",
+                  "value": 1
+                }
               ]
             },
-            "color": { "mode": "thresholds" }
+            "color": {
+              "mode": "thresholds"
+            }
           },
           "overrides": []
         },
@@ -44,48 +64,24 @@
       },
       {
         "type": "stat",
-        "title": "Dev Agent Status",
-        "gridPos": { "h": 8, "w": 6, "x": 6, "y": 0 },
-        "fieldConfig": {
-          "defaults": {
-            "mappings": [
-              {
-                "options": {
-                  "0": { "text": "Down" },
-                  "1": { "text": "Up" }
-                },
-                "type": "value"
-              }
-            ],
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                { "color": "red", "value": null },
-                { "color": "green", "value": 1 }
-              ]
-            },
-            "color": { "mode": "thresholds" }
-          },
-          "overrides": []
-        },
-        "targets": [
-          {
-            "expr": "up{job=\"dev-agent\"}",
-            "instant": true
-          }
-        ]
-      },
-      {
-        "type": "stat",
         "title": "SOGo 5 Status",
-        "gridPos": { "h": 8, "w": 6, "x": 12, "y": 0 },
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 12,
+          "y": 0
+        },
         "fieldConfig": {
           "defaults": {
             "mappings": [
               {
                 "options": {
-                  "0": { "text": "Down" },
-                  "1": { "text": "Up" }
+                  "0": {
+                    "text": "Down"
+                  },
+                  "1": {
+                    "text": "Up"
+                  }
                 },
                 "type": "value"
               }
@@ -93,11 +89,19 @@
             "thresholds": {
               "mode": "absolute",
               "steps": [
-                { "color": "red", "value": null },
-                { "color": "green", "value": 1 }
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "green",
+                  "value": 1
+                }
               ]
             },
-            "color": { "mode": "thresholds" }
+            "color": {
+              "mode": "thresholds"
+            }
           },
           "overrides": []
         },
@@ -111,14 +115,23 @@
       {
         "type": "stat",
         "title": "SOGo 6 Status",
-        "gridPos": { "h": 8, "w": 6, "x": 18, "y": 0 },
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 18,
+          "y": 0
+        },
         "fieldConfig": {
           "defaults": {
             "mappings": [
               {
                 "options": {
-                  "0": { "text": "Down" },
-                  "1": { "text": "Up" }
+                  "0": {
+                    "text": "Down"
+                  },
+                  "1": {
+                    "text": "Up"
+                  }
                 },
                 "type": "value"
               }
@@ -126,11 +139,19 @@
             "thresholds": {
               "mode": "absolute",
               "steps": [
-                { "color": "red", "value": null },
-                { "color": "green", "value": 1 }
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "green",
+                  "value": 1
+                }
               ]
             },
-            "color": { "mode": "thresholds" }
+            "color": {
+              "mode": "thresholds"
+            }
           },
           "overrides": []
         },
@@ -144,14 +165,23 @@
       {
         "type": "stat",
         "title": "Zot Registry Status",
-        "gridPos": { "h": 8, "w": 6, "x": 24, "y": 0 },
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 24,
+          "y": 0
+        },
         "fieldConfig": {
           "defaults": {
             "mappings": [
               {
                 "options": {
-                  "0": { "text": "Down" },
-                  "1": { "text": "Up" }
+                  "0": {
+                    "text": "Down"
+                  },
+                  "1": {
+                    "text": "Up"
+                  }
                 },
                 "type": "value"
               }
@@ -159,11 +189,19 @@
             "thresholds": {
               "mode": "absolute",
               "steps": [
-                { "color": "red", "value": null },
-                { "color": "green", "value": 1 }
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "green",
+                  "value": 1
+                }
               ]
             },
-            "color": { "mode": "thresholds" }
+            "color": {
+              "mode": "thresholds"
+            }
           },
           "overrides": []
         },
@@ -175,199 +213,14 @@
         ]
       },
       {
-        "type": "stat",
-        "title": "Active Repairs",
-        "gridPos": { "h": 8, "w": 6, "x": 0, "y": 8 },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "short",
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                { "color": "green", "value": null },
-                { "color": "orange", "value": 5 },
-                { "color": "red", "value": 10 }
-              ]
-            },
-            "color": { "mode": "thresholds" }
-          },
-          "overrides": []
-        },
-        "targets": [
-          {
-            "expr": "sum(increase(dev_agent_repairs_total[1m]))",
-            "instant": true
-          }
-        ]
-      },
-      {
-        "type": "stat",
-        "title": "Healthy Components",
-        "gridPos": { "h": 8, "w": 6, "x": 6, "y": 8 },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "short",
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                { "color": "red", "value": null },
-                { "color": "green", "value": 1 }
-              ]
-            },
-            "color": { "mode": "thresholds" }
-          },
-          "overrides": []
-        },
-        "targets": [
-          {
-            "expr": "dev_agent:components_healthy",
-            "instant": true
-          }
-        ]
-      },
-      {
-        "type": "stat",
-        "title": "Degraded Components",
-        "gridPos": { "h": 8, "w": 6, "x": 12, "y": 8 },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "short",
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                { "color": "green", "value": null },
-                { "color": "orange", "value": 1 },
-                { "color": "red", "value": 3 }
-              ]
-            },
-            "color": { "mode": "thresholds" }
-          },
-          "overrides": []
-        },
-        "targets": [
-          {
-            "expr": "dev_agent:components_degraded",
-            "instant": true
-          }
-        ]
-      },
-      {
-        "type": "stat",
-        "title": "Failed Components",
-        "gridPos": { "h": 8, "w": 6, "x": 18, "y": 8 },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "short",
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                { "color": "green", "value": null },
-                { "color": "red", "value": 1 }
-              ]
-            },
-            "color": { "mode": "thresholds" }
-          },
-          "overrides": []
-        },
-        "targets": [
-          {
-            "expr": "dev_agent:components_failed",
-            "instant": true
-          }
-        ]
-      },
-      {
-        "type": "stat",
-        "title": "Repair Success Rate",
-        "gridPos": { "h": 8, "w": 6, "x": 24, "y": 8 },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "percent",
-            "min": 0,
-            "max": 100,
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                { "color": "red", "value": null },
-                { "color": "orange", "value": 90 },
-                { "color": "green", "value": 95 }
-              ]
-            },
-            "color": { "mode": "thresholds" }
-          },
-          "overrides": []
-        },
-        "targets": [
-          {
-            "expr": "dev_agent:repair_success_rate:5m * 100",
-            "instant": true
-          }
-        ]
-      },
-      {
-        "type": "graph",
-        "title": "Repairs Over Time",
-        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "short",
-            "custom": {
-              "axes": {
-                "y": [
-                  { "scale": "linear" }
-                ]
-              }
-            }
-          },
-          "overrides": []
-        },
-        "targets": [
-          {
-            "expr": "rate(dev_agent_repairs_total[1m])",
-            "legendFormat": "Repairs"
-          },
-          {
-            "expr": "rate(dev_agent_repair_failures_total[1m])",
-            "legendFormat": "Failures"
-          }
-        ]
-      },
-      {
-        "type": "graph",
-        "title": "Repair Duration",
-        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "s",
-            "custom": {
-              "axes": {
-                "y": [
-                  { "scale": "linear" }
-                ]
-              }
-            }
-          },
-          "overrides": []
-        },
-        "targets": [
-          {
-            "expr": "dev_agent:repair_duration_seconds:p50",
-            "legendFormat": "P50"
-          },
-          {
-            "expr": "dev_agent:repair_duration_seconds:p95",
-            "legendFormat": "P95"
-          },
-          {
-            "expr": "dev_agent:repair_duration_seconds:p99",
-            "legendFormat": "P99"
-          }
-        ]
-      },
-      {
         "type": "graph",
         "title": "SOGo 5 Resource Usage",
-        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 24
+        },
         "fieldConfig": {
           "defaults": {
             "unit": "percent",
@@ -390,7 +243,12 @@
       {
         "type": "graph",
         "title": "SOGo 6 Resource Usage",
-        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 24
+        },
         "fieldConfig": {
           "defaults": {
             "unit": "percent",
@@ -413,14 +271,21 @@
       {
         "type": "graph",
         "title": "SOGo 6 Storage Usage",
-        "gridPos": { "h": 8, "w": 12, "x": 24, "y": 24 },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 24,
+          "y": 24
+        },
         "fieldConfig": {
           "defaults": {
             "unit": "bytes",
             "custom": {
               "axes": {
                 "y": [
-                  { "scale": "linear" }
+                  {
+                    "scale": "linear"
+                  }
                 ]
               }
             }
@@ -472,7 +337,12 @@
       {
         "type": "graph",
         "title": "Zot Registry Cache Performance",
-        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 32
+        },
         "fieldConfig": {
           "defaults": {
             "unit": "percent",
@@ -491,14 +361,21 @@
       {
         "type": "graph",
         "title": "Zot Registry Storage",
-        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 32 },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 32
+        },
         "fieldConfig": {
           "defaults": {
             "unit": "bytes",
             "custom": {
               "axes": {
                 "y": [
-                  { "scale": "linear" }
+                  {
+                    "scale": "linear"
+                  }
                 ]
               }
             }
@@ -525,7 +402,12 @@
       {
         "type": "graph",
         "title": "Node Resource Usage",
-        "gridPos": { "h": 8, "w": 12, "x": 24, "y": 32 },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 24,
+          "y": 32
+        },
         "fieldConfig": {
           "defaults": {
             "unit": "percent",
@@ -548,7 +430,12 @@
       {
         "type": "graph",
         "title": "MariaDB Connections",
-        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 40 },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 40
+        },
         "fieldConfig": {
           "defaults": {
             "unit": "short",
@@ -601,7 +488,12 @@
       {
         "type": "graph",
         "title": "MariaDB Query Performance",
-        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 40 },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 40
+        },
         "fieldConfig": {
           "defaults": {
             "unit": "short",
@@ -627,7 +519,12 @@
       {
         "type": "graph",
         "title": "Memcached Performance",
-        "gridPos": { "h": 8, "w": 12, "x": 24, "y": 40 },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 24,
+          "y": 40
+        },
         "fieldConfig": {
           "defaults": {
             "unit": "short",
@@ -690,17 +587,36 @@
         }
       ]
     },
-    "schemaVersion": 30,
     "style": "dark",
-    "tags": ["opendesk", "overview"],
-    "time": { "from": "now-1h", "to": "now" },
-    "timepicker": {
-      "refresh_intervals": ["5s", "10s", "30s", "1m", "5m", "15m", "30m", "1h", "2h", "1d"],
-      "time_options": ["5m", "15m", "1h", "6h", "12h", "24h", "2d", "7d", "30d"]
+    "time": {
+      "from": "now-1h",
+      "to": "now"
     },
-    "timezone": "",
-    "title": "openDesk Overview",
-    "version": 1,
+    "timepicker": {
+      "refresh_intervals": [
+        "5s",
+        "10s",
+        "30s",
+        "1m",
+        "5m",
+        "15m",
+        "30m",
+        "1h",
+        "2h",
+        "1d"
+      ],
+      "time_options": [
+        "5m",
+        "15m",
+        "1h",
+        "6h",
+        "12h",
+        "24h",
+        "2d",
+        "7d",
+        "30d"
+      ]
+    },
     "weekStart": ""
   },
   "folderId": 0,

@@ -135,7 +135,7 @@ data:
     drawio:24.0.0-nixos
     excalidraw:latest-nixos
     cryptpad:latest-nixos
-    dev-agent:latest-nixos
+    predictive-agent:latest-nixos
     dask:latest-nixos
     f13:latest-nixos
     kasmvnc:latest-nixos

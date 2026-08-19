@@ -748,14 +748,14 @@ roleRef:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: dev-agent-sa
+  name: predictive-agent-sa
   namespace: opendesk
 
-# Role for Dev Agent
+# Role for Predictive Agent
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: dev-agent-role
+  name: predictive-agent-role
   namespace: opendesk
 rules:
 - apiGroups: ["", "apps", "batch"]
@@ -769,15 +769,15 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: dev-agent-binding
+  name: predictive-agent-binding
   namespace: opendesk
 subjects:
 - kind: ServiceAccount
-  name: dev-agent-sa
+  name: predictive-agent-sa
   namespace: opendesk
 roleRef:
   kind: Role
-  name: dev-agent-role
+  name: predictive-agent-role
   apiGroup: rbac.authorization.k8s.io
 ```
 

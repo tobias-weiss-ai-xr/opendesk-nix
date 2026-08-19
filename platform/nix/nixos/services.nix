@@ -503,12 +503,12 @@ let
       user = "ttyd";
       uid = 1000;
     };
-    dev-agent = {
+    predictive-agent = {
       package = null;
-      version = "1.0.0";
+      version = "4.0.0";
       port = 8080;
       type = "web";
-      user = "dev-agent";
+      user = "predictive-agent";
       uid = 1000;
     };
     dask = {
