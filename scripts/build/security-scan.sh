@@ -22,13 +22,11 @@
 #   all          Scan all components
 #   sogo5        Scan SOGo 5
 #   sogo6        Scan SOGo 6
-#   dev-agent    Scan Dev Agent
 #   zot          Scan Zot Registry
 #
 # Examples:
 #   ./scripts/security-scan.sh all
 #   ./scripts/security-scan.sh sogo6 --severity CRITICAL
-#   ./scripts/security-scan.sh dev-agent --format json --output dev-agent-scan.json
 #   ./scripts/security-scan.sh --format sarif --output security-report.sarif
 #
 # ==============================================================================
@@ -49,7 +47,6 @@ REGISTRY="registry.gitlab.opencode.de/umr"
 # Versions
 SOGO5_VERSION="5.8.0"
 SOGO6_VERSION="6.0.0"
-DEV_AGENT_VERSION="2.1.0"
 ZOT_VERSION="2.0.0-rc5"
 
 # Severity levels
@@ -139,8 +136,6 @@ get_image_name() {
         sogo6)
             echo "${REGISTRY}/opendesk-sogo6:${SOGO6_VERSION}"
             ;;
-        dev-agent)
-            echo "${REGISTRY}/opendesk-dev-agent:${DEV_AGENT_VERSION}"
             ;;
         zot)
             echo "${REGISTRY}/zot-registry:${ZOT_VERSION}"
@@ -172,9 +167,7 @@ build_image() {
             sogo6)
                 make -C "$PROJECT_ROOT" build-sogo6
                 ;;
-            dev-agent)
-                make -C "$PROJECT_ROOT" build-dev-agent
-                ;;
+                    ;;
             zot)
                 make -C "$PROJECT_ROOT" build-zot
                 ;;
@@ -462,9 +455,9 @@ main() {
     
     case "$component" in
         all)
-            components=("sogo5" "sogo6" "dev-agent" "zot")
+            components=("sogo5" "sogo6" "zot")
             ;;
-        sogo5|sogo6|dev-agent|zot)
+        sogo5|sogo6|zot)
             components=("$component")
             ;;
         *)

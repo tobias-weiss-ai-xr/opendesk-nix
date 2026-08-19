@@ -44,13 +44,11 @@ variables:
   # Image versions
   SOGO5_VERSION: "5.8.0"
   SOGO6_VERSION: "6.0.0"
-  DEV_AGENT_VERSION: "2.1.0"
   ZOT_VERSION: "2.0.0-rc5"
   
   # Image names
   SOGO5_IMAGE: "${REGISTRY}/opendesk-sogo5:${SOGO5_VERSION}"
   SOGO6_IMAGE: "${REGISTRY}/opendesk-sogo6:${SOGO6_VERSION}"
-  DEV_AGENT_IMAGE: "${REGISTRY}/opendesk-dev-agent:${DEV_AGENT_VERSION}"
   ZOT_IMAGE: "${REGISTRY}/zot-registry:${ZOT_VERSION}"
   
   # For merge requests, use CI_COMMIT_REF_SLUG as tag
@@ -170,7 +168,6 @@ validate:dockerfiles:
     - echo "Validating Dockerfiles..."
     - hadolint docker/sogo5/Dockerfile
     - hadolint docker/sogo6/Dockerfile
-    - hadolint docker/dev-agent/Dockerfile
     - hadolint docker/zot-registry/Dockerfile
     - echo "Dockerfile validation complete"
   tags:
@@ -262,25 +259,6 @@ build:sogo6:
   tags:
     - docker
 
-build:dev-agent:
-  stage: build
-  image: docker:24.0.7-cli
-  services:
-    - name: docker:24.0.7-dind
-      alias: docker
-  script:
-    - echo "Building Dev Agent image..."
-    - docker build ${BUILD_ARGS} \
-        --build-arg DEV_AGENT_VERSION=${DEV_AGENT_VERSION} \
-        --build-arg BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
-        -t ${DEV_AGENT_IMAGE} \
-        -t ${REGISTRY}/opendesk-dev-agent:${CI_COMMIT_SHORT_SHA} \
-        -f docker/dev-agent/Dockerfile \
-        .
-    - docker images | grep "opendesk-dev-agent"
-    - echo "Dev Agent build complete"
-  tags:
-    - docker
 
 build:zot:
   stage: build
@@ -318,7 +296,6 @@ build:all:
       optional: true
     - job: build:sogo6
       optional: true
-    - job: build:dev-agent
       optional: true
     - job: build:zot
       optional: true
@@ -368,21 +345,6 @@ test:sogo6:
   tags:
     - docker
 
-test:dev-agent:
-  stage: test
-  image: docker:24.0.7-cli
-  services:
-    - name: docker:24.0.7-dind
-      alias: docker
-  script:
-    - echo "Testing Dev Agent image..."
-    - docker run --rm --name test-dev-agent ${DEV_AGENT_IMAGE} --help >/dev/null 2>&1 && echo "Help command works" || echo "No help command"
-    - docker run --rm --name test-dev-agent-version ${DEV_AGENT_IMAGE} --version >/dev/null 2>&1 && echo "Version command works" || echo "No version command"
-    - echo "Dev Agent test complete"
-  needs:
-    - build:dev-agent
-  tags:
-    - docker
 
 test:zot:
   stage: test
@@ -454,28 +416,6 @@ scan:sogo6:
     when: always
     expire_in: 1 week
 
-scan:dev-agent:
-  stage: scan
-  image: docker:24.0.7-cli
-  services:
-    - name: docker:24.0.7-dind
-      alias: docker
-  script:
-    - echo "Scanning Dev Agent for vulnerabilities..."
-    - trivy image --severity CRITICAL,HIGH --exit-code 0 ${DEV_AGENT_IMAGE}
-    - trivy image --format json --output ${SBOM_DIR}/dev-agent-trivy.json ${DEV_AGENT_IMAGE}
-    - echo "Dev Agent scan complete"
-  needs:
-    - build:dev-agent
-  tags:
-    - docker
-  artifacts:
-    paths:
-      - ${SBOM_DIR}/dev-agent-trivy.json
-    reports:
-      dotenv: ${SBOM_DIR}/dev-agent-trivy.json
-    when: always
-    expire_in: 1 week
 
 scan:zot:
   stage: scan
@@ -512,7 +452,7 @@ scan:summary:
     - echo "# Security Scan Summary" >> ${ARTIFACTS_DIR}/security-summary.md
     - echo "Generated: $(date -u)" >> ${ARTIFACTS_DIR}/security-summary.md
     - echo "" >> ${ARTIFACTS_DIR}/security-summary.md
-    - for image in ${SOGO5_IMAGE} ${SOGO6_IMAGE} ${DEV_AGENT_IMAGE} ${ZOT_IMAGE}; do
+    - for image in ${SOGO5_IMAGE} ${SOGO6_IMAGE} ${ZOT_IMAGE}; do
         echo "## $image" >> ${ARTIFACTS_DIR}/security-summary.md
         echo "" >> ${ARTIFACTS_DIR}/security-summary.md
         trivy image --severity CRITICAL,HIGH,MEDIUM,LOW --format markdown >> ${ARTIFACTS_DIR}/security-summary.md || true
@@ -522,7 +462,6 @@ scan:summary:
   needs:
     - scan:sogo5
     - scan:sogo6
-    - scan:dev-agent
     - scan:zot
   tags:
     - docker
@@ -550,7 +489,6 @@ sbom:cyclonedx:
   needs:
     - build:sogo5
     - build:sogo6
-    - build:dev-agent
     - build:zot
   tags:
     - docker
@@ -574,7 +512,6 @@ sbom:spdx:
   needs:
     - build:sogo5
     - build:sogo6
-    - build:dev-agent
     - build:zot
   tags:
     - docker
@@ -598,7 +535,6 @@ sbom:all:
   needs:
     - build:sogo5
     - build:sogo6
-    - build:dev-agent
     - build:zot
   tags:
     - docker
@@ -660,29 +596,6 @@ deploy:sogo6:
   tags:
     - docker
 
-deploy:dev-agent:
-  stage: deploy
-  image: docker:24.0.7-cli
-  services:
-    - name: docker:24.0.7-dind
-      alias: docker
-  script:
-    - echo "Pushing Dev Agent to registry..."
-    - docker push ${DEV_AGENT_IMAGE}
-    - docker push ${REGISTRY}/opendesk-dev-agent:${CI_COMMIT_SHORT_SHA}
-    - if [ -n "${CI_COMMIT_TAG}" ]; then docker push ${REGISTRY}/opendesk-dev-agent:${CI_COMMIT_TAG}; fi
-    - if [ "${CI_COMMIT_REF_NAME}" = "main" ]; then docker push ${REGISTRY}/opendesk-dev-agent:${MAIN_TAG}; fi
-    - echo "Dev Agent deployed"
-  needs:
-    - job: scan:dev-agent
-      optional: true
-    - job: sbom:cyclonedx
-      optional: true
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
-    - if: $CI_COMMIT_TAG
-  tags:
-    - docker
 
 deploy:zot:
   stage: deploy
@@ -776,7 +689,7 @@ nightly:
   script:
     - echo "Running nightly build and scan..."
     - make build-all
-    - trivy image --severity CRITICAL,HIGH --exit-code 1 ${SOGO5_IMAGE} ${SOGO6_IMAGE} ${DEV_AGENT_IMAGE} ${ZOT_IMAGE} || echo "Vulnerabilities found"
+    - trivy image --severity CRITICAL,HIGH --exit-code 1 ${SOGO5_IMAGE} ${SOGO6_IMAGE} ${ZOT_IMAGE} || echo "Vulnerabilities found"
     - cd sbom && make all
     - echo "Nightly job complete"
   rules:
@@ -802,7 +715,6 @@ release:
     - mkdir -p release-artifacts
     - docker save ${SOGO5_IMAGE} > release-artifacts/opendesk-sogo5-${CI_COMMIT_TAG}.tar
     - docker save ${SOGO6_IMAGE} > release-artifacts/opendesk-sogo6-${CI_COMMIT_TAG}.tar
-    - docker save ${DEV_AGENT_IMAGE} > release-artifacts/opendesk-dev-agent-${CI_COMMIT_TAG}.tar
     - docker save ${ZOT_IMAGE} > release-artifacts/zot-registry-${CI_COMMIT_TAG}.tar
     - tar czf release-artifacts/opendesk-nix-${CI_COMMIT_TAG}.tar.gz k8s specs Makefile docker pushing-to-gitlab.sh README.md LICENSE
     - echo "Release ${CI_COMMIT_TAG} complete"

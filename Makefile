@@ -10,12 +10,10 @@
 #   make build-all               # Build all Docker images
 #   make build-sogo5             # Build SOGo 5 image
 #   make build-sogo6             # Build SOGo 6 image
-#   make build-dev-agent         # Build Dev Agent image
 #   make build-zot               # Build Zot Registry image
 #   make push-all                # Push all images to registry
 #   make push-sogo5              # Push SOGo 5 image
 #   make deploy-all              # Deploy all to Kubernetes
-#   make deploy-dev-agent        # Deploy Dev Agent Operator
 #   make undeploy-all            # Remove all deployments
 #   make test-all                # Run all tests
 #   make sbom-all                # Generate all SBOMs
@@ -33,13 +31,11 @@ REGISTRY ?= registry.gitlab.opencode.de/umr
 # Version tags
 SOGO5_VERSION ?= 5.8.0
 SOGO6_VERSION ?= 6.0.0
-DEV_AGENT_VERSION ?= 2.1.0
 ZOT_VERSION ?= 2.0.0-rc5
 
 # Image names
 SOGO5_IMAGE = ${REGISTRY}/opendesk-sogo5:${SOGO5_VERSION}
 SOGO6_IMAGE = ${REGISTRY}/opendesk-sogo6:${SOGO6_VERSION}
-DEV_AGENT_IMAGE = ${REGISTRY}/opendesk-dev-agent:${DEV_AGENT_VERSION}
 ZOT_IMAGE = ${REGISTRY}/zot-registry:${ZOT_VERSION}
 
 # Build arguments
@@ -62,13 +58,13 @@ KUBECTL ?= kubectl
 
 .PHONY: help build-all push-all deploy-all undeploy-all test-all sbom-all clean
 .PHONY: test test-verbose test-count shellcheck lint
-.PHONY: build-sogo5 build-sogo6 build-dev-agent build-zot
-.PHONY: push-sogo5 push-sogo6 push-dev-agent push-zot
-.PHONY: deploy-sogo5 deploy-sogo6 deploy-dev-agent deploy-zot
-.PHONY: undeploy-sogo5 undeploy-sogo6 undeploy-dev-agent undeploy-zot
-.PHONY: test-sogo5 test-sogo6 test-dev-agent test-zot
-.PHONY: sbom-sogo5 sbom-sogo6 sbom-dev-agent sbom-zot
-.PHONY: scan-all scan-sogo5 scan-sogo6 scan-dev-agent scan-zot
+.PHONY: build-sogo5 build-sogo6 build-zot
+.PHONY: push-sogo5 push-sogo6 push-zot
+.PHONY: deploy-sogo5 deploy-sogo6 deploy-zot
+.PHONY: undeploy-sogo5 undeploy-sogo6 undeploy-zot
+.PHONY: test-sogo5 test-sogo6 test-zot
+.PHONY: sbom-sogo5 sbom-sogo6 sbom-zot
+.PHONY: scan-all scan-sogo5 scan-sogo6 scan-zot
 .PHONY: generate-specs generate-sbom-docs validate-all
 
 # ==============================================================================
@@ -86,7 +82,6 @@ help: ## Show this help message
 	@echo "REGISTRY: ${REGISTRY}"
 	@echo "SOGo 5 Version: ${SOGO5_VERSION}"
 	@echo "SOGo 6 Version: ${SOGO6_VERSION}"
-	@echo "Dev Agent Version: ${DEV_AGENT_VERSION}"
 	@echo "Zot Version: ${ZOT_VERSION}"
 	@echo ""
 	@echo "USAGE: make <target>"
@@ -132,7 +127,6 @@ help: ## Show this help message
 	@echo "  REGISTRY           - Docker registry (default: ${REGISTRY})"
 	@echo "  SOGO5_VERSION      - SOGo 5 version (default: ${SOGO5_VERSION})"
 	@echo "  SOGO6_VERSION      - SOGo 6 version (default: ${SOGO6_VERSION})"
-	@echo "  DEV_AGENT_VERSION  - Dev Agent version (default: ${DEV_AGENT_VERSION})"
 	@echo "  ZOT_VERSION        - Zot Registry version (default: ${ZOT_VERSION})"
 	@echo "  KUBE_CONTEXT       - Kubernetes context (default: current)"
 	@echo "  KUBE_NAMESPACE     - Kubernetes namespace (default: default)"
@@ -145,7 +139,7 @@ help: ## Show this help message
 # BUILD TARGETS
 # ==============================================================================
 
-build-all: build-sogo5 build-sogo6 build-dev-agent build-zot ## Build all Docker images
+build-all: build-sogo5 build-sogo6 build-zot ## Build all Docker images
 
 build-sogo5: ## Build SOGo 5 Docker image
 	@echo "Building SOGo 5 image: ${SOGO5_IMAGE}"
@@ -170,16 +164,6 @@ build-sogo6: ## Build SOGo 6 Docker image
 		-f docker/sogo6/Dockerfile \
 		${BUILD_CONTEXT}
 
-build-dev-agent: ## Build Dev Agent Operator Docker image
-	@echo "Building Dev Agent image: ${DEV_AGENT_IMAGE}"
-	${DOCKER} build ${BUILD_ARGS} \
-		--build-arg DEV_AGENT_VERSION=${DEV_AGENT_VERSION} \
-		--build-arg BUILD_DATE=$(shell date -u +%Y-%m-%dT%H:%M:%SZ) \
-		-t ${DEV_AGENT_IMAGE} \
-		-t ${REGISTRY}/opendesk-dev-agent:latest \
-		-f docker/dev-agent/Dockerfile \
-		${BUILD_CONTEXT}
-
 build-zot: ## Build Zot Registry Docker image
 	@echo "Building Zot Registry image: ${ZOT_IMAGE}"
 	${DOCKER} build ${BUILD_ARGS} \
@@ -194,7 +178,7 @@ build-zot: ## Build Zot Registry Docker image
 # PUSH TARGETS
 # ==============================================================================
 
-push-all: push-sogo5 push-sogo6 push-dev-agent push-zot ## Push all Docker images to registry
+push-all: push-sogo5 push-sogo6 push-zot ## Push all Docker images to registry
 
 push-sogo5: build-sogo5 ## Push SOGo 5 image to registry
 	@echo "Pushing SOGo 5 image: ${SOGO5_IMAGE}"
@@ -205,11 +189,6 @@ push-sogo6: build-sogo6 ## Push SOGo 6 image to registry
 	@echo "Pushing SOGo 6 image: ${SOGO6_IMAGE}"
 	${DOCKER} push ${SOGO6_IMAGE}
 	${DOCKER} push ${REGISTRY}/opendesk-sogo6:latest
-
-push-dev-agent: build-dev-agent ## Push Dev Agent image to registry
-	@echo "Pushing Dev Agent image: ${DEV_AGENT_IMAGE}"
-	${DOCKER} push ${DEV_AGENT_IMAGE}
-	${DOCKER} push ${REGISTRY}/opendesk-dev-agent:latest
 
 push-zot: build-zot ## Push Zot Registry image to registry
 	@echo "Pushing Zot Registry image: ${ZOT_IMAGE}"
@@ -225,13 +204,7 @@ deploy-%:
 	@echo "Setting Kubernetes context to: ${KUBE_CONTEXT}"
 	@echo "Using namespace: ${KUBE_NAMESPACE}"
 
-deploy-all: deploy-dev-agent deploy-zot deploy-sogo5 deploy-sogo6 ## Deploy all components
-
-deploy-dev-agent: ## Deploy Dev Agent Operator
-	@echo "Deploying Dev Agent Operator to namespace: ${KUBE_NAMESPACE}"
-	${KUBECTL} apply --context=${KUBE_CONTEXT} -n ${KUBE_NAMESPACE} -k platform/kubernetes/dev-agent
-	@echo "Waiting for Dev Agent Operator to be ready..."
-	${KUBECTL} wait --context=${KUBE_CONTEXT} -n ${KUBE_NAMESPACE} --for=condition=available --timeout=300s deployment/dev-agent-operator
+deploy-all: deploy-zot deploy-sogo5 deploy-sogo6 ## Deploy all components
 
 deploy-zot: ## Deploy Zot Registry
 	@echo "Deploying Zot Registry to namespace: zot-registry"
@@ -255,11 +228,7 @@ deploy-sogo6: ## Deploy SOGo 6
 # UNDEPLOY TARGETS
 # ==============================================================================
 
-undeploy-all: undeploy-sogo6 undeploy-sogo5 undeploy-zot undeploy-dev-agent ## Remove all deployments
-
-undeploy-dev-agent: ## Remove Dev Agent Operator deployment
-	@echo "Removing Dev Agent Operator from namespace: ${KUBE_NAMESPACE}"
-	${KUBECTL} delete --context=${KUBE_CONTEXT} -n ${KUBE_NAMESPACE} -k platform/kubernetes/dev-agent --ignore-not-found=true
+undeploy-all: undeploy-sogo6 undeploy-sogo5 undeploy-zot ## Remove all deployments
 
 undeploy-zot: ## Remove Zot Registry deployment
 	@echo "Removing Zot Registry from namespace: zot-registry"
@@ -277,7 +246,7 @@ undeploy-sogo6: ## Remove SOGo 6 deployment
 # TEST TARGETS
 # ==============================================================================
 
-test-all: test-sogo5 test-sogo6 test-dev-agent test-zot ## Run all tests
+test-all: test-sogo5 test-sogo6 test-zot ## Run all tests
 
 test-sogo5: build-sogo5 ## Test SOGo 5 image
 	@echo "Testing SOGo 5 image..."
@@ -286,10 +255,6 @@ test-sogo5: build-sogo5 ## Test SOGo 5 image
 test-sogo6: build-sogo6 ## Test SOGo 6 image
 	@echo "Testing SOGo 6 image..."
 	@docker run --rm ${SOGO6_IMAGE} --version 2>/dev/null | grep -q "6.0.0" && echo "SOGo 6: PASSED" || echo "SOGo 6: FAILED"
-
-test-dev-agent: build-dev-agent ## Test Dev Agent image
-	@echo "Testing Dev Agent image..."
-	@docker run --rm ${DEV_AGENT_IMAGE} --help 2>/dev/null >/dev/null && echo "Dev Agent: PASSED" || echo "Dev Agent: FAILED"
 
 test-zot: build-zot ## Test Zot Registry image
 	@echo "Testing Zot Registry image..."
@@ -331,15 +296,13 @@ sbom-sogo5: cd sbom && make sogo5 ## Generate SBOM for SOGo 5
 
 sbom-sogo6: cd sbom && make sogo6 ## Generate SBOM for SOGo 6
 
-sbom-dev-agent: cd sbom && make dev-agent ## Generate SBOM for Dev Agent
-
 sbom-zot: cd sbom && make zot-registry ## Generate SBOM for Zot Registry
 
 # ==============================================================================
 # SECURITY SCAN TARGETS
 # ==============================================================================
 
-scan-all: scan-sogo5 scan-sogo6 scan-dev-agent scan-zot ## Scan all images for vulnerabilities
+scan-all: scan-sogo5 scan-sogo6 scan-zot ## Scan all images for vulnerabilities
 
 scan-sogo5: build-sogo5 ## Scan SOGo 5 image for vulnerabilities
 	@echo "Scanning SOGo 5 image for vulnerabilities..."
@@ -350,11 +313,6 @@ scan-sogo6: build-sogo6 ## Scan SOGo 6 image for vulnerabilities
 	@echo "Scanning SOGo 6 image for vulnerabilities..."
 	@docker scan --severity high ${SOGO6_IMAGE} 2>/dev/null || true
 	@trivy image --severity HIGH,CRITICAL ${SOGO6_IMAGE} 2>/dev/null || true
-
-scan-dev-agent: build-dev-agent ## Scan Dev Agent image for vulnerabilities
-	@echo "Scanning Dev Agent image for vulnerabilities..."
-	@docker scan --severity high ${DEV_AGENT_IMAGE} 2>/dev/null || true
-	@trivy image --severity HIGH,CRITICAL ${DEV_AGENT_IMAGE} 2>/dev/null || true
 
 scan-zot: build-zot ## Scan Zot Registry image for vulnerabilities
 	@echo "Scanning Zot Registry image for vulnerabilities..."
@@ -371,7 +329,6 @@ validate-dockerfiles: ## Validate all Dockerfiles with hadolint
 	@echo "Validating Dockerfiles with hadolint..."
 	@hadolint docker/sogo5/Dockerfile 2>/dev/null || echo "Note: hadolint not installed, skipping"
 	@hadolint docker/sogo6/Dockerfile 2>/dev/null || echo "Note: hadolint not installed, skipping"
-	@hadolint docker/dev-agent/Dockerfile 2>/dev/null || echo "Note: hadolint not installed, skipping"
 	@hadolint docker/zot-registry/Dockerfile 2>/dev/null || echo "Note: hadolint not installed, skipping"
 
 validate-k8s: ## Validate Kubernetes manifests
@@ -391,7 +348,7 @@ validate-shell: ## Validate shell scripts with shellcheck
 
 generate-specs: ## Generate technical specifications (if not exists)
 	@echo "Checking for missing specifications..."
-	@for spec in SOGO5-SPEC.md SOGO6-SPEC.md DEV-AGENT-SPEC.md ZOT-SPEC.md; do \
+	@for spec in SOGO5-SPEC.md SOGO6-SPEC.md ZOT-SPEC.md; do \
 		if [ ! -f "specs/$$spec" ]; then \
 			echo "  Missing: specs/$$spec"; \
 		else \
@@ -438,13 +395,11 @@ clean-images: ## Remove built Docker images
 	@echo "Removing built Docker images..."
 	@${DOCKER} rmi -f ${SOGO5_IMAGE} ${REGISTRY}/opendesk-sogo5:latest 2>/dev/null || true
 	@${DOCKER} rmi -f ${SOGO6_IMAGE} ${REGISTRY}/opendesk-sogo6:latest 2>/dev/null || true
-	@${DOCKER} rmi -f ${DEV_AGENT_IMAGE} ${REGISTRY}/opendesk-dev-agent:latest 2>/dev/null || true
 	@${DOCKER} rmi -f ${ZOT_IMAGE} ${REGISTRY}/zot-registry:latest 2>/dev/null || true
 	@echo "Docker images removed"
 
 clean-k8s: ## Remove Kubernetes deployments
 	@echo "Removing Kubernetes deployments..."
-	@${KUBECTL} delete --context=${KUBE_CONTEXT} -n ${KUBE_NAMESPACE} -k platform/kubernetes/dev-agent --ignore-not-found=true 2>/dev/null || true
 	@${KUBECTL} delete --context=${KUBE_CONTEXT} -n zot-registry -k platform/kubernetes/zot-registry --ignore-not-found=true 2>/dev/null || true
 	@${KUBECTL} delete --context=${KUBE_CONTEXT} -n sogo -k platform/kubernetes/sogo5 --ignore-not-found=true 2>/dev/null || true
 	@${KUBECTL} delete --context=${KUBE_CONTEXT} -n sogo6 -k platform/kubernetes/sogo6 --ignore-not-found=true 2>/dev/null || true

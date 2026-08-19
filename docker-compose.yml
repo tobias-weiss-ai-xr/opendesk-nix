@@ -12,7 +12,6 @@
 #   # Start specific services
 #   docker-compose up -d sogo5 memcached5
 #   docker-compose up -d sogo6 memcached6
-#   docker-compose up -d dev-agent
 #   docker-compose up -d zot-registry
 #
 #   # View logs
@@ -20,7 +19,7 @@
 #
 #   # Run commands in containers
 #   docker-compose exec sogo5 sh
-#   docker-compose exec dev-agent sh
+#   docker-compose exec zot-registry sh
 #
 #   # Stop and remove all containers
 #   docker-compose down
@@ -31,7 +30,6 @@
 #   # Test specific service
 #   docker-compose up --build --force-recreate sogo5
 #   docker-compose up --build --force-recreate sogo6
-#   docker-compose up --build --force-recreate dev-agent
 #   docker-compose up --build --force-recreate zot-registry
 #
 # Networks:
@@ -419,81 +417,6 @@ services:
       com.opendesk.maintainer: "team@opendesk-edu.org"
 
 # -----------------------------------------------------------------------------
-# Services - Dev Agent Operator
-# -----------------------------------------------------------------------------
-
-  dev-agent:
-    build:
-      context: .
-      dockerfile: docker/dev-agent/Dockerfile
-      args:
-        DEV_AGENT_VERSION: 2.1.0
-        BUILD_DATE: "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-    image: ${REGISTRY:-registry.gitlab.opencode.de/umr}/opendesk-dev-agent:${DEV_AGENT_VERSION:-2.1.0}
-    container_name: opendesk-dev-agent
-    restart: unless-stopped
-    networks:
-      - opendesk-network
-    depends_on:
-      zot-registry:
-        condition: service_started
-    environment:
-      # Operator configuration
-      DEV_AGENT_NAMESPACE: "opendesk"
-      DEV_AGENT_WATCH_NAMESPACE: "opendesk"
-      DEV_AGENT_LOG_LEVEL: "info"
-      DEV_AGENT_METRICS_PORT: "8080"
-      DEV_AGENT_HEALTH_PORT: "8081"
-      
-      # Kubernetes client
-      KUBERNETES_SERVER: "${KUBERNETES_SERVER:-https://kubernetes.default.svc}"
-      KUBERNETES_SKIP_TLS_VERIFY: "true"
-      
-      # PI Memory integration (disabled in dev mode)
-      PI_MEMORY_ENABLED: "false"
-      PI_MEMORY_HOST: "pi-memory"
-      PI_MEMORY_PORT: "17687"
-      
-      # Operator flags
-      OPERATOR_DEBUG: "true"
-      OPERATOR_DISABLE_PI_MEMORY: "true"
-      OPERATOR_LEADER_ELECT: "false"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./docker/dev-agent/config.yaml:/etc/opendesk-dev-agent/config.yaml:ro
-      - ./docker/dev-agent/logrotate.conf:/etc/logrotate.d/opendesk-operator:ro
-    ports:
-      - "8080:8080"    # Metrics
-      - "8081:8081"    # Health
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/healthz"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-    privileged: false
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    cap_add:
-      - NET_BIND_SERVICE
-      - DAC_OVERRIDE
-    read_only: false
-    tmpfs:
-      - /tmp:size=100M,mode=1777
-      - /var/run:size=50M,mode=0755
-    ulimits:
-      nproc: 1024
-      nofile:
-        soft: 65535
-        hard: 65535
-    labels:
-      com.opendesk.component: dev-agent
-      com.opendesk.version: "2.1.0"
-      com.opendesk.maintainer: "team@opendesk-edu.org"
-
-# -----------------------------------------------------------------------------
 # Services - Zot Registry
 # -----------------------------------------------------------------------------
 
@@ -510,7 +433,7 @@ services:
     networks:
       - opendesk-network
     ports:
-      - "8083:8080"    # HTTP API (host 8083 to avoid conflict with dev-agent)
+      - "8083:8080"    # HTTP API
       - "8443:8443"    # HTTPS API (if configured)
     environment:
       # Zot configuration
@@ -586,7 +509,6 @@ services:
       retries: 3
     labels:
       com.opendesk.test: crash-loop
-      opendesk-dev-agent/repair-enabled: "true"
 
   # Test service that should be repaired
   test-healthy:
@@ -604,7 +526,6 @@ services:
       retries: 3
     labels:
       com.opendesk.test: healthy
-      opendesk-dev-agent/monitor-enabled: "true"
 
 # -----------------------------------------------------------------------------
 # Profiles
@@ -624,12 +545,6 @@ profiles:
       - mariadb6
       - memcached6
       - sogo6
-  
-  # Profile for Dev Agent development
-  dev-agent-dev:
-    services:
-      - zot-registry
-      - dev-agent
   
   # Profile for Zot Registry development
   zot-dev:
@@ -652,6 +567,4 @@ profiles:
       - memcached6
       - sogo6
       - zot-registry
-      - dev-agent
       - test-crash-loop
-      - test-healthy

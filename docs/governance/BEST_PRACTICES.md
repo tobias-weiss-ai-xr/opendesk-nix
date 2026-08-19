@@ -46,7 +46,6 @@ registry.gitlab.opencode.de/umr/<component>:latest
 **Examples:**
 - `registry.gitlab.opencode.de/umr/sogo5:5.10.0-opendesk-1`
 - `registry.gitlab.opencode.de/umr/sogo6:6.0.0 RC-1-opendesk-1`
-- `registry.gitlab.opencode.de/umr/dev-agent:1.0.0-opendesk-1`
 - `registry.gitlab.opencode.de/umr/zot-registry:2.0.0-hardened-opendesk-1`
 
 ### **📊 Image Metadata (LABELs)**
@@ -450,7 +449,7 @@ jobs:
     runs-on: [self-hosted, linux]
     strategy:
       matrix:
-        image: [sogo5, sogo6, dev-agent, zot-registry]
+        image: [sogo5, sogo6, zot-registry]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -476,8 +475,6 @@ jobs:
             DOCKERFILE="docker/sogo5/Dockerfile"
           elif [ "$IMAGE_NAME" = "sogo6" ]; then
             DOCKERFILE="docker/sogo6/Dockerfile"
-          elif [ "$IMAGE_NAME" = "dev-agent" ]; then
-            DOCKERFILE="docker/dev-agent/Dockerfile"
           elif [ "$IMAGE_NAME" = "zot-registry" ]; then
             DOCKERFILE="docker/zot-registry/Dockerfile"
           fi
@@ -545,7 +542,7 @@ jobs:
     runs-on: [self-hosted, linux]
     strategy:
       matrix:
-        image: [sogo5, sogo6, dev-agent, zot-registry]
+        image: [sogo5, sogo6, zot-registry]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -619,7 +616,7 @@ jobs:
       
       - name: Sign images
         run: |
-          IMAGE List=("sogo5" "sogo6" "dev-agent" "zot-registry")
+          IMAGE List=("sogo5" "sogo6" "zot-registry")
           for IMAGE in "${IMAGE List[@]}"; do
             FULL_IMAGE="registry.gitlab.opencode.de/umr/${IMAGE}:latest"
             echo "Signing ${FULL_IMAGE}..."
@@ -632,7 +629,7 @@ jobs:
       
       - name: Verify signatures
         run: |
-          IMAGE List=("sogo5" "sogo6" "dev-agent" "zot-registry")
+          IMAGE List=("sogo5" "sogo6" "zot-registry")
           for IMAGE in "${IMAGE List[@]}"; do
             FULL_IMAGE="registry.gitlab.opencode.de/umr/${IMAGE}:latest"
             cosign verify --key env://COSIGN_PUBLIC_KEY "${FULL_IMAGE}"
@@ -731,8 +728,7 @@ spec:
               app: sogo6
         - podSelector:
             matchLabels:
-              app: dev-agent
-      ports:
+                    ports:
         - protocol: TCP
           port: 8080
   egress:
@@ -1032,7 +1028,6 @@ opendesk-nix/
 │   │   └── Dockerfile                  # SOGo 5 Image
 │   ├── sogo6/
 │   │   └── Dockerfile                  # SOGo 6 Image
-│   ├── dev-agent/
 │   │   └── Dockerfile                  # Dev Agent Image
 │   └── zot-registry/
 │       ├── Dockerfile                  # Zot Registry Image
@@ -1052,7 +1047,6 @@ opendesk-nix/
 │   │   ├── service.yaml
 │   │   ├── pvc.yaml
 │   │   └── kustomization.yaml
-│   ├── dev-agent/
 │   │   ├── deployment.yaml
 │   │   ├── rbac.yaml
 │   │   └── kustomization.yaml

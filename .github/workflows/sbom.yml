@@ -15,7 +15,6 @@ on:
           - all
           - sogo5
           - sogo6
-          - dev-agent
           - zot-registry
       format:
         description: 'SBOM format'
@@ -73,7 +72,6 @@ jobs:
       # Versions
       SOGO5_VERSION: 5.8.0
       SOGO6_VERSION: 6.0.0
-      DEV_AGENT_VERSION: 2.1.0
       ZOT_VERSION: 2.0.0-rc5
       
       # SBOM directory
@@ -100,7 +98,7 @@ jobs:
           COMPONENT="${{ github.event.inputs.component || 'all' }}"
           case "$COMPONENT" in
             all)
-              COMPONENTS=("sogo5" "sogo6" "dev-agent" "zot-registry")
+              COMPONENTS=("sogo5" "sogo6" "zot-registry")
               ;;
             *)
               COMPONENTS=("$COMPONENT")
@@ -353,23 +351,6 @@ jobs:
           name: sogo6-sbom
           path: sbom/output/
 
-  dev-agent-sbom:
-    name: Dev Agent SBOM
-    runs-on: [self-hosted, linux]
-    if: ${{ github.event.inputs.component == 'dev-agent' || contains(github.event.pull_request.labels.*, 'area:operator') }}
-    
-    steps:
-      - uses: actions/checkout@v4
-      - name: Generate Dev Agent SBOM
-        run: |
-          mkdir -p sbom/output/cyclonedx sbom/output/spdx
-          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b bin v0.90.0
-          ./bin/syft dir:docker/dev-agent -o cyclonedx-json=sbom/output/cyclonedx/dev-agent-${{ env.DEV_AGENT_VERSION }}.cyclonedx.json
-          ./bin/syft dir:docker/dev-agent -o spdx-json=sbom/output/spdx/dev-agent-${{ env.DEV_AGENT_VERSION }}.spdx.json
-      - uses: actions/upload-artifact@v4
-        with:
-          name: dev-agent-sbom
-          path: sbom/output/
 
   zot-registry-sbom:
     name: Zot Registry SBOM

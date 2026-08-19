@@ -30,7 +30,6 @@ on:
           - build-all
           - build-sogo5
           - build-sogo6
-          - build-dev-agent
           - build-zot
           - test-all
           - scan-all
@@ -47,12 +46,10 @@ env:
   REGISTRY: registry.gitlab.opencode.de/umr
   SOGO5_VERSION: 5.8.0
   SOGO6_VERSION: 6.0.0
-  DEV_AGENT_VERSION: 2.1.0
   ZOT_VERSION: 2.0.0-rc5
   
   SOGO5_IMAGE: ${{ env.REGISTRY }}/opendesk-sogo5:${{ env.SOGO5_VERSION }}
   SOGO6_IMAGE: ${{ env.REGISTRY }}/opendesk-sogo6:${{ env.SOGO6_VERSION }}
-  DEV_AGENT_IMAGE: ${{ env.REGISTRY }}/opendesk-dev-agent:${{ env.DEV_AGENT_VERSION }}
   ZOT_IMAGE: ${{ env.REGISTRY }}/zot-registry:${{ env.ZOT_VERSION }}
 
 # -----------------------------------------------------------------------------
@@ -160,7 +157,6 @@ jobs:
         run: hadolint docker/sogo6/Dockerfile
       
       - name: Validate Dev Agent Dockerfile
-        run: hadolint docker/dev-agent/Dockerfile
       
       - name: Validate Zot Registry Dockerfile
         run: hadolint docker/zot-registry/Dockerfile
@@ -353,61 +349,6 @@ jobs:
           fi
         if: github.event_name != 'pull_request'
 
-  build-dev-agent:
-    name: Build Dev Agent
-    needs: [setup, validate-dockerfiles]
-    runs-on: [self-hosted, linux]
-    outputs:
-      image-name: ${{ steps.build.outputs.image-name }}
-      
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      
-      - name: Set up Docker
-        uses: docker/setup-buildx-action@v3
-      
-      - name: Set up QEMU for multi-arch build
-        uses: docker/setup-qemu-action@v3
-      
-      - name: Login to GitLab Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ secrets.GITLAB_USERNAME }}
-          password: ${{ secrets.GITLAB_TOKEN }}
-        if: github.event_name != 'pull_request'
-      
-      - name: Build Dev Agent image
-        id: build
-        run: |
-          IMAGE_NAME="${{ env.REGISTRY }}/opendesk-dev-agent:${{ env.DEV_AGENT_VERSION }}"
-          docker build ${{ inputs.action == 'build-all' && '--no-cache' || '' }} \
-            --build-arg DEV_AGENT_VERSION=${{ env.DEV_AGENT_VERSION }} \
-            --build-arg BUILD_DATE=${{ needs.setup.outputs.timestamp }} \
-            -t $IMAGE_NAME \
-            -t ${{ env.REGISTRY }}/opendesk-dev-agent:${{ needs.setup.outputs.short-sha }} \
-            -f docker/dev-agent/Dockerfile \
-            .
-          
-          echo "image-name=$IMAGE_NAME" >> $GITHUB_OUTPUT
-          docker images | grep "opendesk-dev-agent"
-      
-      - name: Cache Dev Agent image
-        run: |
-          docker save ${{ steps.build.outputs.image-name }} > dev-agent-image.tar
-          cache save dev-agent-image-key-${{ needs.setup.outputs.short-sha }} dev-agent-image.tar
-      
-      - name: Push Dev Agent image (main/develop only)
-        run: |
-          if [ "${{ needs.setup.outputs.is-main }}" = "true" ] || [ "$GITHUB_REF_NAME" = "develop" ]; then
-            docker push ${{ steps.build.outputs.image-name }}
-            docker push ${{ env.REGISTRY }}/opendesk-dev-agent:${{ needs.setup.outputs.short-sha }}
-            if [ "${{ needs.setup.outputs.is-main }}" = "true" ]; then
-              docker push ${{ env.REGISTRY }}/opendesk-dev-agent:latest
-            fi
-          fi
-        if: github.event_name != 'pull_request'
 
   build-zot:
     name: Build Zot Registry
@@ -521,32 +462,6 @@ jobs:
         run: |
           docker run --rm --name test-sogo6 ${{ needs.build-sogo6.outputs.image-name }} sh -c "exit 0"
 
-  test-dev-agent:
-    name: Test Dev Agent
-    needs: build-dev-agent
-    runs-on: [self-hosted, linux]
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      
-      - name: Set up Docker
-        uses: docker/setup-buildx-action@v3
-      
-      - name: Restore Dev Agent image from cache
-        run: |
-          cache restore dev-agent-image-key-${{ needs.setup.outputs.short-sha }} dev-agent-image.tar
-          docker load < dev-agent-image.tar || true
-        id: restore
-      
-      - name: Pull Dev Agent image if cache missed
-        run: docker pull ${{ needs.build-dev-agent.outputs.image-name }}
-        if: steps.restore.outcome != 'success'
-      
-      - name: Test Dev Agent container starts
-        run: |
-          docker run --rm --name test-dev-agent ${{ needs.build-dev-agent.outputs.image-name }} --help >/dev/null 2>&1 && echo "Help command works" || echo "No help command"
-          docker run --rm --name test-dev-agent-version ${{ needs.build-dev-agent.outputs.image-name }} --version >/dev/null 2>&1 && echo "Version command works" || echo "No version command"
 
   test-zot:
     name: Test Zot Registry
@@ -668,48 +583,6 @@ jobs:
           path: trivy-sogo6-${{ needs.setup.outputs.short-sha }}.json
           retention-days: 7
 
-  scan-dev-agent:
-    name: Scan Dev Agent
-    needs: [setup, build-dev-agent]
-    runs-on: [self-hosted, linux]
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      
-      - name: Set up Docker
-        uses: docker/setup-buildx-action@v3
-      
-      - name: Install Trivy
-        run: |
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-          trivy --version
-      
-      - name: Restore Dev Agent image from cache
-        run: |
-          cache restore dev-agent-image-key-${{ needs.setup.outputs.short-sha }} dev-agent-image.tar
-          docker load < dev-agent-image.tar || true
-        id: restore
-      
-      - name: Pull Dev Agent image if cache missed
-        run: docker pull ${{ needs.build-dev-agent.outputs.image-name }}
-        if: steps.restore.outcome != 'success'
-      
-      - name: Scan Dev Agent for vulnerabilities
-        run: |
-          echo "Scanning ${{ needs.build-dev-agent.outputs.image-name }}..."
-          trivy image --severity CRITICAL,HIGH --exit-code 0 ${{ needs.build-dev-agent.outputs.image-name }}
-      
-      - name: Generate Trivy JSON report
-        run: |
-          trivy image --format json --output trivy-dev-agent-${{ needs.setup.outputs.short-sha }}.json ${{ needs.build-dev-agent.outputs.image-name }}
-      
-      - name: Upload Trivy report
-        uses: actions/upload-artifact@v4
-        with:
-          name: trivy-dev-agent-${{ needs.setup.outputs.short-sha }}
-          path: trivy-dev-agent-${{ needs.setup.outputs.short-sha }}.json
-          retention-days: 7
 
   scan-zot:
     name: Scan Zot Registry
@@ -756,7 +629,7 @@ jobs:
 
   scan-summary:
     name: Security Scan Summary
-    needs: [scan-sogo5, scan-sogo6, scan-dev-agent, scan-zot]
+    needs: [scan-sogo5, scan-sogo6, scan-zot]
     runs-on: [self-hosted, linux]
     
     steps:
@@ -770,7 +643,7 @@ jobs:
           echo "Commit: ${GITHUB_SHA}" >> SECURITY_SUMMARY.md
           echo "" >> SECURITY_SUMMARY.md
           
-          for job in scan-sogo5 scan-sogo6 scan-dev-agent scan-zot; do
+          for job in scan-sogo5 scan-sogo6 scan-zot; do
             echo "## ${{ needs.$job.outputs.image-name || needs.$job.result }}" >> SECURITY_SUMMARY.md
             echo "Status: ${{ needs.$job.result }}" >> SECURITY_SUMMARY.md
             echo "" >> SECURITY_SUMMARY.md
@@ -789,7 +662,7 @@ jobs:
   
   sbom-cyclonedx:
     name: Generate CycloneDX SBOMs
-    needs: [setup, build-sogo5, build-sogo6, build-dev-agent, build-zot]
+    needs: [setup, build-sogo5, build-sogo6, build-zot]
     runs-on: [self-hosted, linux]
     
     steps:
@@ -805,8 +678,6 @@ jobs:
           docker load < sogo5-image.tar || true
           cache restore sogo6-image-key-${{ needs.setup.outputs.short-sha }} sogo6-image.tar
           docker load < sogo6-image.tar || true
-          cache restore dev-agent-image-key-${{ needs.setup.outputs.short-sha }} dev-agent-image.tar
-          docker load < dev-agent-image.tar || true
           cache restore zot-image-key-${{ needs.setup.outputs.short-sha }} zot-image.tar
           docker load < zot-image.tar || true
       
@@ -814,7 +685,6 @@ jobs:
         run: |
           docker pull ${{ needs.build-sogo5.outputs.image-name }} || true
           docker pull ${{ needs.build-sogo6.outputs.image-name }} || true
-          docker pull ${{ needs.build-dev-agent.outputs.image-name }} || true
           docker pull ${{ needs.build-zot.outputs.image-name }} || true
       
       - name: Generate CycloneDX SBOMs
@@ -832,7 +702,7 @@ jobs:
 
   sbom-spdx:
     name: Generate SPDX SBOMs
-    needs: [setup, build-sogo5, build-sogo6, build-dev-agent, build-zot]
+    needs: [setup, build-sogo5, build-sogo6, build-zot]
     runs-on: [self-hosted, linux]
     
     steps:
@@ -848,8 +718,6 @@ jobs:
           docker load < sogo5-image.tar || true
           cache restore sogo6-image-key-${{ needs.setup.outputs.short-sha }} sogo6-image.tar
           docker load < sogo6-image.tar || true
-          cache restore dev-agent-image-key-${{ needs.setup.outputs.short-sha }} dev-agent-image.tar
-          docker load < dev-agent-image.tar || true
           cache restore zot-image-key-${{ needs.setup.outputs.short-sha }} zot-image.tar
           docker load < zot-image.tar || true
       
@@ -857,7 +725,6 @@ jobs:
         run: |
           docker pull ${{ needs.build-sogo5.outputs.image-name }} || true
           docker pull ${{ needs.build-sogo6.outputs.image-name }} || true
-          docker pull ${{ needs.build-dev-agent.outputs.image-name }} || true
           docker pull ${{ needs.build-zot.outputs.image-name }} || true
       
       - name: Generate SPDX SBOMs
@@ -879,7 +746,7 @@ jobs:
   
   push-all:
     name: Push All Images
-    needs: [setup, build-sogo5, build-sogo6, build-dev-agent, build-zot]
+    needs: [setup, build-sogo5, build-sogo6, build-zot]
     runs-on: [self-hosted, linux]
     if: github.event_name != 'pull_request'
     
@@ -903,8 +770,6 @@ jobs:
           docker load < sogo5-image.tar || true
           cache restore sogo6-image-key-${{ needs.setup.outputs.short-sha }} sogo6-image.tar
           docker load < sogo6-image.tar || true
-          cache restore dev-agent-image-key-${{ needs.setup.outputs.short-sha }} dev-agent-image.tar
-          docker load < dev-agent-image.tar || true
           cache restore zot-image-key-${{ needs.setup.outputs.short-sha }} zot-image.tar
           docker load < zot-image.tar || true
       
@@ -912,7 +777,6 @@ jobs:
         run: |
           docker pull ${{ needs.build-sogo5.outputs.image-name }} || true
           docker pull ${{ needs.build-sogo6.outputs.image-name }} || true
-          docker pull ${{ needs.build-dev-agent.outputs.image-name }} || true
           docker pull ${{ needs.build-zot.outputs.image-name }} || true
       
       - name: Push all images
@@ -922,14 +786,12 @@ jobs:
           # Also push with commit SHA tag
           docker push ${{ env.REGISTRY }}/opendesk-sogo5:${{ needs.setup.outputs.short-sha }}
           docker push ${{ env.REGISTRY }}/opendesk-sogo6:${{ needs.setup.outputs.short-sha }}
-          docker push ${{ env.REGISTRY }}/opendesk-dev-agent:${{ needs.setup.outputs.short-sha }}
           docker push ${{ env.REGISTRY }}/zot-registry:${{ needs.setup.outputs.short-sha }}
           
           # Push latest tag for main branch
           if [ "${{ needs.setup.outputs.is-main }}" = "true" ]; then
             docker push ${{ env.REGISTRY }}/opendesk-sogo5:latest
             docker push ${{ env.REGISTRY }}/opendesk-sogo6:latest
-            docker push ${{ env.REGISTRY }}/opendesk-dev-agent:latest
             docker push ${{ env.REGISTRY }}/zot-registry:latest
           fi
 
@@ -968,7 +830,7 @@ jobs:
   workflow-dispatch-test:
     name: Test (Workflow Dispatch)
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'test-all'
-    needs: [build-sogo5, build-sogo6, build-dev-agent, build-zot]
+    needs: [build-sogo5, build-sogo6, build-zot]
     runs-on: [self-hosted, linux]
     
     steps:
@@ -978,13 +840,13 @@ jobs:
   workflow-dispatch-scan:
     name: Scan (Workflow Dispatch)
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'scan-all'
-    needs: [setup, build-sogo5, build-sogo6, build-dev-agent, build-zot]
+    needs: [setup, build-sogo5, build-sogo6, build-zot]
     runs-on: [self-hosted, linux]
     
     steps:
       - name: Scan all images
         run: |
-          for image in ${SOGO5_IMAGE} ${SOGO6_IMAGE} ${DEV_AGENT_IMAGE} ${ZOT_IMAGE}; do
+          for image in ${SOGO5_IMAGE} ${SOGO6_IMAGE} ${ZOT_IMAGE}; do
             echo "Scanning $image..."
             trivy image --severity CRITICAL,HIGH --exit-code 0 $image
           done
@@ -992,7 +854,7 @@ jobs:
   workflow-dispatch-sbom:
     name: SBOM (Workflow Dispatch)
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'sbom-all'
-    needs: [setup, build-sogo5, build-sogo6, build-dev-agent, build-zot]
+    needs: [setup, build-sogo5, build-sogo6, build-zot]
     runs-on: [self-hosted, linux]
     
     steps:
@@ -1044,7 +906,7 @@ jobs:
           echo "Running nightly build and scan..."
           make build-all
           
-          for image in ${SOGO5_IMAGE} ${SOGO6_IMAGE} ${DEV_AGENT_IMAGE} ${ZOT_IMAGE}; do
+          for image in ${SOGO5_IMAGE} ${SOGO6_IMAGE} ${ZOT_IMAGE}; do
             echo "Scanning $image..."
             docker inspect $image >/dev/null 2>&1 && trivy image --severity CRITICAL,HIGH --exit-code 1 $image || echo "Image not found"
           done || echo "Vulnerabilities found"

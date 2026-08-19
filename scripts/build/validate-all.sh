@@ -18,7 +18,6 @@
 #   all          Validate all components
 #   sogo5        Validate SOGo 5
 #   sogo6        Validate SOGo 6
-#   dev-agent    Validate Dev Agent
 #   zot          Validate Zot Registry
 #   k8s          Validate Kubernetes manifests only
 #   docker       Validate Dockerfiles only
@@ -430,10 +429,6 @@ validate_component() {
         k8s_dir="$PROJECT_ROOT/k8s/sogo6"
         test_port="20000"
         ;;
-    dev-agent)
-        dockerfile="$PROJECT_ROOT/docker/dev-agent/Dockerfile"
-        image_name="${REGISTRY}/opendesk-dev-agent:${DEV_AGENT_VERSION}"
-        k8s_dir="$PROJECT_ROOT/k8s/dev-agent"
         test_port=""
         ;;
     zot)
@@ -645,10 +640,9 @@ main() {
         # Validate and test each component
         validate_component "sogo5" "true"
         validate_component "sogo6" "true"
-        validate_component "dev-agent" "true"
         validate_component "zot" "true"
         ;;
-    sogo5 | sogo6 | dev-agent | zot)
+    sogo5 | sogo6 | zot)
         validate_component "$component" "true"
         ;;
     k8s)

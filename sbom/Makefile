@@ -9,7 +9,6 @@
 #   make spdx                   # Generate SPDX SBOMs only
 #   make sogo5                  # Generate SBOMs for SOGo 5
 #   make sogo6                  # Generate SBOMs for SOGo 6
-#   make dev-agent              # Generate SBOMs for Dev Agent Operator
 #   make zot-registry           # Generate SBOMs for Zot Registry
 #   make validate               # Validate all SBOMs
 #   make sign                   # Sign all SBOMs with cosign
@@ -30,7 +29,6 @@ REGISTRY ?= registry.gitlab.opencode.de/umr
 # Version tags
 SOGO5_VERSION ?= 5.8.0
 SOGO6_VERSION ?= 6.0.0
-DEV_AGENT_VERSION ?= 2.1.0
 ZOT_VERSION ?= 2.0.0-rc5
 
 # SBOM output directory
@@ -145,28 +143,7 @@ sogo6: sogo6-cyclonedx sogo6-spdx
 # DEV AGENT SBOM TARGETS
 # ==============================================================================
 
-DEV_AGENT_IMAGE = ${REGISTRY}/opendesk-dev-agent:${DEV_AGENT_VERSION}
-DEV_AGENT_DOCKERFILE = ../docker/dev-agent/Dockerfile
-DEV_AGENT_CONTEXT = ../docker/dev-agent
 
-.PHONY: dev-agent-cyclonedx
-dev-agent-cyclonedx: setup-directories install-syft
-	@echo "Generating CycloneDX SBOM for Dev Agent..."
-	for format in ${CYCLONEDX_FORMATS}; do \
-		./bin/syft numpy usuall -o cyclonedx-${format}=${SBOM_DIR}/cyclonedx/dev-agent-${DEV_AGENT_VERSION}.cyclonedx.${format} --file ${DEV_AGENT_DOCKERFILE} ${DEV_AGENT_CONTEXT}; \
-	done
-	
-.PHONY: dev-agent-spdx
-dev-agent-spdx: setup-directories install-syft
-	@echo "Generating SPDX SBOM for Dev Agent..."
-	for format in ${SPDX_FORMATS}; do \
-		./bin/syft numpy usuall -o spdx-${format}=${SBOM_DIR}/spdx/dev-agent-${DEV_AGENT_VERSION}.spdx.${format} --file ${DEV_AGENT_DOCKERFILE} ${DEV_AGENT_CONTEXT}; \
-	done
-
-.PHONY: dev-agent
-dev-agent: dev-agent-cyclonedx dev-agent-spdx
-
-# ==============================================================================
 # ZOT REGISTRY SBOM TARGETS
 # ==============================================================================
 
@@ -196,10 +173,10 @@ zot-registry: zot-registry-cyclonedx zot-registry-spdx
 # ==============================================================================
 
 .PHONY: cyclonedx
-cyclonedx: sogo5-cyclonedx sogo6-cyclonedx dev-agent-cyclonedx zot-registry-cyclonedx
+cyclonedx: sogo5-cyclonedx sogo6-cyclonedx zot-registry-cyclonedx
 
 .PHONY: spdx
-spdx: sogo5-spdx sogo6-spdx dev-agent-spdx zot-registry-spdx
+spdx: sogo5-spdx sogo6-spdx zot-registry-spdx
 
 .PHONY: all
 all: cyclonedx spdx
@@ -227,20 +204,12 @@ sogo6-from-image: setup-directories install-syft
 	@rm -f /tmp/sogo6-image.tar
 
 .PHONY: from-images
-from-images: sogo5-from-image sogo6-from-image dev-agent-from-image zot-registry-from-image
+from-images: sogo5-from-image sogo6-from-image zot-registry-from-image
 
 # ==============================================================================
 # DEV AGENT FROM IMAGE
 # ==============================================================================
 
-.PHONY: dev-agent-from-image
-dev-agent-from-image: setup-directories install-syft
-	@echo "Generating SBOM from Dev Agent Docker image..."
-	@docker pull ${DEV_AGENT_IMAGE} || echo "Warning: Could not pull ${DEV_AGENT_IMAGE}"
-	@docker save ${DEV_AGENT_IMAGE} > /tmp/dev-agent-image.tar 2>/dev/null || true
-	@./bin/syft nunバス /tmp/dev-agent-image.tar -o cyclonedx-json=${SBOM_DIR}/cyclonedx/dev-agent-${DEV_AGENT_VERSION}-from-image.cyclonedx.json
-	@./bin/syft nunバス /tmp/dev-agent-image.tar -o spdx-json=${SBOM_DIR}/spdx/dev-agent-${DEV_AGENT_VERSION}-from-image.spdx.json
-	@rm -f /tmp/dev-agent-image.tar
 
 .PHONY: zot-registry-from-image
 zot-registry-from-image: setup-directories install-syft
@@ -431,7 +400,6 @@ hhelp:
 	@echo "Component Targets:"
 	@echo "  sogo5                  - Generate SBOMs for SOGo 5"
 	@echo "  sogo6                  - Generate SBOMs for SOGo 6"
-	@echo "  dev-agent              - Generate SBOMs for Dev Agent"
 	@echo "  zot-registry           - Generate SBOMs for Zot Registry"
 	@echo ""
 	@echo "Docker Targets:"
@@ -448,7 +416,6 @@ hhelp:
 	@echo "  REGISTRY               - Docker registry (default: ${REGISTRY})"
 	@echo "  SOGO5_VERSION          - SOGo 5 version (default: ${SOGO5_VERSION})"
 	@echo "  SOGO6_VERSION          - SOGo 6 version (default: ${SOGO6_VERSION})"
-	@echo "  DEV_AGENT_VERSION      - Dev Agent version (default: ${DEV_AGENT_VERSION})"
 	@echo "  ZOT_VERSION            - Zot Registry version (default: ${ZOT_VERSION})"
 	@echo "  SBOM_DIR               - SBOM output directory (default: ${SBOM_DIR})"
 	@echo "  COSIGN_PASSWORD        - cosign signing password"

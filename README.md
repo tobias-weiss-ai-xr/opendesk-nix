@@ -19,7 +19,7 @@ curl -L https://nixos.org/nix/install | sh
 echo "experimental-features = nix-command flakes" >> ~/.config/nix/nix.conf
 
 # Build all images
-nix build .#sogo5-image .#sogo6-image .#dev-agent-image
+nix build .#sogo5-image .#sogo6-image
 
 # Load into Docker
 docker load < result
@@ -45,7 +45,6 @@ kubectl apply -k k8s/sogo5
 kubectl apply -k k8s/sogo6
 
 # Deploy Dev Agent
-kubectl apply -k k8s/dev-agent
 ```
 
 ---
@@ -56,7 +55,6 @@ kubectl apply -k k8s/dev-agent
 |-------|-------------|-----------|--------------|
 | **sogo5** | SOGo 5 Groupware | `.#sogo5-image` | `registry.gitlab.opencode.de/umr/sogo5:latest` |
 | **sogo6** | SOGo 6 Groupware | `.#sogo6-image` | `registry.gitlab.opencode.de/umr/sogo6:latest` |
-| **dev-agent** | Dev Agent Operator | `.#dev-agent-image` | `registry.gitlab.opencode.de/umr/dev-agent:latest` |
 | **website** | Next.js Website | `.#website-image` | `registry.gitlab.opencode.de/umr/opendesk-edu-website:latest` |
 | **sbom-generator** | SBOM Tools | `.#sbom-generator-image` | `registry.gitlab.opencode.de/umr/sbom-generator:latest` |
 
@@ -73,7 +71,6 @@ opendesk-nix/
 ├── sogo/
 │   └── flake.nix               # SOGo 5 & 6 Docker images
 │
-├── dev-agent/
 │   └── flake.nix               # Dev Agent Docker image
 │
 ├── k8s/                         # Kubernetes deployments
@@ -90,7 +87,6 @@ opendesk-nix/
 │   │   ├── configmap.yaml
 │   │   ├── pvc.yaml
 │   │   └── kustomization.yaml
-│   └── dev-agent/
 │       ├── deployment.yaml
 │       ├── rbac.yaml
 │       └── kustomization.yaml
@@ -183,7 +179,6 @@ inputs = {
 
 Edit the respective `flake.nix` files:
 - `sogo/flake.nix` - For SOGo configuration
-- `dev-agent/flake.nix` - For Dev Agent configuration
 
 Example - Add packages to SOGo 6:
 ```nix
@@ -209,7 +204,7 @@ nix build .#sogo6-image
 
 ### **Build All Images**
 ```bash
-nix build .#sogo5-image .#sogo6-image .#dev-agent-image
+nix build .#sogo5-image .#sogo6-image
 ```
 
 ### **Enter Development Shell**
@@ -278,7 +273,6 @@ kubectl apply -k k8s/sogo5
 kubectl apply -k k8s/sogo6
 
 # Dev Agent
-kubectl apply -k k8s/dev-agent
 
 # All
 kubectl apply -k k8s/
@@ -329,7 +323,6 @@ jobs:
         run: |
           nix build .#sogo5-image
           nix build .#sogo6-image
-          nix build .#dev-agent-image
 
       - name: Load Docker Images
         run: |
@@ -356,8 +349,6 @@ jobs:
           # docker push ... sogo6:latest
           
           # Dev Agent
-          # docker tag ... dev-agent:latest
-          # docker push ... dev-agent:latest
 ```
 
 ---
