@@ -263,7 +263,7 @@
               export GOBIN="$GOPATH/bin"
               
               # Create directories
-              mkdir -p ${GOBIN}
+              mkdir -p ''${GOBIN}
             '';
           };
           
@@ -287,7 +287,7 @@
         dev-agent.default = {
           type = "docker";
           program = "${self.packages.${system}.dev-agent-image}/bin/run";
-          extraFlags = [ "--rm" "-it" "-p" "8080:8080" "-p" "8081:8081" ");
+          extraFlags = [ "--rm" "-it" "-p" "8080:8080" "-p" "8081:8081" ];
         };
       });
       
@@ -297,7 +297,7 @@
       overlays = {
         default = final: prev: {
           # Custom Go with specific version
-          go = prev.go dúas.overrideAttrs (old: {
+          go = prev.go.overrideAttrs (old: {
             version = commonArgs.goVersion;
             sha256 = "sha256-XXXXXXXXXX";  # Replace with actual for Go 1.19.13
           });
@@ -305,13 +305,13 @@
           # Custom controller-runtime
           controller-runtime = prev.callPackage ({
             version = commonArgs.controllerRuntimeVersion;
-            src = pkgs.fetchFromGitHub {
+            src = prev.fetchFromGitHub {
               owner = "kubernetes-sigs";
               repo = "controller-runtime";
               rev = "v${commonArgs.controllerRuntimeVersion}";
               sha256 = "sha256-XXXXXXXXXX";
             };
-          } { });
+          }) { };
         };
         
         # Dev Agent overlay

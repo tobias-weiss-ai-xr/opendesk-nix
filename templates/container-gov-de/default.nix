@@ -119,7 +119,7 @@ let
         
         # BG-8: Health check
         config.Healthcheck = {
-          Test = [ "CMD-SHELL", "echo 'Health check placeholder'" ];
+          Test = [ "CMD-SHELL" "echo 'Health check placeholder'" ];
           Interval = "30s";
           Timeout = "5s";
           Retries = 3;
@@ -151,7 +151,7 @@ let
     licenseID = "Apache-2.0";
     copyrightText = "Copyright 2026 container.gov.de";
     # Include components from the derivation
-    packages = pkgs.lib.genAttrs (builtins.attrNames selectedContainer.config) (name: '');
+    packages = pkgs.lib.genAttrs (builtins.attrNames selectedContainer.config) (name: "");
   };
   
   cyclonedxSBOM = sbomLib.mkCycloneDX {

@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
 
-"""
+/*
 SCS-specific overrides for MariaDB
 
 This override increases resources for MariaDB in production,
 using faster storage and more CPU/memory.
-"""
+*/
 
 { baseConfig }:
 

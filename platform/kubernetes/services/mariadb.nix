@@ -3,8 +3,9 @@
 
 {
   lib,
-  security ? import ../../lib/security.nix { },
-  registry ? import ../../lib/registry.nix { },
+  security ? import ../../nix/security.nix { inherit pkgs lib; },
+  registry ? import ../../nix/registry.nix { inherit pkgs lib; },
+  pkgs ? import <nixpkgs> { },
   env ? import ../environments/hrz/default.nix { inherit lib; },
 }:
 
@@ -26,15 +27,6 @@ let
     component = "backend";
   };
   storageClass = env.storage.rwo;
-
-  # OCI Labels (OpenSpec Compliance - FR-IMAGE-007)
-  ociLabels = lib.mkOCILabels {
-    name = fullName;
-    inherit version;
-    inherit description;
-    serviceType = "database";
-    component = "backend";
-  };
 
   # Security configuration
   containerSecurity = security.mkContainerSecurityContext { profile = "database"; };
@@ -61,7 +53,7 @@ let
   };
 
 in
-[
+builtins.filter (x: x != null) [
   (lib.statefulset {
     name = fullName;
     inherit instance;
@@ -217,4 +209,3 @@ in
   })
 
 ]
-// builtins.filter (x: x != null)

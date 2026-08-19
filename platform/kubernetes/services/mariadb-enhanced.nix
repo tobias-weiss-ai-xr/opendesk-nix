@@ -1,8 +1,8 @@
 { 
   lib, 
-  security ? import ../../lib/security.nix { },
-  registry ? import ../../lib/registry.nix { },
-  pkgs ? import <nixpkgs> { }
+  security ? import ../../nix/security.nix { inherit pkgs lib; },
+  registry ? import ../../nix/registry.nix { inherit pkgs lib; },
+  pkgs ? import <nixpkgs> { },
   env ? import ../environments/hrz/default.nix { inherit lib; },
 }:
 
@@ -23,6 +23,7 @@ let
   
   # Image configuration
   imageVersion = "11.4.4";
+  tag = imageVersion;
   
   # Generate image name using registry helper
   imageName = registry.formatServiceImageName {

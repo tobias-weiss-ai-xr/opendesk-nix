@@ -3,11 +3,11 @@
 
 { 
   lib,
-  security ? import ../../lib/security.nix { },
-  registry ? import ../../lib/registry.nix { },
-  types ? import ../../lib/types.nix { },
-  sbom ? import ../../lib/sbom.nix { },
-  pkgs ? import <nixpkgs> { }
+  security ? import ../../nix/security.nix { inherit pkgs lib; },
+  registry ? import ../../nix/registry.nix { inherit pkgs lib; },
+  types ? import ../../nix/types.nix { inherit lib; },
+  sbom ? import ../../nix/sbom.nix { inherit pkgs; },
+  pkgs ? import <nixpkgs> { },
   env ? import ../environments/hrz/default.nix { lib = lib; },
 }:
 
@@ -25,6 +25,7 @@ let
   name = "kube-prometheus-stack";
   namespace = "opendesk";
   port = 9090;
+  tag = "v2.51.0";
 
 
   # Security configuration
@@ -58,6 +59,12 @@ in
     selector = { app = name; };
     namespace = namespace;
     ports = [ { name = "http"; containerPort = port; } ];
-    volumeClaims = [ { name = "data"; spec = { accessModes = [ "ReadWriteOnce" ]; resources = { requests = { storage = "10Gi" }; }; }; } ];
+    volumeClaims = [ { name = "data"; spec = { accessModes = [ "ReadWriteOnce" ]; resources = { requests = { storage = "10Gi"; }; }; }; } ];
     resources = { limits = { cpu = "1"; memory = "2Gi"; }; };
-  }
+  })
+
+  (lib.service {
+    inherit name namespace port;
+    selector = { app = name; };
+  })
+]

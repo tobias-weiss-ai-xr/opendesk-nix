@@ -96,21 +96,20 @@ let
   ] (name: 
     let
       # Select appropriate base image based on service type
-      base = case name of
-        "minimal" -> baseImages.distroless;
-        "base" -> baseImages.ubi8-minimal;
-        "nginx" -> baseImages.ubi8-minimal;
-        "apache" -> baseImages.ubi8-minimal;
-        "mariadb" -> baseImages.ubi8-minimal;
-        "postgresql" -> baseImages.ubi8-minimal;
-        "redis" -> baseImages.ubi8-minimal;
-        "nodejs" -> baseImages.ubi8-minimal;
-        "python" -> baseImages.ubi8-minimal;
-        "java" -> baseImages.ubi8-minimal;
-        "golang" -> baseImages.ubi8-minimal;
-        "rust" -> baseImages.ubi8-minimal;
-        _ -> baseImages.ubi8-minimal;
-      ;
+      base = {
+        "minimal" = baseImages.distroless;
+        "base" = baseImages.ubi8-minimal;
+        "nginx" = baseImages.ubi8-minimal;
+        "apache" = baseImages.ubi8-minimal;
+        "mariadb" = baseImages.ubi8-minimal;
+        "postgresql" = baseImages.ubi8-minimal;
+        "redis" = baseImages.ubi8-minimal;
+        "nodejs" = baseImages.ubi8-minimal;
+        "python" = baseImages.ubi8-minimal;
+        "java" = baseImages.ubi8-minimal;
+        "golang" = baseImages.ubi8-minimal;
+        "rust" = baseImages.ubi8-minimal;
+      }.${name} or baseImages.ubi8-minimal;
     in
     super.dockerTools.buildLayeredImage {
       name = "container-gov-de-${name}";
@@ -142,19 +141,18 @@ let
       };
       
       # Package selection based on service
-      contents = case name of
-        "nginx" -> [ super.nginx ];
-        "apache" -> [ super.apacheHttpd ];
-        "mariadb" -> [ super.mariadb ];
-        "postgresql" -> [ super.postgresql ];
-        "redis" -> [ super.redis ];
-        "nodejs" -> [ super.nodejs ];
-        "python" -> [ super.python3 ];
-        "java" -> [ super.jdk ];
-        "golang" -> [ super.go ];
-        "rust" -> [ super.cargo ];  
-        _ -> [ ];
-      ;
+      contents = {
+        "nginx" = [ super.nginx ];
+        "apache" = [ super.apacheHttpd ];
+        "mariadb" = [ super.mariadb ];
+        "postgresql" = [ super.postgresql ];
+        "redis" = [ super.redis ];
+        "nodejs" = [ super.nodejs ];
+        "python" = [ super.python3 ];
+        "java" = [ super.jdk ];
+        "golang" = [ super.go ];
+        "rust" = [ super.cargo ];
+      }.${name} or [ ];
     }
   );
 
@@ -180,7 +178,7 @@ let
         name = derivation.name or "unknown";
         version = derivation.dirVersion or "latest";
         description = derivation.meta.description or "";
-        purl = "pkg:docker/container.gov.de/${derivation.name}@${derivation.dirVersion or 'latest'}";
+        purl = "pkg:docker/container.gov.de/${derivation.name}@${derivation.dirVersion or ''latest''}";
         licenseID = "Apache-2.0";
       };
   };
@@ -191,20 +189,22 @@ let
       let
         scanningLib = import ../lib/security-scanning.nix;
       in
-      case scanner of
-        "grype" -> scanningLib.scanWithGrype {
+      if scanner == "grype" then
+        scanningLib.scanWithGrype {
           target = image;
           format = outputFormat;
           output = "${image}-grype-report.${outputFormat}";
-        };
-        "trivy" -> scanningLib.scanWithTrivy {
+        }
+      else if scanner == "trivy" then
+        scanningLib.scanWithTrivy {
           target = image;
           format = outputFormat;
           output = "${image}-trivy-report.${outputFormat}";
-        };
-        "snyk" -> scanningLib.scanWithSnyk { target = image; };
-        _ -> throw "Unknown scanner: ${scanner}. Use 'grype', 'trivy', or 'snyk'.";
-      ;
+        }
+      else if scanner == "snyk" then
+        scanningLib.scanWithSnyk { target = image; }
+      else
+        throw "Unknown scanner: ${scanner}. Use 'grype', 'trivy', or 'snyk'.";
     
     scanAll = { images, scanners ? [ "grype" "trivy" ] }:
       map (image: map (scanner: securityScan.scanImage { image = image; scanner = scanner; }) scanners) images;
@@ -215,7 +215,7 @@ let
     signImage = { image, keyPair ? null, output ? "signature.cosign" }:
       let
         cosignLib = import ../lib/cosign.nix;
-        actualKeyPair = keyPair or cosignLib.mkCosignKeyPair { };
+        actualKeyPair = if keyPair == null then cosignLib.mkCosignKeyPair { } else keyPair;
       in
       cosignLib.signWithCosign {
         image = image;
@@ -245,7 +245,7 @@ in {
   ;
 
   # Override nixpkgs packages to use container.gov.de compliant versions
-  overrides = superằng:
+  overrides = super:
     rec {
       # Database services - BG-1 through BG-8 compliant
       mariadb = super.mariadb.overrideAttrs (old: {

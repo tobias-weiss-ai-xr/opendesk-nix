@@ -510,7 +510,7 @@ services:
     networks:
       - opendesk-network
     ports:
-      - "8080:8080"    # HTTP API
+      - "8083:8080"    # HTTP API (host 8083 to avoid conflict with dev-agent)
       - "8443:8443"    # HTTPS API (if configured)
     environment:
       # Zot configuration

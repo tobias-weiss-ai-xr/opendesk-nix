@@ -77,15 +77,21 @@ let
     failureThreshold = 3;
   };
 
+  # Secrets from SOPS-encrypted store (with fallback to current values for
+  # backward compatibility). To rotate: add the key to secrets/scs.enc.json
+  # and remove the fallback. See platform/nix/secrets.nix.
+  cfgSecrets = secrets.opencloud or {};
+
   # OpenCloud config — generated via `opencloud init --insecure yes`
-  # Contains all required secrets (jwt, transfer, machine_auth, system_user, etc.)
+  # Secrets are externalized via __PLACEHOLDER__ tokens and replaced at
+  # build time from the SOPS-encrypted store (see cfgSecrets above).
   opencloudConfig = ''
     token_manager:
-      jwt_secret: CIU$waQwS+2%.@xDqY!Dbq!Ry.C!dXjX
-    machine_auth_api_key: 1=W3EAf5#v4oG4Gjn2SL%btSFZ.9R3nV
-    system_user_api_key: mGn9+jkGijzA*r6ePdBQgHu7Q5ZuEItU
-    transfer_secret: 6pG*e-z#oszAI=c@az=G$hAD-6LVwMOs
-    url_signing_secret: B*wR*fbqz6ZWipcjcTZEfHKhRxG-U&8p
+      jwt_secret: __JWT_SECRET__
+    machine_auth_api_key: __MACHINE_AUTH_API_KEY__
+    system_user_api_key: __SYSTEM_USER_API_KEY__
+    transfer_secret: __TRANSFER_SECRET__
+    url_signing_secret: __URL_SIGNING_SECRET__
     system_user_id: 1ff0f5e2-b069-4c6d-aee7-11a73460e236
     admin_user_id: ecae464e-8b00-4479-93d8-8bb1f3987997
     graph:
@@ -97,22 +103,22 @@ let
         insecure: true
       identity:
         ldap:
-          bind_password: H@S^M57vsVro6ElM+d!YH8rRW&F6*8Sn
+          bind_password: __LDAP_BIND_PASSWORD__
       service_account:
         service_account_id: 140f97b5-a094-4656-a5b4-59765eb00593
         service_account_secret: __SERVICE_ACCOUNT_SECRET__
     idp:
       ldap:
-        bind_password: KYZhAv2ytqjZkHP*+ND2CLk96G-p%=s.
+        bind_password: __IDP_LDAP_BIND_PASSWORD__
     idm:
       service_user_passwords:
-        admin_password: admin
-        idm_password: H@S^M57vsVro6ElM+d!YH8rRW&F6*8Sn
-        reva_password: '*%HWwspN1rGKgJjP1oDs6nHxhaS43Zru'
-        idp_password: KYZhAv2ytqjZkHP*+ND2CLk96G-p%=s.
+        admin_password: __ADMIN_PASSWORD__
+        idm_password: __IDM_PASSWORD__
+        reva_password: __REVA_PASSWORD__
+        idp_password: __IDP_PASSWORD__
     collaboration:
       wopi:
-        secret: =u*@HT7agxou9mZ9a.XhUtI^3sfrt3A*
+        secret: __WOPI_SECRET__
       app:
         insecure: true
     proxy:
@@ -135,7 +141,7 @@ let
     auth_basic:
       auth_providers:
         ldap:
-          bind_password: '*%HWwspN1rGKgJjP1oDs6nHxhaS43Zru'
+          bind_password: __REVA_PASSWORD__
     auth_bearer:
       auth_providers:
         oidc:
@@ -143,18 +149,18 @@ let
     users:
       drivers:
         ldap:
-          bind_password: '*%HWwspN1rGKgJjP1oDs6nHxhaS43Zru'
+          bind_password: __REVA_PASSWORD__
     groups:
       drivers:
         ldap:
-          bind_password: '*%HWwspN1rGKgJjP1oDs6nHxhaS43Zru'
+          bind_password: __REVA_PASSWORD__
     ocm:
       service_account:
         service_account_id: 140f97b5-a094-4656-a5b4-59765eb00593
         service_account_secret: __SERVICE_ACCOUNT_SECRET__
     thumbnails:
       thumbnail:
-        transfer_secret: 71C&8-4ny&q4Xfk+fx.gOafD2B&NTGGc
+        transfer_secret: __THUMBNAILS_TRANSFER_SECRET__
         webdav_allow_insecure: true
         cs3_allow_insecure: true
     search:
@@ -346,7 +352,40 @@ in
     namespace = env.namespaceEdu;
     inherit labels;
     stringData = {
-      "opencloud.yaml" = builtins.replaceStrings ["__SERVICE_ACCOUNT_SECRET__"] [(secrets.opencloud or {}).service_account_secret or "__CHANGE_ME__"] opencloudConfig;
+      "opencloud.yaml" = builtins.replaceStrings
+        [
+          "__SERVICE_ACCOUNT_SECRET__"
+          "__JWT_SECRET__"
+          "__MACHINE_AUTH_API_KEY__"
+          "__SYSTEM_USER_API_KEY__"
+          "__TRANSFER_SECRET__"
+          "__URL_SIGNING_SECRET__"
+          "__LDAP_BIND_PASSWORD__"
+          "__IDP_LDAP_BIND_PASSWORD__"
+          "__ADMIN_PASSWORD__"
+          "__IDM_PASSWORD__"
+          "__REVA_PASSWORD__"
+          "__IDP_PASSWORD__"
+          "__WOPI_SECRET__"
+          "__THUMBNAILS_TRANSFER_SECRET__"
+        ]
+        [
+          cfgSecrets.service_account_secret or "__CHANGE_ME__"
+          cfgSecrets.jwt_secret or "CIU$waQwS+2%.@xDqY!Dbq!Ry.C!dXjX"
+          cfgSecrets.machine_auth_api_key or "1=W3EAf5#v4oG4Gjn2SL%btSFZ.9R3nV"
+          cfgSecrets.system_user_api_key or "mGn9+jkGijzA*r6ePdBQgHu7Q5ZuEItU"
+          cfgSecrets.transfer_secret or "6pG*e-z#oszAI=c@az=G$hAD-6LVwMOs"
+          cfgSecrets.url_signing_secret or "B*wR*fbqz6ZWipcjcTZEfHKhRxG-U&8p"
+          cfgSecrets.ldap_bind_password or "H@S^M57vsVro6ElM+d!YH8rRW&F6*8Sn"
+          cfgSecrets.idp_ldap_bind_password or "KYZhAv2ytqjZkHP*+ND2CLk96G-p%=s."
+          cfgSecrets.admin_password or "admin"
+          cfgSecrets.idm_password or "H@S^M57vsVro6ElM+d!YH8rRW&F6*8Sn"
+          cfgSecrets.reva_password or "*%HWwspN1rGKgJjP1oDs6nHxhaS43Zru"
+          cfgSecrets.idp_password or "KYZhAv2ytqjZkHP*+ND2CLk96G-p%=s."
+          cfgSecrets.wopi_secret or "=u*@HT7agxou9mZ9a.XhUtI^3sfrt3A*"
+          cfgSecrets.thumbnails_transfer_secret or "71C&8-4ny&q4Xfk+fx.gOafD2B&NTGGc"
+        ]
+        opencloudConfig;
     };
   })
 
@@ -355,7 +394,7 @@ in
     namespace = env.namespaceEdu;
     inherit labels;
     stringData = {
-      "oidc-client-secret" = "opencloud-secret-change-me";
+      "oidc-client-secret" = cfgSecrets.oidc_client_secret or "opencloud-secret-change-me";
     };
   })
 ]

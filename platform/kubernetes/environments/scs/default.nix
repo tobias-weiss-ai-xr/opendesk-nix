@@ -7,7 +7,7 @@
 # Ingress: HAProxy
 # Registry: Local at 172.26.24.6:5001 (air-gapped, containerd mirror)
 
-_:
+{ lib, secrets ? {} }:
 
 {
   # Cluster identity
@@ -56,27 +56,27 @@ _:
     host = "galera-headless";
     port = 3306;
     # Each service gets its own database within the shared Galera cluster
-    rootPassword = "ChangeMeGalera123!";
+    rootPassword = secrets.galeraRootPassword or "ChangeMeGalera123!";
     # Service databases
     keycloak = {
       name = "keycloak";
       user = "keycloak";
-      password = "keycloak-db-password-change-me";
+      password = secrets.databaseKeycloakPassword or "keycloak-db-password-change-me";
     };
     synapse = {
       name = "synapse";
       user = "synapse";
-      password = "synapse-db-password-change-me";
+      password = secrets.databaseSynapsePassword or "synapse-db-password-change-me";
     };
     sogo = {
       name = "sogo";
       user = "sogo";
-      password = "sogo-db-password-change-me";
+      password = secrets.databaseSogoPassword or "sogo-db-password-change-me";
     };
     opencloud = {
       name = "opencloud";
       user = "opencloud";
-      password = "opencloud-db-password-change-me";
+      password = secrets.databaseOpencloudPassword or "opencloud-db-password-change-me";
     };
   };
 

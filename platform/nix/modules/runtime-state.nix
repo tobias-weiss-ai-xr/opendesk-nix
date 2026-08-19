@@ -226,9 +226,9 @@ in
           ${pkgs.writeScript "generate-policies" ''
             #!/usr/bin/env bash
             set -eu
-            for policy in ${toString (lib.attrNames cfg.kyverno.policies)}; do
-              yq eval '.' <<< '${builtins.toJSON cfg.kyverno.policies.${policy}}' > "$out/${policy}.yaml"
-            done
+            ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: policy: ''
+              yq eval '.' <<< '${builtins.toJSON policy}' > "$out/${name}.yaml"
+            '') cfg.kyverno.policies)}
           ''}
         '';
 

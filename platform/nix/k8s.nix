@@ -188,22 +188,16 @@ let
         inherit annotations;
       };
       spec = {
-        containers =
-          [
-            {
-              inherit name;
-              image = "${image}:${tag}";
-              imagePullPolicy = "IfNotPresent";
-              ports = usedPorts;
-              inherit resources;
-              securityContext = securityCtx;
-            }
-          ]
-          ++ (lib.optional (env != [ ]) {
-            inherit env;
-          }) # hack: env goes inside container
-        ;
-        # Actually, let's build the container properly
+        containers = [
+          ({
+            inherit name;
+            image = "${image}:${tag}";
+            imagePullPolicy = "IfNotPresent";
+            ports = usedPorts;
+            inherit resources;
+            securityContext = securityCtx;
+          } // (lib.optionalAttrs (env != [ ]) { inherit env; }))
+        ];
       };
     };
 
@@ -269,7 +263,7 @@ let
         }
         // (lib.optionalAttrs (env != [ ]) { inherit env; })
         // (lib.optionalAttrs (envFrom != [ ]) { inherit envFrom; })
-        // (lib.optionalAttrs (volumes != [ ]) { inherit volumeMounts; })
+        // (lib.optionalAttrs (volumeMounts != [ ]) { inherit volumeMounts; })
         // (lib.optionalAttrs (command != null) { inherit command; })
         // (lib.optionalAttrs (cmdArgs != null) { args = cmdArgs; });
     in

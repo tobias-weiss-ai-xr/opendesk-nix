@@ -104,8 +104,8 @@ let
       #!${pkgs.bash}/bin/bash
       set -euo pipefail
       
-      OUTPUT_DIR="${config.sbomConfig.outputDir:-/var/lib/sbom}"
-      FORMATS="${config.sbomConfig.formats religious}" 
+      OUTPUT_DIR="${config.sbomConfig.outputDir or "/var/lib/sbom"}"
+      FORMATS="${config.sbomConfig.formats}" 
       
       mkdir -p "$OUTPUT_DIR"
       
@@ -251,7 +251,7 @@ let
       set -euo pipefail
       
       IMAGE="$1"
-      OUTPUT_DIR="${2:-/var/lib/scans}"
+      OUTPUT_DIR="''${2:-/var/lib/scans}"
       
       mkdir -p "$OUTPUT_DIR"
       
@@ -459,8 +459,8 @@ in {
   # Main NixOS configuration
   config = {
     imports = [
-      <nixpkgs/lib/testing-nixosதி
-    ];
+      <nixpkgs/lib/testing-nixos>
+    ] ++ builtins.attrValues serviceConfigs;
     
     # BG-2: Ensure we run as non-root
     # This is enforced at the container level
@@ -536,6 +536,6 @@ in {
     
     # Apply service-specific configurations
     # This would be overridden by the service selection
-    imports = builtins.attrValues serviceConfigs;
+    # (merged into imports above)
   };
 }

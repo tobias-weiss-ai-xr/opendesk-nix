@@ -853,7 +853,6 @@ check_ssl_certificates() {
     cert_modulus=$(openssl x509 -in "${cert_file}" -noout -modulus 2>/dev/null | openssl md5)
     key_modulus=$(openssl rsa -in "${key_file}" -noout -modulus 2>/dev/null | openssl md5)
     
-    if [[ "${cert_modulus}" != "${key_modulus}"
     if [[ "${cert_modulus}" != "${key_modulus}" ]]; then
         log_error "SSL certificate and key do not match"
         return 1
@@ -950,7 +949,7 @@ start_health_server() {
     log_info "Starting SOGo 6 health server on ${HEALTH_HOST}:${HEALTH_PORT}..."
     
     # Check if already running
-    if [[ -n "${HEALTH_SERVER_PID}" && kill -0 "${HEALTH_SERVER_PID}" 2>/dev/null ]]; then
+    if [[ -n "${HEALTH_SERVER_PID}" ]] && kill -0 "${HEALTH_SERVER_PID}" 2>/dev/null; then
         log_info "Health server already running (PID: ${HEALTH_SERVER_PID})"
         return 0
     fi

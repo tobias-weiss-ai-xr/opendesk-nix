@@ -283,8 +283,8 @@ let
           signingMode = signingMode;
           annotations = {
             builder = "opendesk-nix";
-            gitCommit = "${lib.belleza.getGitRev}" or "unknown";
-            gitRepo = "${lib.belleza.getGitRepo}" or "unknown";
+            gitCommit = lib.belleza.getGitRev or "unknown";
+            gitRepo = lib.belleza.getGitRepo or "unknown";
           };
         }
       else null;
@@ -565,7 +565,7 @@ jobs:
           password: ''${{ github.token }}
       
       - name: Log in to GitLab Container Registry
-        if: github.event_name != 'pull_request' && env.OPENCODE_TOKEN != ''
+        if: github.event_name != 'pull_request' && env.OPENCODE_TOKEN != '''
         uses: docker/login-action@v3
         with:
           registry: registry.gitlab.com
@@ -577,13 +577,13 @@ jobs:
           nix develop -c opendesk-nix#full --command bash -c "
             ${if config.sbom.enabled then ''
             echo 'Generating SBOM...'
-            security-nix.syftScan ''''${{ steps.meta.outputs.tags }}
+            security-nix.syftScan ''' ''${{ steps.meta.outputs.tags }}
             '' else ''''}
             
             ${if config.scanners.grype.enabled || config.scanners.trivy.enabled then ''
             echo 'Running vulnerability scans...'
-            ${if config.scanners.grype.enabled then ''security-nix.grypeScan ''''${{ steps.meta.outputs.tags }}'' else ''''}
-            ${if config.scanners.trivy.enabled then ''security-nix.trivyScan ''''${{ steps.meta.outputs.tags }}'' else ''''}
+            ${if config.scanners.grype.enabled then ''security-nix.grypeScan ''' ''${{ steps.meta.outputs.tags }}'' else ''''}
+            ${if config.scanners.trivy.enabled then ''security-nix.trivyScan ''' ''${{ steps.meta.outputs.tags }}'' else ''''}
             '' else ''''}
             
             ${if config.compliance.enabled then ''
@@ -593,7 +593,7 @@ jobs:
             
             ${if config.signing.enabled then ''
             echo 'Signing images...'
-            cosign sign ''''${{ steps.meta.outputs.tags }} --yes
+            cosign sign ''' ''${{ steps.meta.outputs.tags }} --yes
             '' else ''''}
           "
         env:
@@ -604,7 +604,7 @@ jobs:
       - name: Push to registries
         if: github.event_name != 'pull_request'
         run: |
-          nix run .#registry-nix.pushToAll ''''${{ steps.meta.outputs.tags }}
+          nix run .#registry-nix.pushToAll ''' ''${{ steps.meta.outputs.tags }}
         env:
           GITHUB_TOKEN: ''${{ secrets.GITHUB_TOKEN }}
           OPENCODE_TOKEN: ''${{ secrets.OPENCODE_TOKEN }}
@@ -650,9 +650,9 @@ variables:
   before_script:
     - nix-env -iA cachix -f https://cachix.org/api/v1/install
     - cachix use opendesk
-    - echo "${CI_JOB_TOKEN}" | docker login -u "gitlab-ci-token" --password-stdin registry.gitlab.com
+    - echo "''${CI_JOB_TOKEN}" | docker login -u "gitlab-ci-token" --password-stdin registry.gitlab.com
   cache:
-    key: "${CI_COMMIT_REF_SLUG}"
+    key: "''${CI_COMMIT_REF_SLUG}"
     paths:
       - .cachix
 
@@ -753,8 +753,8 @@ pages:
       
       ${if checkRegistries then ''
       echo "[1/3] Checking registries..."
-      REGISTRIES=("ghcr.io" "registry.gitlab.com" "${ZOT_REGISTRY_FALLBACK:-registry.example.com:5000}")  # Replace with your registry
-      for reg in "${REGISTRIES[@]}"; do
+      REGISTRIES=("ghcr.io" "registry.gitlab.com" "''${ZOT_REGISTRY_FALLBACK:-registry.example.com:5000}")  # Replace with your registry
+      for reg in "''${REGISTRIES[@]}"; do
         if curl -k -I "$reg" >/dev/null 2>&1; then
           echo "  ✅ $reg is accessible"
         else
@@ -767,7 +767,7 @@ pages:
       echo ""
       echo "[2/3] Checking scanners..."
       SCANNERS=("grype" "trivy" "syft")
-      for scanner in "${SCANNERS[@]}"; do
+      for scanner in "''${SCANNERS[@]}"; do
         if command -v $scanner >/dev/null 2>&1; then
           VERSION=$($scanner version 2>/dev/null | head -1)
           echo "  ✅ $scanner is installed ($VERSION)"
@@ -809,7 +809,7 @@ pages:
     action,
     image ? "",
     tag ? "",
-    user ? (builtins.getEnv "USER" or "unknown"),
+    user ? (if builtins.getEnv "USER" != "" then builtins.getEnv "USER" else "unknown"),
     status ? "success",
     details ? { },
     timestamp ? "${pkgs.lib.strftime "%Y-%m-%dT%H:%M:%SZ"}"
@@ -823,9 +823,9 @@ pages:
         user = user;
         status = status;
         details = details;
-        environment = builtins.getEnv "CI_ENVIRONMENT_NAME" or "local";
-        commit = builtins.getEnv "GIT_COMMIT" or "unknown";
-        jobId = builtins.getEnv "CI_JOB_ID" or "local-${builtins.hashString "sha256" timestamp}";
+        environment = if builtins.getEnv "CI_ENVIRONMENT_NAME" != "" then builtins.getEnv "CI_ENVIRONMENT_NAME" else "local";
+        commit = if builtins.getEnv "GIT_COMMIT" != "" then builtins.getEnv "GIT_COMMIT" else "unknown";
+        jobId = if builtins.getEnv "CI_JOB_ID" != "" then builtins.getEnv "CI_JOB_ID" else "local-${builtins.hashString "sha256" timestamp}";
       };
       
     in pkgs.writeText "audit-${action}-${image}-${tag}-${timestamp}.json" (builtins.toJSON logEntry);
@@ -845,16 +845,16 @@ pages:
       nativeBuildInputs = with pkgs; [ jq ];
     }''
       echo "Audit Log Query Parameters:"
-      echo "  Action: ${action or "all"}"
-      echo "  Image: ${image or "all"}"
-      echo "  User: ${user or "all"}"
-      echo "  Status: ${status or "all"}"
-      echo "  Since: ${since or "foreach"}"
-      echo "  Until: ${until or "foreach"}"
+      echo "  Action: ${action}"
+      echo "  Image: ${image}"
+      echo "  User: ${user}"
+      echo "  Status: ${status}"
+      echo "  Since: ${since}"
+      echo "  Until: ${until}"
       
       echo ""
       echo "Query command:"
-      echo "  find . -name 'audit-*.json' -type f | xargs jq 'select(${toJSON ({ 
+      echo "  find . -name 'audit-*.json' -type f | xargs jq 'select(${builtins.toJSON ({ 
         action = action;
         image = image;
         user = user;
@@ -928,8 +928,6 @@ in {
   
   # Helper values
   profiles = complianceProfiles;
-  attestationTypes = attestationTypes;
-  registries = registries;
   
   # Version information
   version = "1.0.0";

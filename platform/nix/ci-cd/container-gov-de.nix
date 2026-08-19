@@ -17,7 +17,7 @@ let
   config = {
     registries = {
       target = "ghcr.io";
-      fallback = builtins.getEnv "REGISTRY_FALLBACK" or "registry.example.com:5000";  # Replace with your registry
+      fallback = let env = builtins.getEnv "REGISTRY_FALLBACK"; in if env != "" then env else "registry.example.com:5000";  # Replace with your registry
     };
     signing = {
       enabled = true;
@@ -83,14 +83,14 @@ on:
       service:
         description: 'Service to build'
         required: false
-        default: ''
+        default: '''
       registry:
         description: 'Target registry'
         required: false
-        default: ''
+        default: '''
 
 concurrency:
-  group: container-gov-de">${{ github.ref }}
+  group: container-gov-de-''${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -102,7 +102,7 @@ jobs:
     name: Setup Nix Environment
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      matrix: ''${{ steps.set-matrix.outputs.matrix }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -123,7 +123,7 @@ jobs:
         uses: cachix/cachix-action@v12
         with:
           name: opendesk-nix
-          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+          authToken: "''${{ secrets.CACHIX_AUTH_TOKEN }}"
       
       - name: Set matrix output
         id: set-matrix
@@ -132,7 +132,7 @@ jobs:
           ${serviceList}
           EOF
           )
-          echo "matrix={\"service\":[${SERVICES}],\"registry\":[${registryMatrix}]}" >> $GITHUB_OUTPUT
+          echo "matrix={\"service\":[''${SERVICES}],\"registry\":[${registryMatrix}]}" >> $GITHUB_OUTPUT
 
   # Stage 2: Build container.gov.de Compliant Images
   build:
@@ -143,8 +143,8 @@ jobs:
       fail-fast: false
     strategy:
       matrix:
-        service: ${{ fromJSON(needs.setup.outputs.matrix).service }}
-        registry: ${{ fromJSON(needs.setup.outputs.matrix).registry }}
+        service: ''${{ fromJSON(needs.setup.outputs.matrix).service }}
+        registry: ''${{ fromJSON(needs.setup.outputs.matrix).registry }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -160,11 +160,11 @@ jobs:
         uses: cachix/cachix-action@v12
         with:
           name: opendesk-nix
-          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+          authToken: "''${{ secrets.CACHIX_AUTH_TOKEN }}"
       
       - name: Build container.gov.de Compliant Image
         run: |
-          nix build .#packages.x86_64-linux.${{ matrix.service }}-container-gov-de --no-link
+          nix build .#packages.x86_64-linux.''${{ matrix.service }}-container-gov-de --no-link
         env:
           NIXPKGS_ALLOW_INSECURE: "1"
           NIXPKGS_ALLOW_BROKEN: "1"
@@ -177,16 +177,16 @@ jobs:
       
       - name: Tag image for registry
         run: |
-          REPO=${{ matrix.service }}-container-gov-de
+          REPO=''${{ matrix.service }}-container-gov-de
           TAG=latest
-          if [ "${{ github.ref }}" != "refs/heads/main" ]; then
-            TAG=$(echo ${{ github.ref }} | sed 's|refs/heads/||;s|/|-|g')
+          if [ "''${{ github.ref }}" != "refs/heads/main" ]; then
+            TAG=$(echo ''${{ github.ref }} | sed 's|refs/heads/||;s|/|-|g')
           fi
-          if [ "${{ github.ref_type }}" = "tag" ]; then
-            TAG=${{ github.ref_name }}
+          if [ "''${{ github.ref_type }}" = "tag" ]; then
+            TAG=''${{ github.ref_name }}
           fi
-          docker tag $REPO:$TAG ${{ matrix.registry }}/${REPO}:$TAG
-          echo "REPO=${REPO}" >> $GITHUB_ENV
+          docker tag $REPO:$TAG ''${{ matrix.registry }}/''${REPO}:$TAG
+          echo "REPO=''${REPO}" >> $GITHUB_ENV
           echo "TAG=$TAG" >> $GITHUB_ENV
 
   # Stage 3: Generate SBOM
@@ -196,7 +196,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: ${{ fromJSON(needs.setup.outputs.matrix).service }}
+        service: ''${{ fromJSON(needs.setup.outputs.matrix).service }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -207,23 +207,23 @@ jobs:
       - name: Generate SPDX SBOM
         if: inputs.sbom-spdx == 'true' || true
         run: |
-          nix build .#sbom-spdx-${{ matrix.service }} --no-link
+          nix build .#sbom-spdx-''${{ matrix.service }} --no-link
       
       - name: Generate CycloneDX SBOM
         if: inputs.sbom-cyclonedx == 'true' || true
         run: |
-          nix build .#sbom-cyclonedx-${{ matrix.service }} --no-link
+          nix build .#sbom-cyclonedx-''${{ matrix.service }} --no-link
       
       - name: Upload SPDX SBOM
         uses: actions/upload-artifact@v4
         with:
-          name: sbom-spdx-${{ matrix.service }}
+          name: sbom-spdx-''${{ matrix.service }}
           path: result/*.spdx.json
       
       - name: Upload CycloneDX SBOM
         uses: actions/upload-artifact@v4
         with:
-          name: sbom-cyclonedx-${{ matrix.service }}
+          name: sbom-cyclonedx-''${{ matrix.service }}
           path: result/*.cyclonedx.json
 
   # Stage 4: Security Scanning
@@ -235,7 +235,7 @@ jobs:
       fail-fast: false
     strategy:
       matrix:
-        service: ${{ fromJSON(needs.setup.outputs.matrix).service }}
+        service: ''${{ fromJSON(needs.setup.outputs.matrix).service }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -245,29 +245,29 @@ jobs:
       
       - name: Load Docker image
         run: |
-          nix build .#packages.x86_64-linux.${{ matrix.service }}-container-gov-de --no-link
+          nix build .#packages.x86_64-linux.''${{ matrix.service }}-container-gov-de --no-link
           docker load < result
       
       - name: Scan with Grype
         id: grype
         run: |
           nix profile install .#grype
-          grype ${{ env.REPO }}:${{ env.TAG }} -o json > grype-report.json || true
+          grype ''${{ env.REPO }}:''${{ env.TAG }} -o json > grype-report.json || true
           ffucf
           
       - name: Check for critical vulnerabilities
         run: |
           MAX_SEVERITY="HIGH"
-          if [ "${{ config.scanning.failOnCritical }}" = "true" ]; then
+          if [ "''${{ config.scanning.failOnCritical }}" = "true" ]; then
             MAX_SEVERITY="CRITICAL"
           fi
           CRITICAL_COUNT=$(jq '[.matches[] | select(.vulnerability.severity == "CRITICAL")] | length' grype-report.json)
           HIGH_COUNT=$(jq '[.matches[] | select(.vulnerability.severity == "HIGH")] | length' grype-report.json)
-          if [ "$CRITICAL_COUNT" -gt 0 ] && [ "${{ config.scanning.failOnCritical }}" = "true" ]; then
+          if [ "$CRITICAL_COUNT" -gt 0 ] && [ "''${{ config.scanning.failOnCritical }}" = "true" ]; then
             echo "::error::Found $CRITICAL_COUNT CRITICAL vulnerabilities"
             exit 1
           fi
-          if [ "$HIGH_COUNT" -gt 0 ] && [ "${{ config.scanning.failOnHigh }}" = "true" ]; then
+          if [ "$HIGH_COUNT" -gt 0 ] && [ "''${{ config.scanning.failOnHigh }}" = "true" ]; then
             echo "::error::Found $HIGH_COUNT HIGH vulnerabilities"
             exit 1
           fi
@@ -276,12 +276,12 @@ jobs:
       - name: Scan with Trivy
         run: |
           nix profile install .#trivy
-          trivy image --severity CRITICAL,HIGH ${{ env.REPO }}:${{ env.TAG }} -f json -o trivy-report.json || true
+          trivy image --severity CRITICAL,HIGH ''${{ env.REPO }}:''${{ env.TAG }} -f json -o trivy-report.json || true
       
       - name: Upload scan reports
         uses: actions/upload-artifact@v4
         with:
-          name: security-reports-${{ matrix.service }}
+          name: security-reports-''${{ matrix.service }}
           path: |
             grype-report.json
             trivy-report.json
@@ -293,7 +293,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: ${{ fromJSON(needs.setup.outputs.matrix).service }}
+        service: ''${{ fromJSON(needs.setup.outputs.matrix).service }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -306,20 +306,20 @@ jobs:
       - name: Import Cosign private key
         if: config.signing.enabled
         run: |
-          echo "${{ secrets.COSIGN_PRIVATE_KEY }}" > cosign.key
+          echo "''${{ secrets.COSIGN_PRIVATE_KEY }}" > cosign.key
           chmod 600 cosign.key
-          echo "${{ secrets.COSIGN_PASSWORD }}" > cosign-password.txt
+          echo "''${{ secrets.COSIGN_PASSWORD }}" > cosign-password.txt
       
       - name: Sign image with Cosign
         if: config.signing.enabled
         run: |
-          cosign sign --key cosign.key ${{ matrix.registry }}/${{ env.REPO }}:${{ env.TAG }} --password-file cosign-password.txt
+          cosign sign --key cosign.key ''${{ matrix.registry }}/''${{ env.REPO }}:''${{ env.TAG }} --password-file cosign-password.txt
       
       - name: Verify signature
         if: config.signing.enabled
         run: |
-          echo "${{ secrets.COSIGN_PUBLIC_KEY }}" > cosign.pub
-          cosign verify --key cosign.pub ${{ matrix.registry }}/${{ env.REPO }}:${{ env.TAG }}
+          echo "''${{ secrets.COSIGN_PUBLIC_KEY }}" > cosign.pub
+          cosign verify --key cosign.pub ''${{ matrix.registry }}/''${{ env.REPO }}:''${{ env.TAG }}
 
   # Stage 6: Compliance Check
   compliance:
@@ -328,7 +328,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: ${{ fromJSON(needs.setup.outputs.matrix).service }}
+        service: ''${{ fromJSON(needs.setup.outputs.matrix).service }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -338,7 +338,7 @@ jobs:
       
       - name: Run container.gov.de Compliance Check
         run: |
-          nix build .#packages.x86_64-linux.${{ matrix.service }}-compliance-check --no-link
+          nix build .#packages.x86_64-linux.''${{ matrix.service }}-compliance-check --no-link
           
           # Parse compliance result
           COMPLIANCE_LEVEL=$(jq -r '.complianceLevel' result.json)
@@ -348,7 +348,7 @@ jobs:
           echo "Compliance: $COMPLIANCE_LEVEL ($PASSED/$TOTAL checks passed)"
           
           if [ "$COMPLIANCE_LEVEL" != "FULLY COMPLIANT" ]; then
-            echo "::error::container.gov.de compliance check failed for ${{ matrix.service }}"
+            echo "::error::container.gov.de compliance check failed for ''${{ matrix.service }}"
             jq '.' result.json
             exit 1
           fi
@@ -356,7 +356,7 @@ jobs:
       - name: Upload Compliance Report
         uses: actions/upload-artifact@v4
         with:
-          name: compliance-report-${{ matrix.service }}
+          name: compliance-report-''${{ matrix.service }}
           path: result.json
 
   # Stage 7: Push to Registry
@@ -367,21 +367,21 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: ${{ fromJSON(needs.setup.outputs.matrix).service }}
-        registry: ${{ fromJSON(needs.setup.outputs.matrix).registry }}
+        service: ''${{ fromJSON(needs.setup.outputs.matrix).service }}
+        registry: ''${{ fromJSON(needs.setup.outputs.matrix).registry }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
       
       - name: Load Docker image
         run: |
-          nix build .#packages.x86_64-linux.${{ matrix.service }}-container-gov-de --no-link
+          nix build .#packages.x86_64-linux.''${{ matrix.service }}-container-gov-de --no-link
           docker load < result
       
       - name: Push to registry
         run: |
-          echo "Pushing ${{ matrix.registry }}/${{ env.REPO }}:${{ env.TAG }}..."
-          docker push ${{ matrix.registry }}/${{ env.REPO }}:${{ env.TAG }}
+          echo "Pushing ''${{ matrix.registry }}/''${{ env.REPO }}:''${{ env.TAG }}..."
+          docker push ''${{ matrix.registry }}/''${{ env.REPO }}:''${{ env.TAG }}
           
       - name: Push SBOMs
         if: config.sbom.attachToImage
@@ -413,7 +413,7 @@ jobs:
           <!DOCTYPE html>
           <html>
           <head>
-            <title>container.gov.de Pipeline Report - ${{ github.repository }}</title>
+            <title>container.gov.de Pipeline Report - ''${{ github.repository }}</title>
             <style>
               body { font-family: Arial; margin: 20px; }
               .summary { background: #f0f0f0; padding: 20px; margin: 10px 0; }
@@ -424,14 +424,14 @@ jobs:
           </head>
           <body>
             <h1>container.gov.de Pipeline Report</h1>
-            <p>Workflow: ${{ github.workflow }}</p>
-            <p>Run: ${{ github.run_id }}</p>
-            <p>Commit: ${{ github.sha }}</p>
+            <p>Workflow: ''${{ github.workflow }}</p>
+            <p>Run: ''${{ github.run_id }}</p>
+            <p>Commit: ''${{ github.sha }}</p>
             
             <h2>Summary</h2>
             <div class="summary">
               <p><strong>Status:</strong> 
-                ${{
+                ''${{
                   if (success())
                     echo '<span class="success">✓ All jobs passed</span>'
                   else
@@ -443,4 +443,11 @@ jobs:
             
             <h2>Artifacts</h2>
             <ul>
-              <li><a href="compliance-report/">Compliance Reports</a
+              <li><a href="compliance-report/">Compliance Reports</a></li>
+            </ul>
+          </body>
+        </html>
+      '');
+  in {
+    inherit mkGitHubActionsWorkflow;
+  }

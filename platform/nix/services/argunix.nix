@@ -10,7 +10,7 @@ let
     mkDefault
     genAttrs
     mapAttrs
-    ;;
+    ;
 
 in
 {

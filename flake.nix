@@ -490,51 +490,12 @@
           );
         };
 
-        # ======================================================================
-        # NIXOS MODULES
-        # ======================================================================
-
-        nixosModules = {
-          # Security modules
-          security-hardening = import ./platform/nix/nixos/security.nix { inherit pkgs lib; };
-
-          # Phase 2: Binary cache modules
-          attic-server = atticServer;
-          binary-cache-client = binaryCacheClient;
-          post-build-hook = postBuildHook;
-
-          # Immutable appliance images with A/B OTA updates
-          appliance-image = import ./modules/appliance-image.nix;
-
-          # GitOps for NixOS base OS (continuously deploys from Git)
-          comin = inputs.comin.nixosModules.comin;
-
-          # DevGuard Pattern: Compliance module
-          compliance-module = pkgs.writeText "compliance-module.nix" ''
-            { config, pkgs, ... }:
-            {
-              systemd.services.compliance-check = {
-                description = "OpenDesk Compliance Check Service";
-                wantedBy = [ "multi-user.target" ];
-                serviceConfig = {
-                  Type = "oneshot";
-                  ExecStart = "${pkgs.bash}/bin/bash -c 'nix run .#compliance-gates.periodic'";
-                  RemainAfterExit = yes;
-                };
-              };
-            }
-          '';
-
-          # Container modules
-          containers = import ./platform/nix/nixos/containers.nix {
-            inherit pkgs lib docks;
-          };
-
-          # Service catalog
-          service-catalog = import ./platform/nix/nixos/services.nix {
-            inherit pkgs lib docks;
-          };
-        };
+        # NOTE: per-system nixosModules removed — was dead code, shadowed by
+        # the top-level nixosModules (line ~753). The top-level modules use
+        # plain `import` (correct for NixOS modules), while the per-system
+        # versions pre-evaluated with pkgs/lib (incorrect). Missing modules
+        # (security-hardening, compliance-module, containers, service-catalog)
+        # were broken and unreferenced.
 
         # ======================================================================
         # DEVGUARD PATTERN: Security Scanning Packages

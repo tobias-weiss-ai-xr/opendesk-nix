@@ -31,7 +31,7 @@
   outputs = { self, nixpkgs, flake-utils }:
     let
       # System support
-      systems = [ "x86_64-linux" "];
+      systems = [ "x86_64-linux" ];
       
       # Create outputs for each system
       makeOutputs = system: { 
@@ -39,7 +39,10 @@
           inherit system;
           overlays = [ self.overlays.default ];
         };
-      } // builtins.removeAttrs (self.outputsക്റ.${system} || {}) [ "devShells" "formats" ];
+      } // builtins.removeAttrs (self.outputs.${system} || {}) [ "devShells" "formats" ];
+      
+      # Package set for commonArgs
+      pkgs = import nixpkgs {};
       
       # Common configuration
       commonArgs = rec {
@@ -311,13 +314,13 @@
         sogo5.default = {
           type = "docker";
           program = "${self.packages.${system}.sogo5-image}/bin/run";
-          extraFlags = [ "--rm" "-it" "-p" "20000:20000" "-p" "11211:11211" ");
+          extraFlags = [ "--rm" "-it" "-p" "20000:20000" "-p" "11211:11211" ];
         };
         
         sogo6.default = {
           type = "docker";
           program = "${self.packages.${system}.sogo6-image}/bin/run";
-          extraFlags = [ "--rm" "-it" "-p" "20000:20000" "-p" "11211:11211" ");
+          extraFlags = [ "--rm" "-it" "-p" "20000:20000" "-p" "11211:11211" ];
         };
       });
       

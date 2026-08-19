@@ -27,7 +27,7 @@
         lib = {
           k8s = import ../../lib/k8s.nix { inherit pkgs lib; };
           security = import ../../lib/security.nix { inherit pkgs lib; };
-          operators = import ../../lib/operators.nix { inherit pkgs pkgs lib; };
+          operators = import ../../lib/operators.nix { inherit pkgs lib; };
         };
 
         # ====================================================================
@@ -372,7 +372,7 @@
             ingress = [
               {
                 from = [
-                  { namespaceSelector = { matchLabels.name = "ingress-nginx"; } };
+                  { namespaceSelector = { matchLabels.name = "ingress-nginx"; }; }
                 ];
                 ports = [
                   { protocol = "TCP"; port = 20000; }  # SOGo
@@ -384,7 +384,7 @@
             egress = [
               {
                 to = [
-                  { podSelector = { matchLabels.app = "mariadb"; } };
+                  { podSelector = { matchLabels.app = "mariadb"; }; }
                 ];
                 ports = [ { protocol = "TCP"; port = 3306; } ];
               }

@@ -359,7 +359,7 @@
               export REGISTRY="${commonArgs.registry}"
               export GOPATH="$HOME/go"
               export GOBIN="$GOPATH/bin"
-              mkdir -p ${GOBIN}
+              mkdir -p ''${GOBIN}
             '';
           };
 

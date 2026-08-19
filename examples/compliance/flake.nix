@@ -115,7 +115,7 @@
                   {
                     name = "networkPolicies";
                     apiCall = {
-                      urlPath = "/apis/networking.k8s.io/v1/namespaces/${namespace}/networkpolicies";
+                      urlPath = "/apis/networking.k8s.io/v1/namespaces/{{namespace}}/networkpolicies";
                     };
                   }
                 ];

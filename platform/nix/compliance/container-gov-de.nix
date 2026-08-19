@@ -26,7 +26,7 @@ let
       
       # Check if the image source is from a trusted registry
       registry = if fromImage != null then 
-        builtins.elem (builtins.head (builtins.split "" '/'" fromImage.imageName)) trustedRegistries
+        builtins.elem (builtins.head (builtins.split "/" fromImage.imageName)) trustedRegistries
       else false;
       
       # Check if image digest is verified (not just tag)
@@ -288,8 +288,8 @@ let
         (checkBG8 { inherit image; })
       ];
       
-      passedChecks = filter (c: c.passed) allChecks;
-      failedChecks = filter (c: !c.passed) allChecks;
+      passedChecks = builtins.filter (c: c.passed) allChecks;
+      failedChecks = builtins.filter (c: !c.passed) allChecks;
       
       passedPercentage = (builtins.length passedChecks * 100) / (builtins.length allChecks);
       
@@ -352,7 +352,7 @@ HTML
       TOTAL=$(echo '${builtins.toJSON scanResults}' | jq 'length')
       COMPLIANT=0
       for result in $(echo '${builtins.toJSON scanResults}' | jq -r '.[] | @base64'); do
-        _jq() { echo ${result} | base64 --decode | jq -r ${1}; }
+        _jq() { echo ''${result} | base64 --decode | jq -r ''${1}; }
         if [ "$(_jq '.complianceLevel')" = "FULLY COMPLIANT" ]; then
           COMPLIANT=$((COMPLIANT + 1))
         fi
@@ -365,8 +365,8 @@ HTML
     <table>
       <tr><th>BG#</th><th>Status</th><th>Description</th><th>Details</th></tr>'
         
-        for CHECK in $(echo ${result} | base64 --decode | jq -r '.checks[] | @base64'); do
-          _cq() { echo ${CHECK} | base64 --decode | jq -r ${1}; }
+        for CHECK in $(echo ''${result} | base64 --decode | jq -r '.checks[] | @base64'); do
+          _cq() { echo ''${CHECK} | base64 --decode | jq -r ''${1}; }
           STATUS=$(_cq '.passed')
           BGNUM=$(_cq '.name')
           DESC=$(_cq '.description')
@@ -430,10 +430,10 @@ HTML
       };
       summary = {
         total = builtins.length scanResults;
-        compliant = builtins.length (filter (r: r.complianceLevel == "FULLY COMPLIANT") scanResults);
-        nonCompliant = builtins.length (filter (r: r.complianceLevel != "FULLY COMPLIANT") scanResults);
+        compliant = builtins.length (builtins.filter (r: r.complianceLevel == "FULLY COMPLIANT") scanResults);
+        nonCompliant = builtins.length (builtins.filter (r: r.complianceLevel != "FULLY COMPLIANT") scanResults);
         averageCompliance = 
-          let percentages = map (r: r.passedPercentage) scanResults;
+          let percentages = builtins.map (r: r.passedPercentage) scanResults;
           in if builtins.length percentages > 0 then 
             (builtins.foldl' (acc: val: acc + val) 0 percentages) / (builtins.length percentages)
           else 0;
@@ -470,9 +470,9 @@ in {
   # Helper to check if image list is compliant
   imagesCompliant = { images, ... }:
     let
-      results = map checkAll images;
+      results = builtins.map checkAll images;
     in {
       inherit results;
-      allCompliant = all (r: r.passedAll) results;
+      allCompliant = builtins.all (r: r.passedAll) results;
     };
 }

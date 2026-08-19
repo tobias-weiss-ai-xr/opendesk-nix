@@ -645,7 +645,7 @@ start_health_server() {
     log_info "Starting health server on ${HEALTH_HOST}:${HEALTH_PORT}..."
     
     # Check if already running
-    if [[ -n "${HEALTH_SERVER_PID}" && kill -0 "${HEALTH_SERVER_PID}" 2>/dev/null ]]; then
+    if [[ -n "${HEALTH_SERVER_PID}" ]] && kill -0 "${HEALTH_SERVER_PID}" 2>/dev/null; then
         log_info "Health server already running (PID: ${HEALTH_SERVER_PID})"
         return 0
     fi

@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
 
-"""
+/*
 Demo Environment Configuration
 
 This environment configuration is for the demo cluster used for testing
 and development purposes.
-"""
+*/
 
 _:
 

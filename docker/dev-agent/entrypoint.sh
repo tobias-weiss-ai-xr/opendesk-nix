@@ -395,7 +395,7 @@ start_operator() {
     log_info "Operator arguments: ${operator_args[*]}"
 
     # Start operator in background
-    exec "${OPERATOR_BIN}" "${operator_args[@]}" &
+    "${OPERATOR_BIN}" "${operator_args[@]}" &
     OPERATOR_PID=$!
 
     log_success "Operator started (PID: ${OPERATOR_PID})"

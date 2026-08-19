@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 openDesk Edu Contributors
 
-"""
+/*
 SCS Production Environment Configuration
 
 This environment configuration is for the SCS production cluster.
-"""
+*/
 
 _:
 

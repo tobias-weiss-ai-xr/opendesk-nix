@@ -51,7 +51,7 @@ let
   tableRow = cells: "| ${lib.concatStringsSep " | " cells} |\n";
 
   # Generate table header
-  tableHeader = headers: tableRow headers + tableHeaderSeparator (length headers);
+  tableHeader = headers: tableRow headers + tableHeaderSeparator (builtins.length headers);
 
   # Generate table header separator
   tableHeaderSeparator = count: lib.concatStringsSep "" (lib.genList (_i: "---|") count) + "\n";

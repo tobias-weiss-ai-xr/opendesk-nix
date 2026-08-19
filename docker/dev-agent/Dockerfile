@@ -42,12 +42,18 @@ ENV GO111MODULE=on \
 # Create and change to the app directory
 WORKDIR /workspace/opendesk-dev-agent-operator
 
+# NOTE: The opendesk-dev-agent-operator/ source directory must exist in the
+# Docker build context (repo root). If it is missing, the build will fail at
+# the COPY step below. The source is maintained in a separate repository and
+# must be cloned or symlinked into the repo root before building:
+#   git clone <operator-repo-url> opendesk-dev-agent-operator
+# or update the build context / COPY paths in docker-compose.yml.
+
 # Copy Go module files first for caching
 COPY opendesk-dev-agent-operator/go.mod opendesk-dev-agent-operator/go.sum ./
-COPY opendesk-dev-agent-operator/go.mod opendesk-dev-agent-operator/go.sum ./ 2>/dev/null || true
 
 # Download Go modules
-RUN go mod download 2>&1 || true
+RUN go mod download
 
 # Copy source code
 COPY opendesk-dev-agent-operator/ ./
@@ -100,11 +106,14 @@ RUN apk add --no-cache \
     # User utils
     shadow \
     
+    # Socat for health server (simple HTTP server fallback)
+    socat \
+    
     # Cleanup
     && rm -f /var/cache/apk/*
 
 # Copy CA certificates
-RUN update-ca-certificates 2>/dev/null || true
+RUN update-ca-certificates
 
 # ======================
 # CONFIGURATION: Timezone
@@ -164,7 +173,7 @@ COPY --chown=opendesk:opendesk opendesk-dev-agent-operator/examples/healthpolicy
 COPY --chown=opendesk:opendesk opendesk-dev-agent-operator/examples/repairstrategy.yaml /etc/opendesk-dev-agent/repairstrategy.yaml
 
 # Copy Helm chart configuration
-COPY --chown=opendesk:opendesk opendesk-dev-agent-operator/helm/ /helm/ 2>/dev/null || true
+COPY --chown=opendesk:opendesk opendesk-dev-agent-operator/helm/ /helm/
 
 # ======================
 # HEALTH: Copy healthcheck script
@@ -181,7 +190,7 @@ RUN chmod +x /entrypoint.sh
 # ======================
 # CONFIG: Copy config.yaml template
 # ======================
-COPY --chown=opendesk:opendesk docker/dev-agent/config.yaml /etc/opendesk-dev-agent/config.yaml 2>/dev/null || true
+COPY --chown=opendesk:opendesk docker/dev-agent/config.yaml /etc/opendesk-dev-agent/config.yaml
 
 # ======================
 # SECURITY: Verify permissions
@@ -227,7 +236,7 @@ LABEL maintainer="openDesk Edu Team <team@opendesk-edu.org>" \
       org.opencontainers.image.created="${BUILD_DATE:-$(date -u +'%Y-%m-%dT%H:%M:%SZ')}" \
       
 # OS and Architecture (static binary)
-      org.opencontainers.image.architectures="amd64" \
+      org.opencontainers.image.architecture="amd64" \
       org.opencontainers.image.os="linux" \
       
 # openDesk-specific labels
@@ -261,7 +270,7 @@ LABEL maintainer="openDesk Edu Team <team@opendesk-edu.org>" \
       de.zki.it-grundschutz.layer="Management" \
       de.zki.it-grundschutz.classification="internal" \
       de.zki.it-grundschutz.data-protection="metadata" \
-      de.zki.it-grundschutzора="self-healing" \
+      de.zki.it-grundschutz.self-healing="true" \
       
 # container.gov.de labels
       de.container.gov.component-id="opendesk-dev-agent-operator" \

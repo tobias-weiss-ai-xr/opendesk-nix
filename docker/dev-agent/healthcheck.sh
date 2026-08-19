@@ -835,7 +835,7 @@ start_health_server() {
     log_info "Starting health server on ${HEALTH_HOST}:${HEALTH_PORT}..."
     
     # Check if already running
-    if [[ -n "${HEALTH_SERVER_PID}" && kill -0 "${HEALTH_SERVER_PID}" 2>/dev/null ]]; then
+    if [[ -n "${HEALTH_SERVER_PID}" ]] && kill -0 "${HEALTH_SERVER_PID}" 2>/dev/null; then
         log_info "Health server already running (PID: ${HEALTH_SERVER_PID})"
         return 0
     fi
@@ -1077,7 +1077,7 @@ start_simple_health_server() {
         local handler_script="${SCRIPT_DIR}/simple_health_handler.sh"
         cat > "${handler_script}" << 'SOCAT_HANDLER'
 #!/bin/bash
-FIFO="${FIFO}"
+FIFO="${HEALTH_FIFO:-/tmp/health_fifo}"
 
 handle_request() {
     local method path protocol
@@ -1188,6 +1188,7 @@ done
 SOCAT_HANDLER
         
         chmod +x "${handler_script}"
+        export HEALTH_FIFO="${FIFO}"
         nohup "${handler_script}" > /dev/null 2>&1 &
         
         nohup socat TCP-LISTEN:${HEALTH_PORT},reuseaddr,fork UNIX-CONNECT:"${FIFO}" > /dev/null 2>&1 &
@@ -1340,7 +1341,7 @@ show_version() {
     
     if [[ -x "${OPERATOR_BIN}" ]]; then
         if "${OPERATOR_BIN}" --version >/dev/null 2>&1; then
-            echo "Operator Binary: արդյունք ($("${OPERATOR_BIN}" --version 2>&1 | head -1))"
+            echo "Operator Binary: ($("${OPERATOR_BIN}" --version 2>&1 | head -1))"
         fi
     fi
 }

@@ -3,11 +3,11 @@
 
 { 
   lib,
-  security ? import ../../lib/security.nix { },
-  registry ? import ../../lib/registry.nix { },
-  types ? import ../../lib/types.nix { },
-  sbom ? import ../../lib/sbom.nix { },
-  pkgs ? import <nixpkgs> { }
+  security ? import ../../nix/security.nix { inherit pkgs lib; },
+  registry ? import ../../nix/registry.nix { inherit pkgs lib; },
+  types ? import ../../nix/types.nix { inherit lib; },
+  sbom ? import ../../nix/sbom.nix { inherit pkgs; },
+  pkgs ? import <nixpkgs> { },
   env ? import ../environments/hrz/default.nix { lib = lib; },
 }:
 
@@ -23,6 +23,7 @@ let
   };
 
   name = "loki";
+  tag = "2.10.0";
   namespace = "opendesk";
   port = 3100;
 
@@ -60,11 +61,11 @@ in
     namespace = namespace;
     ports = [ { name = "http-metrics"; containerPort = port; } ];
     volumeClaims = [
-      { name = "storage"; spec = { accessModes = [ "ReadWriteOnce" ]; resources = { requests = { storage = "10Gi" }; }; }; }
+      { name = "storage"; spec = { accessModes = [ "ReadWriteOnce" ]; resources = { requests = { storage = "10Gi"; }; }; }; }
     ];
     resources = { 
-      limits = { cpu = "2"; memory = "4Gi" }; 
-      requests = { cpu = "500m"; memory = "1Gi" }; 
+      limits = { cpu = "2"; memory = "4Gi"; }; 
+      requests = { cpu = "500m"; memory = "1Gi"; }; 
     };
   })
 

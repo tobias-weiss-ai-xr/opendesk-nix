@@ -1096,13 +1096,13 @@ process_template() {
             "SOGO_DB_NAME"
             "SOGO_DB_USER"
             "SOGO_DB_PASSWORD"
-            SOGO_DB_TYPE"
+            "SOGO_DB_TYPE"
         )
         
         for var in "${template_vars[@]}"; do
             local value="${!var:-}"
             if [[ -n "${value}" ]]; then
-                sed -i "s|\${${var}}|${value}|g" "${file}" || true
+                sed -i 's|${'"${var}"'}|'"${value}"'|g' "${file}" || true
             fi
         done
         
@@ -1153,7 +1153,7 @@ start_memcached() {
     log_info "Starting Memcached..."
     
     # Check if already running
-    if [[ -n "${MEMCACHED_PID}" && kill -0 "${MEMCACHED_PID}" 2>/dev/null ]]; then
+    if [[ -n "${MEMCACHED_PID}" ]] && kill -0 "${MEMCACHED_PID}" 2>/dev/null; then
         log_info "  Memcached already running (PID: ${MEMCACHED_PID})"
         return 0
     fi
@@ -1197,7 +1197,7 @@ start_sogo() {
     log_info "Starting SOGo..."
     
     # Check if already running
-    if [[ -n "${SOGO_PID}" && kill -0 "${SOGO_PID}" 2>/dev/null ]]; then
+    if [[ -n "${SOGO_PID}" ]] && kill -0 "${SOGO_PID}" 2>/dev/null; then
         log_info "  SOGo already running (PID: ${SOGO_PID})"
         return 0
     fi
@@ -1449,19 +1449,19 @@ main() {
     echo "  SOGo 6 is ready!"
     echo "=============================================="
     echo "  Services:"
-    if [[ -n "${MEMCACHED_PID}" && kill -0 "${MEMCACHED_PID}" 2>/dev/null ]]; then
+    if [[ -n "${MEMCACHED_PID}" ]] && kill -0 "${MEMCACHED_PID}" 2>/dev/null; then
         echo "    Memcached: RUNNING (PID: ${MEMCACHED_PID})"
     else
         echo "    Memcached: STOPPED"
     fi
     
-    if [[ -n "${SOGO_PID}" && kill -0 "${SOGO_PID}" 2>/dev/null ]]; then
+    if [[ -n "${SOGO_PID}" ]] && kill -0 "${SOGO_PID}" 2>/dev/null; then
         echo "    SOGo: RUNNING (PID: ${SOGO_PID})"
     else
         echo "    SOGo: STOPPED"
     fi
     
-    if [[ -n "${HEALTH_PID}" && kill -0 "${HEALTH_PID}" 2>/dev/null ]]; then
+    if [[ -n "${HEALTH_PID}" ]] && kill -0 "${HEALTH_PID}" 2>/dev/null; then
         echo "    Health: RUNNING (PID: ${HEALTH_PID})"
     else
         echo "    Health: STOPPED"
