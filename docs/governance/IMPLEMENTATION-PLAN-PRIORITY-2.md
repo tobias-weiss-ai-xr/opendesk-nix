@@ -571,7 +571,7 @@ metadata:
 spec:
   service: sogo6
   registries:
-    - registry.opencode.de/umr/opendesk-edu/opendesk-nix
+    - ghcr.io/tobias-weiss-ai-xr/umr/opendesk-edu/opendesk-nix
     - ghcr.io/opendesk-edu
   sign: true
 ```

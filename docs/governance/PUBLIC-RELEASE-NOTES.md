@@ -127,7 +127,7 @@ The repository supports multiple container registries:
 |----------|-----|--------|
 | GitHub Container Registry | `ghcr.io/tobias-weiss-ai-xr` | ✅ Public |
 | GitLab Container Registry | `registry.gitlab.com` | ✅ Public |
-| GitLab opencode.de | `registry.opencode.de/umr/opendesk-edu` | 🔒 Private |
+| GitLab opencode.de | `ghcr.io/tobias-weiss-ai-xr/umr/opendesk-edu` | 🔒 Private |
 | Custom Registry | `registry.example.com` | ⚙️ Configure |
 
 **Configuration:** Use environment variables for registry credentials:

@@ -265,7 +265,7 @@
                 containers = [
                   {
                     name = "sogo";
-                    image = "registry.opencode.de/umr/opendesk-edu/opendesk-nix/sogo6:latest";
+                    image = "ghcr.io/tobias-weiss-ai-xr/umr/opendesk-edu/opendesk-nix/sogo6:latest";
                     ports = [ { name = "http"; containerPort = 20000; } ];
                     env = [
                       { name = "SOGoMysqlHost"; value = "mariadb"; }

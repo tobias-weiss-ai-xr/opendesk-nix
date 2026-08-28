@@ -1,7 +1,7 @@
 # OpenDesk Edu - HRZ K3s Cluster Deployment Guide
 
 > **✅ All 78 NixOS containers are now hosted on opencode.de**
-> Registry: `registry.opencode.de/umr/opendesk-edu/opendesk-nix`
+> Registry: `ghcr.io/tobias-weiss-ai-xr/umr/opendesk-edu/opendesk-nix`
 > Code: `gitlab.opencode.de/umr/opendesk-edu/opendesk-nix`
 
 ---
@@ -251,7 +251,7 @@ kubectl describe pod <pod-name> -n opendesk | grep -A5 "Events"
 gitLab get secret opencode-registry-pull-secret -n opendesk -o yaml
 
 # Manual pull test
-docker pull registry.opencode.de/umr/opendesk-edu/opendesk-nix/nginx:1.25.3-nixos
+docker pull ghcr.io/tobias-weiss-ai-xr/umr/opendesk-edu/opendesk-nix/nginx:1.25.3-nixos
 ```
 
 ### Database Connection Issues
@@ -310,7 +310,7 @@ Each service has its own documentation in the opendesk-nix repository:
 
 ```bash
 # Update a single service
-kubectl set image deployment/<deployment> <container>=registry.opencode.de/umr/opendesk-edu/opendesk-nix/<service>:<version>-nixos -n opendesk
+kubectl set image deployment/<deployment> <container>=ghcr.io/tobias-weiss-ai-xr/umr/opendesk-edu/opendesk-nix/<service>:<version>-nixos -n opendesk
 
 # Rollout restart
 kubectl rollout restart deployment/<deployment> -n opendesk
@@ -366,7 +366,7 @@ kubectl apply -Rf k8s/
 ## 📞 Support
 
 - **Repository**: `gitlab.opencode.de/umr/opendesk-edu/opendesk-nix`
-- **Registry**: `registry.opencode.de/umr/opendesk-edu/opendesk-nix`
+- **Registry**: `ghcr.io/tobias-weiss-ai-xr/umr/opendesk-edu/opendesk-nix`
 - **Documentation**: See `docs/` directory in opendesk-nix repo
 - **Issues**: Open issues in the opendesk-nix GitLab repository
 

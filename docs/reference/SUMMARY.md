@@ -2,7 +2,7 @@
 
 > **Status: ✅ COMPLETE - All 78 Services Ready for Deployment**
 > **Date: August 5, 2026**
-> **Registry: registry.opencode.de/umr/opendesk-edu/opendesk-nix**
+> **Registry: ghcr.io/tobias-weiss-ai-xr/umr/opendesk-edu/opendesk-nix**
 
 ---
 
@@ -17,7 +17,7 @@ The **complete openDesk Edu platform** is now ready for production deployment on
 ## ✅ What Was Delivered
 
 ### 1. Container Registry
-- **Location**: `registry.opencode.de/umr/opendesk-edu/opendesk-nix`
+- **Location**: `ghcr.io/tobias-weiss-ai-xr/umr/opendesk-edu/opendesk-nix`
 - **Images**: 78/78 (100%)
 - **Total Size**: ~25+ GB
 - **Build Method**: NixOS (deterministic, reproducible)
@@ -279,18 +279,18 @@ Seccomp:             100% ✅
 ### Check All Images
 ```bash
 # List all images in registry
-docker images | grep "registry.opencode.de/umr/opendesk-edu/opendesk-nix" | wc -l
+docker images | grep "ghcr.io/tobias-weiss-ai-xr/umr/opendesk-edu/opendesk-nix" | wc -l
 # Should output: 78
 ```
 
 ### Test Image Pull
 ```bash
 # Test pulling a sample image
-docker pull registry.opencode.de/umr/opendesk-edu/opendesk-nix/nginx:1.25.3-nixos
+docker pull ghcr.io/tobias-weiss-ai-xr/umr/opendesk-edu/opendesk-nix/nginx:1.25.3-nixos
 
 # Test multiple images
-docker pull registry.opencode.de/umr/opendesk-edu/opendesk-nix/mariadb:11.4.4-nixos
-docker pull registry.opencode.de/umr/opendesk-edu/opendesk-nix/keycloak:24.0.0-nixos
+docker pull ghcr.io/tobias-weiss-ai-xr/umr/opendesk-edu/opendesk-nix/mariadb:11.4.4-nixos
+docker pull ghcr.io/tobias-weiss-ai-xr/umr/opendesk-edu/opendesk-nix/keycloak:24.0.0-nixos
 ```
 
 ### Verify Signatures
@@ -298,13 +298,13 @@ docker pull registry.opencode.de/umr/opendesk-edu/opendesk-nix/keycloak:24.0.0-n
 # Verify a signed image
 cosign verify --certificate-identity-regexp '^https://github.com/tobias-weiss-ai-xr/opendesk-nix' \
   --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
-  registry.opencode.de/umr/opendesk-edu/opendesk-nix/nginx:1.25.3-nixos
+  ghcr.io/tobias-weiss-ai-xr/umr/opendesk-edu/opendesk-nix/nginx:1.25.3-nixos
 ```
 
 ### Check SBOM
 ```bash
 # View SBOM for an image
-docker run --rm registry.opencode.de/umr/opendesk-edu/opendesk-nix/nginx:1.25.3-nixos cat /sbom.json
+docker run --rm ghcr.io/tobias-weiss-ai-xr/umr/opendesk-edu/opendesk-nix/nginx:1.25.3-nixos cat /sbom.json
 ```
 
 ---

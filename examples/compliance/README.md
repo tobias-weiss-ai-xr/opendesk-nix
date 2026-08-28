@@ -140,7 +140,7 @@ spec:
   rules:
     - name: check-signatures
       verifyImages:
-        - registry: registry.opencode.de/umr/opendesk-edu/opendesk-nix/
+        - registry: ghcr.io/tobias-weiss-ai-xr/umr/opendesk-edu/opendesk-nix/
           attestations:
             - predicateType: "https://slsa.dev/provenance/v0.2"
 ```
@@ -268,7 +268,7 @@ spec:
         - ALL
   containers:
     - name: nginx
-      image: registry.opencode.de/umr/opendesk-edu/opendesk-nix/nginx:latest
+      image: ghcr.io/tobias-weiss-ai-xr/umr/opendesk-edu/opendesk-nix/nginx:latest
       resources:
         requests:
           memory: "64Mi"

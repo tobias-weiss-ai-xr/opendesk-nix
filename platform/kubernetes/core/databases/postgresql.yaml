@@ -26,7 +26,7 @@ spec:
         fsGroup: 1000
       containers:
         - name: postgresql
-          image: registry.opencode.de/umr/opendesk-edu/opendesk-nix/postgresql:16.3-nixos
+          image: ghcr.io/tobias-weiss-ai-xr/umr/opendesk-edu/opendesk-nix/postgresql:16.3-nixos
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5432

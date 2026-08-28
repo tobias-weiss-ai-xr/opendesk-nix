@@ -30,7 +30,7 @@ cd opendesk-nix
 
 ```bash
 # Set registry URL (if using custom registry)
-export OPENCODE_REGISTRY="registry.opencode.de/umr/opendesk-edu/opendesk-nix"
+export OPENCODE_REGISTRY="ghcr.io/tobias-weiss-ai-xr/umr/opendesk-edu/opendesk-nix"
 
 # Configure Kubernetes context
 kubectl config use-context your-cluster

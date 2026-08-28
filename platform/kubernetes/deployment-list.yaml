@@ -1,7 +1,7 @@
 ---
 # OpenDesk Edu NixOS - Complete Deployment List
 # This file lists all 78 services that have been pushed to:
-# registry.opencode.de/umr/opendesk-edu/opendesk-nix
+# ghcr.io/tobias-weiss-ai-xr/umr/opendesk-edu/opendesk-nix
 #
 # To deploy all services, apply the individual manifests in each directory:
 #   kubectl apply -f namespace.yaml
@@ -20,7 +20,7 @@ metadata:
     app: opendesk
     component: deployment-info
 data:
-  registry: "registry.opencode.de/umr/opendesk-edu/opendesk-nix"
+  registry: "ghcr.io/tobias-weiss-ai-xr/umr/opendesk-edu/opendesk-nix"
   total_services: "78"
   code_repo: "gitlab.opencode.de/umr/opendesk-edu/opendesk-nix"
   deployment_date: "2026-08-05"
@@ -39,7 +39,7 @@ spec:
       serviceAccountName: opendesk-service-account
       containers:
         - name: verify
-          image: registry.opencode.de/umr/opendesk-edu/opendesk-nix/nginx:1.25.3-nixos
+          image: ghcr.io/tobias-weiss-ai-xr/umr/opendesk-edu/opendesk-nix/nginx:1.25.3-nixos
           command: ["echo", "Registry access verified"]
       restartPolicy: Never
   backoffLimit: 0

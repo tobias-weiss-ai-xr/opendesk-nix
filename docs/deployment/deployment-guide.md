@@ -124,10 +124,10 @@ kubectl get pods -n kyverno-backup -l app.kubernetes.io/name=kyverno-policy-back
 
 ```bash
 # Test registry access
-docker pull registry.opencode.de/umr/opendesk-edu/opendesk-nix/sogo5:latest
+docker pull ghcr.io/tobias-weiss-ai-xr/umr/opendesk-edu/opendesk-nix/sogo5:latest
 
 # Or using kubectl
-kubectl run test-pull --rm -it --image=registry.opencode.de/umr/opendesk-edu/opendesk-nix/sogo5:latest --namespace=default -- /bin/sh
+kubectl run test-pull --rm -it --image=ghcr.io/tobias-weiss-ai-xr/umr/opendesk-edu/opendesk-nix/sogo5:latest --namespace=default -- /bin/sh
 ```
 
 ---
@@ -210,7 +210,7 @@ spec:
         - ALL
   containers:
     - name: nginx
-      image: registry.opencode.de/umr/opendesk-edu/opendesk-nix/nginx:latest
+      image: ghcr.io/tobias-weiss-ai-xr/umr/opendesk-edu/opendesk-nix/nginx:latest
       resources:
         requests:
           memory: "64Mi"
@@ -323,7 +323,7 @@ metadata:
 spec:
   service: sogo6
   registries:
-    - registry.opencode.de/umr/opendesk-edu/opendesk-nix
+    - ghcr.io/tobias-weiss-ai-xr/umr/opendesk-edu/opendesk-nix
     - ghcr.io/opendesk-edu
   sign: true
 EOF
