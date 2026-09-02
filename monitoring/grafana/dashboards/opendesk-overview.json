@@ -64,6 +64,56 @@
       },
       {
         "type": "stat",
+        "title": "OpenProject Status",
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 6,
+          "y": 0
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {
+                "options": {
+                  "0": {
+                    "text": "Down"
+                  },
+                  "1": {
+                    "text": "Up"
+                  }
+                },
+                "type": "value"
+              }
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "green",
+                  "value": 1
+                }
+              ]
+            },
+            "color": {
+              "mode": "thresholds"
+            }
+          },
+          "overrides": []
+        },
+        "targets": [
+          {
+            "expr": "probe_success{job=\"blackbox\",instance=~\"openproject.*\"}",
+            "instant": true
+          }
+        ]
+      },
+      {
+        "type": "stat",
         "title": "SOGo 5 Status",
         "gridPos": {
           "h": 8,
