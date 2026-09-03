@@ -107,7 +107,7 @@
         },
         "targets": [
           {
-            "expr": "probe_success{job=\"blackbox\",instance=~\"openproject.*\"}",
+            "expr": "probe_success{job=\"openproject-http\"}",
             "instant": true
           }
         ]
