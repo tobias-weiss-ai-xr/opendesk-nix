@@ -312,6 +312,8 @@ test:scripts:
   script:
     - echo "Running Bats test suite for shell scripts..."
     - bats tests/scripts.bats
+    - echo "Running OpenDesk Kubernetes regression tests..."
+    - bats tests/opendesk-regression.bats
   tags:
     - docker
 

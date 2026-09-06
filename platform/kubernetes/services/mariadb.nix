@@ -129,6 +129,12 @@ builtins.filter (x: x != null) [
     name = "${fullName}-allow-from-opendesk";
     labels = ociLabels;
     inherit (env) namespace;
+    # Explicitly Ingress-only: omitting policyTypes would inherit the k8s.nix
+    # default ["Ingress" "Egress"] and — with no egress rules — deny ALL
+    # egress (incl. cluster DNS on :53) for every matching pod. That is exactly
+    # the failure mode that broke Keycloak/XWiki DNS during the 2026-09-05
+    # outage (portal login 500 + XWiki 503).
+    policyTypes = [ "Ingress" ];
     ingress = [
       {
         from = [

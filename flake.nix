@@ -171,6 +171,20 @@
                 touch $out
               '';
 
+          # OpenDesk Kubernetes regression gates - encode the invariants broken
+          # during the 2026-09-05/06 outage (portal login 500 via DNS-blocking
+          # egress NetworkPolicy; XWiki 503 via cross-namespace duplicate ingress
+          # host claims; mangled KC_DB env). Cheap, offline, no cluster needed.
+          opendesk-k8s-regressions =
+            pkgs.runCommand "check-opendesk-k8s-regressions"
+              {
+                nativeBuildInputs = [ pkgs.bash ];
+              }
+              ''
+                bash ${./scripts/ci/check-opendesk-regressions.sh} ${./platform/kubernetes/services}
+                touch $out
+              '';
+
           # Binary cache test (attic server module)
           # NOTE: attic builds from source via crane and needs crates.io network
           # access, unavailable in this environment. Enable once attic is
