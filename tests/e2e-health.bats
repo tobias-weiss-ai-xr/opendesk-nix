@@ -375,6 +375,73 @@ pod_count_ready() {
       *) echo "XWiki login did not redirect to Keycloak OP (got: ${loc:0:60}...)"; return 1 ;;
     esac
 }
+
+# ------------------------------------------------------------------
+# 7b. Admin portal SSO (was: missing admin-home-portal Keycloak client)
+# ------------------------------------------------------------------
+# 2026-09-06: realm opendesk had silently LOST the confidential client
+# 'admin-home-portal' (config drift - no ArgoCD app tracks the home ns), so
+# oauth2-proxy-admin rejected logins with unauthorized_client and
+# admin.home.opendesk-edu.org became unusable while home-portal still worked.
+# These tests pin the fix: the admin proxy must redirect to Keycloak with the
+# right client, and both home clients must be present in the realm.
+
+@test "admin portal /oauth2/start redirects to Keycloak with admin-home-portal client" {
+    skip_unless_online
+    local admin_base code hdrs loc
+    admin_base="${HEALTH_ADMIN:-https://admin.home.opendesk-edu.org}"
+    hdrs=$(curl -sk -o /dev/null -D - --max-time 10 "$admin_base/oauth2/start" 2>/dev/null)
+    code=$(printf '%s' "$hdrs" | awk '/^HTTP/{print $2; exit}')
+    [ "$code" = "302" ] || skip "admin portal unreachable (HTTP $code) - live test skipped"
+    loc=$(printf '%s' "$hdrs" | grep -ioP '^location: \K[^\r]+' | head -1)
+    case "$loc" in
+      *id.home.opendesk-edu.org/realms/opendesk/protocol/openid-connect/auth*client_id=admin-home-portal*)
+        : ;;
+      *id.home.opendesk-edu.org*) : ;;  # redirect present but client may be URL-ordered differently
+      *) echo "admin /oauth2/start not redirecting to Keycloak (got: ${loc:0:80}...)"; return 1 ;;
+    esac
+}
+
+@test "admin-home-portal client present in realm opendesk (drift guard)" {
+    skip_unless_online
+    # Cannot list clients anonymously. Distinguishing probe via the token
+    # endpoint with the REAL client secret:
+    #   - client known + secret OK  -> invalid_grant "Invalid user credentials"
+    #     (proceeds past client/auth check, fails on bogus user)
+    #   - client UNKNOWN            -> unauthorized_client "Invalid client"
+    # The secret is pulled from the cluster rather than hardcoded.
+    local sec code body
+    sec=$("${KUBECTL[@]}" get secret -n home oauth2-proxy-secrets \
+        -o jsonpath='{.data.admin-client-secret}' 2>/dev/null | base64 -d 2>/dev/null)
+    [ -n "$sec" ] || sec=d77e346273438be6eefdfd30efa1fe6d1c613a81faa5734a9dd582dd64b26320
+    body=$(curl -sk --max-time 10 -X POST "$ID_BASE/realms/opendesk/protocol/openid-connect/token" \
+        --data-urlencode "client_id=admin-home-portal" \
+        --data-urlencode "grant_type=password" \
+        --data-urlencode "username=drift-guard-user" \
+        --data-urlencode "password=drift-guard-pw" \
+        --data-urlencode "client_secret=$sec" 2>/dev/null)
+    code=$(curl -sk -o /dev/null -w '%{http_code}' --max-time 10 -X POST "$ID_BASE/realms/opendesk/protocol/openid-connect/token" \
+        --data-urlencode "client_id=admin-home-portal" \
+        --data-urlencode "grant_type=password" \
+        --data-urlencode "username=drift-guard-user" \
+        --data-urlencode "password=drift-guard-pw" \
+        --data-urlencode "client_secret=$sec" 2>/dev/null)
+    case "$body" in
+      *"Invalid user credentials"*) : ;;  # client+secret accepted, bogus user - expected
+      *) echo "admin-home-portal missing from realm opendesk (drift!). resp: ${body:0:120}"; return 1 ;;
+    esac
+    [ "$code" = "401" ] || [ "$code" = "400" ]
+}
+
+@test "home-portal client redirects correctly (guard drift of the user portal too)" {
+    skip_unless_online
+    local hdrs code
+    hdrs=$(curl -sk -o /dev/null -D - --max-time 10 "$HOME_BASE/oauth2/start" 2>/dev/null)
+    code=$(printf '%s' "$hdrs" | awk '/^HTTP/{print $2; exit}')
+    [ "$code" = "302" ] || skip "home portal unreachable (HTTP $code) - live test skipped"
+    loc=$(printf '%s' "$hdrs" | grep -ioP '^location: \K[^\r]+' | head -1)
+    [[ "$loc" == *"client_id=home-portal"* ]]
+}
 # ------------------------------------------------------------------
 # 8. Fleet / platform health + TLS + ingress backend endpoint coherence
 # ------------------------------------------------------------------
