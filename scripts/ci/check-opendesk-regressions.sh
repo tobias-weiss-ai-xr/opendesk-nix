@@ -150,6 +150,48 @@ else
   say "SKIP: $KC not found"
 fi
 
+# =============================================================================
+# 4. No hardcoded pod IPs (ClusterIP service names are the only address truth)
+# =============================================================================
+echo "[4] Hardcoded pod IP literals"
+# Cross-namespace DB access must go through ClusterIP services
+# (mariadb-galera.opendesk-edu.svc.cluster.local:3306 -> ClusterIP), NEVER a
+# raw pod IP. Raw pod IPs break when inter-node routing degrades (2026-09-05:
+# flannel routes broken -> only ClusterIP-via-iptables kept working). The
+# cluster pod CIDR is 172.17.128.0/18 on this platform.
+bad_ips=$(grep -rnE '172\.17\.(12[8-9]|1[3-9][0-9]|19[0-1])\.' "$SERVICES_DIR" 2>/dev/null \
+  | grep -vE '^[^:]+:[0-9]+:[[:space:]]*#' || true)   # ignore full-line comments
+if [ -n "$bad_ips" ]; then
+  fail=$((fail+1))
+  fail_line "hardcoded pod IP literal(s) - use ClusterIP service names instead:"
+  printf '%s\n' "$bad_ips" | while IFS= read -r l; do [ -n "$l" ] && printf '      %s\n' "$l"; done
+else
+  say "OK: no hardcoded pod IP literals"
+fi
+
+# =============================================================================
+# 5. No nodeSelector pinning (temporary outage workaround must not persist)
+# =============================================================================
+echo "[5] nodeSelector pinning"
+# 2026-09-05: Keycloak was temporarily pinned to clrz14-06 to dodge broken
+# pod routing. That pin must NOT survive in declarative config - node affinity
+# is a cluster-topology concern, not an app property.
+bad_ns=$(grep -rl 'nodeSelector' "$SERVICES_DIR" 2>/dev/null || true)
+# nix-builder intentionally schedules on a specific builder node for image
+# caching; exclude it.
+allowed="nix-builder.nix"
+found=0
+for f in $bad_ns; do
+  base=$(basename "$f")
+  case " $allowed " in
+    *" $base "*) continue ;;
+  esac
+  found=$((found+1))
+  fail=$((fail+1))
+  fail_line "$f: nodeSelector present - temporary outage pin must not be in config"
+done
+[ "$found" -eq 0 ] && say "OK: no stray nodeSelector (except nix-builder image-cache pin)"
+
 if [ "$fail" -gt 0 ]; then
   echo ""
   echo "FAILED: $fail invariant violation(s) (see above)."

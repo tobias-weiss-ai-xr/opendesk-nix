@@ -268,3 +268,110 @@ pod_count_ready() {
     echo "$out"
     echo "$out" | grep -q "Portal login OK"
 }
+
+# ------------------------------------------------------------------
+# 7. Day-2 (2026-09-06) invariants: CoreDNS loop + secret drift + from-pod DNS
+# ------------------------------------------------------------------
+
+@test "CoreDNS is Running and NOT crash-looping" {
+    cluster_up || skip "no cluster access - live test skipped"
+    local st
+    st=$("${KUBECTL[@]}" get pods -n kube-system -l k8s-app=kube-dns -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.status.phase}{" restarts="}{.status.containerStatuses[0].restartCount}{"\n"}{end}' 2>/dev/null)
+    echo "coredns: $st"
+    # 2026-09-06: coredns CrashLoopBackOff from Corefile loop (forward . /etc/resolv.conf
+    # hitting its own ClusterIP first in node resolv.conf) killed ALL cluster DNS.
+    echo "$st" | grep -qE "Running restarts=[0-9]"
+    rst=$(echo "$st" | awk '{print $NF}' | tr -d 'restarts=')
+    [ "${rst:-0}" -lt 5 ]  # a few restarts tolerated, crashloop is not
+}
+
+@test "CoreDNS forward does not reference its own ClusterIP (no self-loop)" {
+    cluster_up || skip "no cluster access - live test skipped"
+    local coredns_clusterip forward
+    coredns_clusterip=$("${KUBECTL[@]}" get svc -n kube-system kube-dns -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
+    forward=$("${KUBECTL[@]}" get cm -n kube-system coredns -o jsonpath='{.data.Corefile}' 2>/dev/null | grep 'forward .' | awk '{print $3, $4, $5}')
+    echo "kube-dns ClusterIP: $coredns_clusterip"
+    echo "coredns forward:    $forward"
+    # The 2026-09-06 loop: forward . /etc/resolv.conf where node resolv.conf led
+    # with kube-dns ClusterIP -> CoreDNS queried itself. Forward targets must be
+    # real upstream resolvers, and never the kube-dns service IP itself.
+    [ -n "$forward" ]
+    for ip in $forward; do
+        case "$ip" in
+            "$coredns_clusterip") echo "self-reference detected: forward $ip == kube-dns $coredns_clusterip"; exit 1 ;;
+            /etc/resolv.conf)
+                # not directly a self-IP, but must be validated live (see from-pod test)
+                : ;;
+        esac
+    done
+}
+
+@test "cluster DNS resolves galera FQDN inside a real pod (from-pod dig)" {
+    cluster_up || skip "no cluster access - live test skipped"
+    local pod out
+    pod=$("${KUBECTL[@]}" get pods -n opendesk -l app=keycloak -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+    [ -n "$pod" ] || skip "no keycloak pod"
+    out=$("${KUBECTL[@]}" exec -n opendesk "$pod" -- sh -c 'getent hosts mariadb-galera.opendesk-edu.svc.cluster.local' 2>/dev/null)
+    echo "$out"
+    # 2026-09-06: this exact lookup failed while coredns crash-looped
+    # (UnknownHostException storms in keycloak logs).
+    echo "$out" | grep -qE '172\.17\.[0-9]+\.[0-9]+'
+}
+
+@test "Keycloak can reach Galera over MySQL port (3306)" {
+    cluster_up || skip "no cluster access - live test skipped"
+    local pod out
+    pod=$("${KUBECTL[@]}" get pods -n opendesk -l app=keycloak -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+    [ -n "$pod" ] || skip "no keycloak pod"
+    # Resolve + TCP-connect in ONE bash exec: distroless image has bash but NO
+    # awk/getent-splitting; plain `sh`+awk quoting breaks inside kubectl exec.
+    # 2026-09-06 had exactly this path failing while coredns loop-crashed
+    # (Socket fail to connect).
+    out=$("${KUBECTL[@]}" exec -n opendesk "$pod" -- bash -c '
+        set -- $(getent hosts mariadb-galera.opendesk-edu.svc.cluster.local)
+        ip=$1
+        echo "galera IP: $ip"
+        [ -n "$ip" ] || { echo "resolve failed"; exit 1; }
+        timeout 5 bash -c "echo > /dev/tcp/$ip/3306" || { echo "TCP $ip:3306 failed"; exit 1; }
+        echo "TCP OK"
+    ' 2>/dev/null)
+    echo "$out"
+    echo "$out" | grep -q "TCP OK"
+}
+
+@test "no core pods crash-looping (scoped to opendesk/home/kube-system)" {
+    cluster_up || skip "no cluster access - live test skipped"
+    # Only OUR core namespaces. Other namespaces (opendesk-sme, opendesk-staff)
+    # carry pre-existing broken deployments unrelated to this cluster's core.
+    local bad ns b
+    bad=""
+    for ns in opendesk home kube-system; do
+        # flag any pod in a failed/loop/waiting state (not Running/Completed)
+        b=$("${KUBECTL[@]}" get pods -n "$ns" --no-headers 2>/dev/null \
+            | grep -Ev " Running | Completed " | grep -cv "--" || true)
+        # guard: header/empty lines shouldn't count
+        b=$("${KUBECTL[@]}" get pods -n "$ns" --no-headers 2>/dev/null | awk '$2 ~ /\// && $3 !~ /Running|Completed/ { print }' | wc -l | tr -d ' ')
+        if [ "${b:-0}" -gt 0 ]; then
+            bad="$bad $ns($b) "
+        fi
+    done
+    [ -z "$bad" ] || { echo "unhealthy core pods: $bad"; return 1; }
+}
+
+@test "XWiki login redirects to Keycloak SSO (302 -> id.home..., not 503)" {
+    skip_unless_online
+    # XWiki is OIDC-SSO: /bin/login/XWiki/XWikiLogin must 302 to the Keycloak
+    # authorize endpoint (client_id=xwiki, PKCE). 200 means SSO got bypassed,
+    # 500/503 mean the old duplicate-ingress outage is back. During the
+    # 2026-09-05 outage this returned 503 (broken HAProxy backend).
+    local hdrs code loc
+    hdrs=$(curl -sk -o /dev/null -D - --max-time 10 "$XWIKI_BASE/bin/login/XWiki/XWikiLogin" 2>/dev/null)
+    code=$(printf '%s' "$hdrs" | awk '/^HTTP/{print $2; exit}')
+    [ "$code" = "302" ] || { echo "XWiki login unexpected HTTP $code (want 302 SSO redirect)"; return 1; }
+    loc=$(printf '%s' "$hdrs" | grep -ioP '^location: \K[^\r]+' | head -1)
+    echo "login -> 302 $loc"
+    case "$loc" in
+      *id.home.opendesk-edu.org/realms/opendesk/protocol/openid-connect/auth*) : ;;
+      *) echo "XWiki login did not redirect to Keycloak OP (got: ${loc:0:60}...)"; return 1 ;;
+    esac
+}

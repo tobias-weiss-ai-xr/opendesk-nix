@@ -166,3 +166,28 @@ setup() {
     bad=$(printf '%s' "$bad" | grep -E 'oauth2-proxy/oauth2-proxy:(latest|[0-9])' || true)
     [ -z "$bad" ]
 }
+
+# ------------------------------------------------------------------
+# Day-2 invariants (2026-09-06): hardcoded pod IPs + nodeSelector pin
+# ------------------------------------------------------------------
+
+@test "no hardcoded pod IP literals in manifests (ClusterIP svc names only)" {
+    # 2026-09-05: cross-namespace DB via raw pod IP worked when pod-hop
+    # routing was broken? NO - it BROKE. ClusterIP service names are the
+    # only resilient address (iptables path). Raw pod IPs in declarative
+    # config are a VM-topology coupling.
+    bad=$(grep -rnE '172\.17\.(12[89]|1[3-9][0-9]|19[01])\.' "$SERVICES_DIR" \
+        2>/dev/null | grep -vE '^[^:]+:[0-9]+:[[:space:]]*#' || true)
+    [ -z "$bad" ]
+}
+
+@test "no nodeSelector pinning outside nix-builder (outage pin removed)" {
+    # 2026-09-05 temporary Keycloak nodeSelector must not persist in config.
+    bad=$(grep -rl 'nodeSelector' "$SERVICES_DIR" 2>/dev/null || true)
+    for f in $bad; do
+        case "$(basename "$f")" in
+            nix-builder.nix) : ;;  # image-cache placement, intentional
+            *) echo "unexpected nodeSelector in $f"; return 1 ;;
+        esac
+    done
+}
