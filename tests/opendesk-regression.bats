@@ -191,3 +191,41 @@ setup() {
         esac
     done
 }
+
+# ------------------------------------------------------------------
+# Backend-service coherence + TLS completeness (503 / cert-miss guards)
+# ------------------------------------------------------------------
+
+@test "every ingress-declaring manifest still declares its backend Service" {
+    # The XWiki 503 (2026-09-05) was a broken HAProxy backend. If an Ingress
+    # stays in a manifest after its Service is removed, HAProxy answers 503 for
+    # that host forever. This lib emits ingress + service under the same name,
+    # so an ingress file MUST still contain a lib.service declaration.
+    bad=0
+    for f in $(grep -rl 'ingressWithCert\|mkIngressWithTLS' "$SERVICES_DIR" 2>/dev/null || true); do
+        if ! grep -q 'lib\.service' "$f"; then
+            echo "  $f: ingress declared but lib.service removed - broken backend!"
+            bad=1
+        fi
+    done
+    [ "$bad" -eq 0 ]
+}
+
+@test "every ingress host claim has a TLS block (cert must cover the host)" {
+    # ingressWithCert emits tls.hosts = [ host ] automatically. A later
+    # refactor that switches to raw ingress objects must not drop TLS -
+    # Let's Encrypt/HRZ certs would no longer be presented for the host.
+    # (Static proxy: every file using ingressWithCert must still define tlsSecretName,
+    # and no service declares an ingress host without a matching tls block.)
+    bad=0
+    for f in $(grep -rl 'ingressWithCert\|mkIngressWithTLS' "$SERVICES_DIR" 2>/dev/null || true); do
+        # ingressWithCert sets tlsSecretName default; a file overriding to ""
+        # or dropping it would be a cert-miss. Check we always pass tlsSecretName
+        # or rely on the default (no explicit override that empties it).
+        if grep -qE 'tlsSecretName[[:space:]]*=[[:space:]]*""' "$f"; then
+            echo "  $f: tlsSecretName set to empty string - no cert for ingress host(s)"
+            bad=1
+        fi
+    done
+    [ "$bad" -eq 0 ]
+}

@@ -192,6 +192,27 @@ for f in $bad_ns; do
 done
 [ "$found" -eq 0 ] && say "OK: no stray nodeSelector (except nix-builder image-cache pin)"
 
+# =============================================================================
+# 6. Ingress must not outlive its backend Service (broken-backend 503 guard)
+# =============================================================================
+echo "[6] Ingress backend/service coherence"
+# The XWiki 503 (2026-09-05) was a backend with all servers disabled via a
+# cross-namespace duplicate host. A second failure class: an Ingress kept in
+# the file after its backend Service is removed - HAProxy answers 503 for the
+# host. This lib emits ingress + service under the SAME top-level `name`
+# (inherit name), so: any file that still declares an ingressWithCert must also
+# still declare a lib.service. (Manifests use `inherit name`, so we can't regex
+# for a literal name=; presence of both declarations is the decidable gate.)
+backend_bad=0
+for f in $(grep -rl 'ingressWithCert\|mkIngressWithTLS' "$SERVICES_DIR" 2>/dev/null || true); do
+  if ! grep -q 'lib\.service' "$f"; then
+    backend_bad=$((backend_bad+1))
+    fail=$((fail+1))
+    fail_line "$f: ingress declared but no lib.service any more - backend would get HAProxy 503"
+  fi
+done
+[ "$backend_bad" -eq 0 ] && say "OK: every ingress file still declares its backend Service"
+
 if [ "$fail" -gt 0 ]; then
   echo ""
   echo "FAILED: $fail invariant violation(s) (see above)."

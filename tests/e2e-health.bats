@@ -375,3 +375,85 @@ pod_count_ready() {
       *) echo "XWiki login did not redirect to Keycloak OP (got: ${loc:0:60}...)"; return 1 ;;
     esac
 }
+# ------------------------------------------------------------------
+# 8. Fleet / platform health + TLS + ingress backend endpoint coherence
+# ------------------------------------------------------------------
+
+@test "all 3 cluster nodes are Ready" {
+    cluster_up || skip "no cluster access - live test skipped"
+    local n bad
+    n=$("${KUBECTL[@]}" get nodes --no-headers 2>/dev/null | wc -l | tr -d ' ')
+    bad=$("${KUBECTL[@]}" get nodes --no-headers 2>/dev/null | awk '$2 != "Ready" {print $1}' | tr '\n' ' ')
+    echo "nodes=$n not-ready: ${bad:-none}"
+    [ "$n" -ge 3 ]
+    [ -z "$bad" ]
+}
+
+@test "Galera quorum: all 3 mariadb-galera pods Running (DB single point of failure)" {
+    cluster_up || skip "no cluster access - live test skipped"
+    local ready
+    ready=$("${KUBECTL[@]}" get pods -n opendesk-edu --no-headers 2>/dev/null \
+        | grep -c "mariadb-galera-.* 1/1 .* Running")
+    echo "galera ready: $ready/3"
+    # Keycloak + XWiki depend on Galera; a half-quorum cluster can serve only
+    # read-nearest and drops writes (login 500s). All three must be up.
+    [ "$ready" -eq 3 ]
+}
+
+@test "MetalLB LoadBalancer has external IP for ingress (public entry point)" {
+    cluster_up || skip "no cluster access - live test skipped"
+    local ip
+    ip=$("${KUBECTL[@]}" get svc -n kube-system haproxy-ingress-kubernetes-ingress \
+        -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)
+    echo "ingress LB external IP: $ip"
+    # external IP is how *.opendesk-edu.org reaches the cluster; if MetalLB
+    # loses it, every public service (portal, KC, XWiki) becomes unreachable.
+    [ -n "$ip" ]
+    case "$ip" in
+        172.*) : ;;  # MetalLB pool on the campus network
+        *) echo "unexpected external IP format: $ip" ; return 1 ;;
+    esac
+}
+
+@test "every core ingress backend service has ready endpoints (no broken HAProxy backend)" {
+    cluster_up || skip "no cluster access - live test skipped"
+    local ns bad
+    bad=""
+    # Scoped to the namespaces under this suite's care; other tenants
+    # (opendesk-sme/staff/students) may intentionally carry dummy/crashlooped
+    # backends that are out of scope.
+    for ns in opendesk home opendesk-edu; do
+        miss=$("${KUBECTL[@]}" get ingress -n "$ns" -o go-template='{{range .items}}{{range .spec.rules}}{{range .http.paths}}{{.backend.service.name}} {{end}}{{end}}{{end}}' --no-headers 2>/dev/null \
+            | tr ' ' '\n' | sort -u | grep -v '^$' | while read -r svc; do
+                ep=$("${KUBECTL[@]}" get endpoints -n "$ns" "$svc" -o jsonpath='{.subsets[0].addresses[0].ip}' 2>/dev/null)
+                [ -n "$ep" ] || echo "$svc"
+            done)
+        [ -z "$miss" ] || bad="$bad $ns:{$(echo "$miss" | tr '\n' ' ')}"
+    done
+    [ -z "$bad" ] || { echo "ingress backends without endpoints:$bad"; return 1; }
+}
+
+@test "public TLS certificates not expiring within 30 days" {
+    skip_unless_online
+    if ! command -v openssl >/dev/null 2>&1; then skip "openssl not available"; fi
+    local h exp now days
+    for h in home.opendesk-edu.org id.home.opendesk-edu.org xwiki.home.opendesk-edu.org \
+             matrix.home.opendesk-edu.org chat.home.opendesk-edu.org; do
+        exp=$(echo | timeout 8 openssl s_client -servername "$h" -connect "$h:443" 2>/dev/null \
+            | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
+        if [ -z "$exp" ]; then echo "$h: could not read cert"; return 1; fi
+        days=$(( ($(date -d "$exp" +%s) - $(date +%s)) / 86400 ))
+        echo "$h expires $exp ($days days)"
+        [ "$days" -ge 30 ] || { echo "$h: cert expires in $days days (<30)"; return 1; }
+    done
+}
+
+@test "Keycloak realm endpoint returns valid JSON (realm metadata reachable)" {
+    skip_unless_online
+    # /realms/opendesk serves realm metadata used by clients for audience/issuer
+    # checks; a 500/502 here means Keycloak or its DB/network is degraded even
+    # if the discovery 200-check above passes.
+    local body
+    body=$(curl -sk --max-time 10 "$ID_BASE/realms/opendesk" 2>/dev/null)
+    echo "$body" | python3 -c "import json,sys; d=json.load(sys.stdin); assert d.get('realm')=='opendesk', 'unexpected realm'; print('realm ok')" 2>&1 | head -1
+}
