@@ -224,14 +224,16 @@ setup() {
 }
 
 @test "lib files exist for all modules" {
+    # The active module tree moved from ./lib to ./platform/nix (reorg
+    # 11dead5 2025); this test validates the live tree, not the dead legacy one.
     for lib in types security sbom registry k8s build security-scanning cosign cicd dev tests; do
-        [ -f "./lib/${lib}.nix" ]
+        [ -f "./platform/nix/${lib}.nix" ]
     done
 }
 
 @test "compliance library implements BG-1..BG-8" {
     for bg in BG-1 BG-2 BG-3 BG-4 BG-5 BG-6 BG-7 BG-8; do
-        run grep -q "$bg" ./lib/compliance/container-gov-de.nix
+        run grep -q "$bg" ./platform/nix/compliance/container-gov-de.nix
         [ "$status" -eq 0 ]
     done
 }
