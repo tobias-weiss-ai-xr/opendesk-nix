@@ -223,6 +223,55 @@ setup() {
     fi
 }
 
+@test "no-latest-image-tag checker passes on platform/kubernetes (all debt baselined)" {
+    run bash ./scripts/ci/check-no-latest-tag.sh "$(pwd)/platform/kubernetes"
+    [ "$status" -eq 0 ] || { echo "checker failed:\n$output"; return 1; }
+}
+
+@test "no-latest-image-tag checker rejects NEW yaml :latest (drift guard)" {
+    local tmp
+    tmp=$(mktemp -d)
+    mkdir -p "$tmp/yaml-drift-guard"
+    cat > "$tmp/yaml-drift-guard/deploy.yaml" <<'YEOF'
+spec:
+  template:
+    spec:
+      containers:
+      - name: x
+        image: docker.io/example/app:latest
+YEOF
+    # scan just the tmp tree (empty baseline => every :latest is NEW); the
+    # baseline arg is required to force "no allowed" state without shipping a
+    # real baseline into tmp.
+    run bash ./scripts/ci/check-no-latest-tag.sh "$tmp" /dev/null
+    echo "exit=$status"
+    [ "$status" -ne 0 ]
+    echo "$output" | grep -q "docker.io/example/app:latest"
+    rm -rf "$tmp"
+}
+
+@test "no-latest-image-tag checker ignores @digest pins and version tags" {
+    local tmp
+    tmp=$(mktemp -d)
+    mkdir -p "$tmp/yaml-digest"
+    cat > "$tmp/yaml-digest/deploy.yaml" <<'YEOF'
+spec:
+  template:
+    spec:
+      containers:
+      - name: pinned-digest
+        image: quay.io/foo/bar@sha256:abc123
+      - name: pinned-version
+        image: nginx:1.27.0
+      - name: policy
+        imagePullPolicy: Always
+YEOF
+    run bash ./scripts/ci/check-no-latest-tag.sh "$tmp" /dev/null
+    echo "exit=$status output=$output"
+    [ "$status" -eq 0 ]
+    rm -rf "$tmp"
+}
+
 @test "lib files exist for all modules" {
     # The active module tree moved from ./lib to ./platform/nix (reorg
     # 11dead5 2025); this test validates the live tree, not the dead legacy one.

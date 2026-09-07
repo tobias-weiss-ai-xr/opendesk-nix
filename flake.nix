@@ -167,7 +167,7 @@
                 nativeBuildInputs = [ pkgs.bash ];
               }
               ''
-                bash ${./scripts/ci/check-no-latest-tag.sh} ${./platform/kubernetes/services} ${./scripts/ci/latest-tag-baseline.txt}
+                bash ${./scripts/ci/check-no-latest-tag.sh} ${./platform/kubernetes} ${./scripts/ci/latest-tag-baseline.txt}
                 touch $out
               '';
 
