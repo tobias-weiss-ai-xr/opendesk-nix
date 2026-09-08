@@ -12,10 +12,10 @@
 #     `opendesk-opencloud` audience; user's token injected as Bearer)
 #   * `/sogo/` CalDAV/CardDAV proxy (route present; enabled later)
 #
-# Image: ghcr.io/opendesk-edu/intercom-service:2.23.11 — the openDesk Edu fork
-# of upstream ICS 2.23.11 (Node Alpine base + /oc/ + /sogo/ + /health; see
-# docker/intercom-service/). The image is mirrored into the SCS cluster
-# registry (containerd redirects ghcr.io → 172.17.0.6:5001).
+# Image: ghcr.io/opendesk-edu/intercom-service:2.24.0-opendesk.2 — the openDesk
+# Edu fork of upstream ICS (Node Alpine base + /oc/ + /sogo/ + /health), built
+# by CI in github.com/opendesk-edu/intercom-service. Pulled via the cluster's
+# zot mirror (registries.yaml redirects ghcr.io → localhost:5002).
 #
 # Config env mirrors the upstream chart's `ics.*` values (see
 # helmfile/apps/nubus/values-intercom-service.yaml.gotmpl in the openDesk
@@ -32,7 +32,7 @@
 let
   name = "intercom-service";
   image = "ghcr.io/opendesk-edu/intercom-service";
-  tag = "2.23.11";
+  tag = "2.24.0-opendesk.2";
   port = 8080;
 
   labels = lib.mkLabels { inherit name; } // {
