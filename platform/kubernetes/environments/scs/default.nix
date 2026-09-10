@@ -80,6 +80,13 @@
     };
   };
 
+  # Stalwart mail server — bootstrap recovery admin (envFrom secret, only
+  # read when the registry DB is empty on first boot; live cluster carries a
+  # hand-managed value).
+  stalwart = {
+    recoveryAdmin = secrets.stalwartRecoveryAdmin or "admin:change-me-bootstrap-only";
+  };
+
   # Networking
   networking = {
     proxy = "";
