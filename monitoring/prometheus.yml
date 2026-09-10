@@ -6,7 +6,7 @@
 # Main Prometheus configuration file for monitoring openDesk containers.
 #
 # Usage:
-#   docker-compose -f docker-compose.yml -f docker-compose.override.yml up -d prometheus
+#   (legacy compose path removed — monitoring config is applied directly)
 #
 #   Access Prometheus at: http://localhost:9090
 #   Access Grafana at: http://localhost:3000
