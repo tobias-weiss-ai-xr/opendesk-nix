@@ -22,7 +22,7 @@ metadata:
 data:
   registry: "ghcr.io/tobias-weiss-ai-xr/umr/opendesk-edu/opendesk-nix"
   total_services: "78"
-  code_repo: "gitlab.opencode.de/umr/opendesk-edu/opendesk-nix"
+  code_repo: "github.com/tobias-weiss-ai-xr/opendesk-nix"
   deployment_date: "2026-08-05"
   compliance: "OpenSpec 48/48, 0 CVEs, SBOM-enabled, Cosign-signed"
 ---

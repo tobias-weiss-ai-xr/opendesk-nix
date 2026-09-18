@@ -2,7 +2,7 @@ apiVersion: v2
 name: opendesk-nix
 version: 1.0.0
 description: Complete OpenDesk Edu NixOS container deployment (78 services)
-home: https://gitlab.opencode.de/umr/opendesk-edu/opendesk-nix
+home: https://github.com/tobias-weiss-ai-xr/opendesk-nix
 type: application
 appVersion: "1.0.0"
 dependencies:

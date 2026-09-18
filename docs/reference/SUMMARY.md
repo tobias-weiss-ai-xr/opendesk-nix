@@ -8,9 +8,11 @@
 
 ## 📊 Executive Summary
 
-**Mission Accomplished**: All 78 NixOS-built container images for the openDesk Edu platform have been successfully built, security-scanned, signed, and pushed to the opencode.de container registry.
+**Mission Accomplished**: All 78 NixOS-built container images for the openDesk Edu platform have been successfully built, security-scanned, signed, and pushed to both the GitHub Container Registry (GHCR) and the opencode.de container registry.
 
 The **complete openDesk Edu platform** is now ready for production deployment on the HRZ K3s cluster.
+
+> **Note**: As of September 2026, the primary code repository and container registry have been migrated from opencode.de to GitHub. See the [Migration Notes](#-migration-notes) section below for details.
 
 ---
 
@@ -24,7 +26,8 @@ The **complete openDesk Edu platform** is now ready for production deployment on
 - **Security**: OpenSpec 48/48 compliant
 
 ### 2. Code Repository
-- **Location**: `gitlab.opencode.de/umr/opendesk-edu/opendesk-nix`
+- **Primary Location**: `github.com/tobias-weiss-ai-xr/opendesk-nix`
+- **Previous Location**: `gitlab.opencode.de/umr/opendesk-edu/opendesk-nix` (archived)
 - **Status**: ✅ Pushed with complete NixOS infrastructure
 - **All flake.nix definitions** for 78 services
 
@@ -162,7 +165,7 @@ The **complete openDesk Edu platform** is now ready for production deployment on
 
 | Phase | Status | Date | Notes |
 |-------|--------|------|-------|
-| **Code Repository** | ✅ Complete | 2026-08-05 | opendesk-nix on opencode.de |
+| **Code Repository** | ✅ Complete | 2026-08-05 | opendesk-nix on opencode.de → **Migrated to GitHub 2026-09** |
 | **Container images** | ✅ Complete | 2026-08-05 | All 78 services pushed |
 | **K8s manifests** | ✅ Complete | 2026-08-05 | namespace, secrets, deployments |
 | **Documentation** | ✅ Complete | 2026-08-05 | DEPLOYMENT-GUIDE.md, SUMMARY.md |
@@ -394,6 +397,32 @@ The **complete openDesk Edu platform** is now:
 This represents a **major milestone** in the OpenDesk Edu project, providing a complete, secure, and production-ready NixOS-based container platform for educational institutions.
 
 **The HRZ K3s cluster can now be fully deployed with the complete OpenDesk Edu platform!** 🚀
+
+---
+
+## 🚀 Migration Notes
+
+### Repository Migration to GitHub (September 2026)
+
+**Background**: To consolidate development workflows and improve collaboration, the openDesk Edu project has migrated its primary repository from opencode.de GitLab to GitHub.
+
+**Changes**:
+- **Primary Repository**: `github.com/tobias-weiss-ai-xr/opendesk-nix` (active)
+- **Previous Repository**: `gitlab.opencode.de/umr/opendesk-edu/opendesk-nix` (archived, read-only)
+- **Container Registry**: All images are now published to `ghcr.io/tobias-weiss-ai-xr/umr/opendesk-edu/opendesk-nix`
+
+**Why the Migration?**:
+- Unified development workflow with GitHub Actions for CI/CD
+- Better integration with existing open-source tooling
+- Improved accessibility for external contributors
+- Consolidation of project resources under a single platform
+
+**For Existing Users**:
+- Update your git remotes to point to the GitHub repository
+- Update container pull configurations to use GHCR
+- The opencode.de registry will be maintained as a mirror for legacy deployments
+
+**Security Note**: During this migration, all access tokens were rotated and old credentials were revoked. Any hardcoded references to the opencode.de repository in documentation are being updated to reflect the current GitHub location.
 
 ---
 
